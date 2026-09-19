@@ -22,9 +22,15 @@ storage/*.png
 # nel dump del database e nella cartella, non nella storia del repository.
 assets/img/emblemi/caricati/*
 !assets/img/emblemi/caricati/.gitkeep
+# Il .htaccess della cartella NON e' un dato di esercizio: e' la protezione che
+# vieta l'elenco e l'esecuzione. Deve stare nel repository, se no un'installazione
+# nuova nasce con la cartella elencabile — ed e' esattamente quello che e'
+# successo il 19/09/2026, quando quel file e' sparito e nessuno lo rimetteva.
+!assets/img/emblemi/caricati/.htaccess
 
 # Ritratti caricati dai comandanti: come gli emblemi, sono dati di esercizio e
 # per giunta fotografie di persone. Stanno sul disco e nel backup, non nel
 # repository.
 assets/img/ritratti/caricati/*
 !assets/img/ritratti/caricati/.gitkeep
+!assets/img/ritratti/caricati/.htaccess
