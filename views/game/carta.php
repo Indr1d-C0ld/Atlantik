@@ -50,7 +50,20 @@ $datiCarta = [
 
 <div class="due-colonne">
   <div class="tavolo">
-    <canvas id="carta" data-carta="<?= e(json_encode($datiCarta, JSON_UNESCAPED_UNICODE)) ?>"></canvas>
+    <?php /* Una tela, da sola, per un lettore di schermo non e' niente: ne'
+       un ruolo ne' un nome. Qui dentro ci sono la posizione, la rotta e i punti
+       tracciati, e tutti e tre si possono dire a parole. */ ?>
+    <canvas id="carta" role="img"
+            aria-label="<?= e(sprintf(
+              'Carta nautica dell\'Atlantico. Battello %s in quadrato %s, rotta %03d gradi, %s nodi. %s',
+              (string) $boat['uboat_number'],
+              (string) (\App\Sim\Grid::toQuadrat((float) $boat['est_lat'], (float) $boat['est_lon']) ?? 'sconosciuto'),
+              (int) round((float) $boat['heading']),
+              number_format((float) $boat['speed_kn'], 1, ',', '.'),
+              $rotta === [] ? 'Nessun punto di rotta tracciato.'
+                            : sprintf('Rotta pianificata di %d punti.', count($rotta))
+            )) ?>"
+            data-carta="<?= e(json_encode($datiCarta, JSON_UNESCAPED_UNICODE)) ?>">La carta e' un disegno: la stessa posizione, in parole, sta qui sotto sotto «Punto attuale», e la rotta sotto «Rotta pianificata».</canvas>
     <p class="carta-aiuto">
       Trascina per spostare la carta, rotella per la scala. Un clic aggiunge un punto di rotta.
       Il cerchio tratteggiato è l'incertezza sulla posizione: dentro quel cerchio, il battello può essere ovunque.

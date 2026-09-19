@@ -109,6 +109,44 @@ foreach ([
     ok("creazione del comandante: {$cosa} sta dentro il form", str_contains($dentro, $ago));
 }
 
+// --- ogni tela ha un'alternativa per chi non la vede ------------------------
+//
+// Una <canvas> senza ruolo e senza nome, per un lettore di schermo, non esiste:
+// non e' nemmeno un'immagine senza descrizione, e' proprio niente. Le quattro
+// tele del gioco — carta di bordo, rosa dei rilevamenti, plotta dell'attacco,
+// carta ammiraglia — disegnano roba che si puo' dire benissimo a parole, e le
+// parole ci sono gia' tutte nelle tabelle accanto.
+$conTela = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($radice)) as $f) {
+    if (!$f->isFile() || $f->getExtension() !== 'php') {
+        continue;
+    }
+    $testo = (string) file_get_contents($f->getPathname());
+    if (!str_contains($testo, '<canvas')) {
+        continue;
+    }
+    $conTela[str_replace($radice . '/', '', $f->getPathname())] = $testo;
+}
+
+ok('le tele del gioco sono quelle che sappiamo', count($conTela) === 4,
+    implode(', ', array_map(static fn (string $p): string => basename($p), array_keys($conTela))));
+
+foreach ($conTela as $nome => $testo) {
+    preg_match_all('/<canvas\b[^>]*>/s', $testo, $tele);
+    foreach ($tele[0] as $tela) {
+        ok(basename($nome) . ': la tela dice che cos\'e\'', str_contains($tela, 'role="img"'));
+        ok(basename($nome) . ': e porta un nome leggibile', str_contains($tela, 'aria-label='));
+    }
+}
+
+// --- e ogni pagina di gioco ha un titolo di primo livello -------------------
+//
+// L'intestazione del battello e' il titolo della pagina: chi naviga per titoli
+// deve trovarcelo. Era uno <span>, e le pagine di gioco non avevano nessun h1.
+$intestazione = (string) file_get_contents($radice . '/partials/intestazione_battello.php');
+ok('l\'intestazione del battello e\' un h1', str_contains($intestazione, '<h1 class="numero"'),
+    'vale per tutte le pagine che la includono');
+
 echo "\n";
 if ($falliti === 0) {
     echo "\033[0;32mTutte le verifiche superate.\033[0m\n";

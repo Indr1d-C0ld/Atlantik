@@ -43,7 +43,9 @@ $dati = [
   </div>
 
   <div class="carta-admin-scatola">
-    <canvas id="carta-admin" width="1600" height="1100" data-carta="<?= e((string) json_encode($dati)) ?>"></canvas>
+    <canvas id="carta-admin" width="1600" height="1100" role="img"
+            aria-label="Carta del teatro operativo: battelli, convogli e naviglio isolato in mare adesso. I numeri stanno nelle tabelle sotto."
+            data-carta="<?= e((string) json_encode($dati)) ?>">La carta e' un disegno: gli stessi dati stanno nelle tabelle di questa pagina.</canvas>
   </div>
 
   <div id="scheda-carta" class="scheda-carta" hidden></div>
