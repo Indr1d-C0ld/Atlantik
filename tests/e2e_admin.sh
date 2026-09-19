@@ -14,8 +14,9 @@ set -uo pipefail
 BASE_URL="${BASE_URL:-http://localhost/atlantik}"
 HOST_HDR="${HOST_HDR:-localhost}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Il file dei segreti: fuori dal DocumentRoot. ATLANTIK_CONFIG lo sposta.
-CONFIG_FILE="${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"
+# Il file dei segreti non si indovina: lo dice l'applicazione, che lo cerca
+# in ATLANTIK_CONFIG, in /etc/atlantik/ e infine nel progetto.
+CONFIG_FILE="$(php -r 'require "'"${ROOT}"'/bin/_bootstrap.php"; echo App\Core\Config::sourceFile();')"
 JAR="$(mktemp)"
 USER_NAME="prova admin $(date +%s)"
 USER_PASS="kommandant42"

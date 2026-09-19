@@ -1,8 +1,8 @@
 # Atlantik — cosa non entra nel versionamento.
 
-# Segreti: la configurazione vera vive FUORI dal DocumentRoot — /etc/atlantik/
-# config.php, o il percorso indicato da ATLANTIK_CONFIG. Qui deve restare solo
-# l'esempio coi segnaposto.
+# Segreti: la configurazione vera vive FUORI dal DocumentRoot (ATLANTIK_CONFIG,
+# /etc/atlantik/config.php, o il percorso scelto in installazione). Qui deve
+# restare solo l'esempio coi segnaposto.
 config/config.php
 config/config.local.php
 
