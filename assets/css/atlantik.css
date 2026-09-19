@@ -496,7 +496,11 @@ footer {
   background: var(--acciaio-0); border: 1px solid var(--bordo); border-radius: var(--raggio);
   padding: .5rem; box-shadow: inset 0 3px 12px rgba(0,0,0,.6);
 }
-#carta { display: block; width: 100%; cursor: crosshair; border-radius: 2px; }
+/* touch-action: none — se no il browser si prende il gesto e la pagina scorre
+   invece di muoversi la carta. Con gli eventi "pointer" di carta.js il dito
+   trascina e la pinza ingrandisce, come col mouse e la rotella. */
+#carta { display: block; width: 100%; cursor: crosshair; border-radius: 2px;
+         touch-action: none; user-select: none; }
 
 /* Il quadro tattico si dimensiona da solo in JavaScript sul suo contenitore.
    Questa e' la rete: se per qualunque motivo il conto viene piu' largo della
@@ -528,6 +532,27 @@ footer {
 
 .scheda-patrol { display: flex; gap: 1.4rem; flex-wrap: wrap; font-size: .85rem; color: var(--testo-2); margin-bottom: 1rem; }
 .scheda-patrol b { color: var(--testo); font-family: var(--mono); }
+
+/* Il tavolo di carteggio e la pagina d'ascolto: carta a sinistra, strumenti a
+   destra. La colonna degli strumenti ha una larghezza fissa, e su uno schermo
+   stretto si prende tutto: al tavolo restavano quaranta pixel su un telefono
+   da trecentosettantacinque, cioe' una striscia verticale al posto della
+   carta. Sotto i 60 rem le due colonne si mettono una sopra l'altra.
+
+   Stavano in uno stile scritto dentro il tag, ed e' il motivo per cui nessuna
+   media query poteva rimediare: da fuori non si sovrascrive. */
+.due-colonne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17rem;
+  gap: 1rem;
+  align-items: start;
+}
+.due-colonne--ascolto { grid-template-columns: minmax(0, 22rem) minmax(0, 1fr); }
+
+@media (max-width: 60rem) {
+  .due-colonne,
+  .due-colonne--ascolto { grid-template-columns: minmax(0, 1fr); }
+}
 
 @media (max-width: 52rem) {
   .griglia-plancia { grid-template-columns: 1fr 1fr; }

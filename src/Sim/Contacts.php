@@ -176,6 +176,24 @@ final class Contacts
         return $fuori;
     }
 
+    /**
+     * Pota i contatti spenti da un pezzo.
+     *
+     * Un contatto scade dopo tre ore di gioco che non si conferma, e da li' in
+     * poi non serve piu' a niente: la pagina d'ascolto mostra gli ultimi
+     * quaranta, e a nessuno interessa un fruscio sentito la settimana scorsa.
+     * Restavano pero' in tabella per sempre — e, come le entita' degli
+     * incontri, tenevano in vita le navi che nominavano, perche' Traffic::pota()
+     * non tocca una nave che compare in un contatto.
+     */
+    public static function pota(int $gts, int $grazia = 7 * 86400): int
+    {
+        return Database::run(
+            'DELETE FROM contacts WHERE perso = 1 AND last_gts < ? LIMIT 5000',
+            [$gts - max(86400, $grazia)]
+        )->rowCount();
+    }
+
     /** @return list<array<string,mixed>> */
     public static function attivi(int $boatId, int $limite = 30): array
     {

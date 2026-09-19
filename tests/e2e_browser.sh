@@ -349,6 +349,138 @@ verifica "emblema: l'immagine e' ingrandita"             "si" "$(leggi3 ingrandi
 verifica "emblema: la lente resta dentro lo schermo"     "si" "$(leggi3 dentro)"
 verifica "emblema: si spegne quando il mouse se ne va"   "si" "$(leggi3 spenta)"
 
+# ---------------------------------------------------------------------------
+# 4. Il tavolo di carteggio su uno schermo stretto, e col dito
+# ---------------------------------------------------------------------------
+#
+# Due difetti trovati nell'audit del 19/09/2026 guardando la carta con un
+# browser vero, in emulazione telefono:
+#
+#   - carta.js ascoltava solo gli eventi del MOUSE. Su un telefono il browser
+#     non sintetizza mousemove durante un trascinamento a dito: la carta
+#     restava ferma e scorreva la pagina. La carta ammiraglia usava gia' gli
+#     eventi "pointer" e funzionava; quella del giocatore — l'unica che serve
+#     per navigare — no;
+#
+#   - la pagina disponeva carta e strumenti in due colonne con una griglia
+#     scritta DENTRO il tag, e la colonna degli strumenti era larga 17rem
+#     fisse. Su un telefono da trecentosettantacinque pixel al tavolo ne
+#     restavano QUARANTA: una striscia verticale al posto della carta. Essendo
+#     uno stile in linea, nessuna media query poteva rimediare.
+#
+CARTA_HTML="${ROOT}/_prova_carta.html"
+CARTA_JS="${ROOT}/_prova_carta.js"
+trap 'rm -f "${PAGINA}" "${GUIDA}" "${SORGENTE}" "${PAGINA2}" "${GUIDA2}" "${ENTRATA}" "${PAGINA3}" "${GUIDA3}" "${CARTA_HTML}" "${CARTA_JS}"; rm -rf "${PROFILO}"; php "${ROOT}/bin/_cleanup_test_user.php" "${UTENTE}" >/dev/null 2>&1' EXIT
+
+# Al tavolo ci si arriva solo dal mare: serve un comandante e una missione.
+INMARE=$(php -r '
+require "'"${ROOT}"'/bin/_bootstrap.php";
+$u = App\Core\Database::first("SELECT id FROM users WHERE username = ?", [$argv[1]]);
+if ($u === null) { echo "no"; exit; }
+$uid = (int) $u["id"];
+if (App\Game\Comandante::corrente($uid) === null) {
+  App\Game\Comandante::crea($uid, ["nome" => "Carta Prova " . substr((string) time(), -4),
+    "nato_il" => "1912-06-06", "nato_a" => "Kiel", "ritratto" => "r1", "base" => "lorient"]);
+}
+$b = App\Game\Fleet::ensureBoat($uid);
+App\Core\Database::run("INSERT INTO patrols (boat_id, user_id, commander_id, number, departed_gts, state, base_key)
+  SELECT id, user_id, commander_id, 1, ?, \"in_corso\", home_port_key FROM boats WHERE id = ?",
+  [App\Sim\World::now() - 3600, (int) $b["id"]]);
+App\Core\Database::run("UPDATE boats SET state = \"mare\", lat = 47.2, lon = -8.5, est_lat = 47.2, est_lon = -8.5,
+  speed_kn = 10, ordered_speed_kn = 10, last_sim_gts = ? WHERE id = ?", [App\Sim\World::now() - 600, (int) $b["id"]]);
+echo "si";' "${UTENTE}")
+
+if [[ "${INMARE}" != "si" ]]; then
+  printf '  \033[0;33m--\033[0m    tavolo di carteggio saltato: non si riesce a mettere in mare il battello di prova\n'
+else
+
+cat > "${CARTA_HTML}" <<'HTML'
+<!doctype html><meta charset="utf-8"><title>carta su schermo stretto</title>
+<style>html,body{margin:0}</style>
+<iframe id="q" src="/atlantik/carta" style="width:375px;height:812px;border:0"></iframe>
+<div id="esito">in corso</div>
+<script src="/atlantik/_prova_carta.js"></script>
+HTML
+
+cat > "${CARTA_JS}" <<'JS'
+window.onerror = function (m) { document.getElementById('esito').textContent = 'ERRORE ' + m; };
+function firma(c) {
+  var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, s = 0;
+  for (var i = 0; i < d.length; i += 4 * 211) { s = (s * 31 + d[i] + d[i+1] * 3 + d[i+2] * 7) % 1000000007; }
+  return s;
+}
+document.getElementById('q').addEventListener('load', function () {
+  var d = this.contentDocument, w = this.contentWindow, n = [];
+  setTimeout(function () {
+    var c = d.querySelector('canvas');
+    if (!c) { document.getElementById('esito').textContent = 'ESITO tela=no'; return; }
+    var r = c.getBoundingClientRect();
+
+    // 1) la carta deve prendersi quasi tutto lo schermo stretto
+    n.push('larga=' + (r.width > w.innerWidth * 0.6 ? 'si' : 'no'));
+    n.push('pixel=' + Math.round(r.width));
+    n.push('scorre=' + (d.documentElement.scrollWidth > w.innerWidth + 1 ? 'si' : 'no'));
+    n.push('gesto=' + (w.getComputedStyle(c).touchAction === 'none' ? 'si' : 'no'));
+
+    // 2) il dito deve trascinarla
+    if (!c.setPointerCapture) { c.setPointerCapture = function () {}; c.releasePointerCapture = function () {}; }
+    var pe = function (t, x, y, id) {
+      c.dispatchEvent(new w.PointerEvent(t, { pointerId: id || 1, isPrimary: (id || 1) === 1, pointerType: 'touch',
+        clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: t === 'pointerup' ? 0 : 1 }));
+    };
+    var a = firma(c);
+    pe('pointerdown', r.left + 80, r.top + 200);
+    pe('pointermove', r.left + 150, r.top + 260);
+    pe('pointermove', r.left + 210, r.top + 320);
+    pe('pointerup', r.left + 210, r.top + 320);
+    n.push('dito=' + (a !== firma(c) ? 'si' : 'no'));
+
+    // 3) un tocco secco mette un punto di rotta
+    var elenco = d.getElementById('elenco-rotta');
+    var prima = elenco ? elenco.querySelectorAll('li').length : -1;
+    pe('pointerdown', r.left + 120, r.top + 240);
+    pe('pointerup', r.left + 120, r.top + 240);
+    var dopo = elenco ? elenco.querySelectorAll('li').length : -1;
+    n.push('punto=' + (elenco && !/Nessun punto/.test(elenco.textContent) ? 'si' : 'no'));
+
+    // 4) due dita ingrandiscono
+    a = firma(c);
+    pe('pointerdown', r.left + 100, r.top + 240, 1);
+    pe('pointerdown', r.left + 200, r.top + 320, 2);
+    pe('pointermove', r.left + 60, r.top + 200, 1);
+    pe('pointermove', r.left + 260, r.top + 380, 2);
+    pe('pointerup', r.left + 60, r.top + 200, 1);
+    pe('pointerup', r.left + 260, r.top + 380, 2);
+    n.push('pinza=' + (a !== firma(c) ? 'si' : 'no'));
+
+    document.getElementById('esito').textContent = 'ESITO ' + n.join(' ');
+  }, 1200);
+});
+JS
+
+USCITA4="$(timeout 90 "${BROWSER}" --headless --disable-gpu --no-sandbox --disable-dev-shm-usage \
+  --user-data-dir="${PROFILO}" --window-size=420,900 --virtual-time-budget=14000 --dump-dom \
+  "${BASE}/_prova_carta.html" 2>/dev/null)"
+
+leggi4() { grep -o "$1=[a-z0-9]*" <<< "${USCITA4}" | head -1 | cut -d= -f2; }
+
+printf '  \033[0;90m%s\033[0m\n' "$(grep -o 'ESITO [^<]*' <<< "${USCITA4}" | head -1)"
+
+if grep -q 'ERRORE' <<< "${USCITA4}"; then
+  printf '  \033[0;31mKO\033[0m    il tavolo di carteggio solleva un errore: %s\n' \
+    "$(grep -o 'ERRORE [^<]*' <<< "${USCITA4}" | head -1)"
+  FALLITI=$((FALLITI+1))
+fi
+
+verifica "carta: su schermo stretto si prende la pagina"   "si" "$(leggi4 larga)"
+verifica "carta: niente scorrimento orizzontale"           "no" "$(leggi4 scorre)"
+verifica "carta: il gesto e' della carta, non del browser" "si" "$(leggi4 gesto)"
+verifica "carta: il dito la trascina"                      "si" "$(leggi4 dito)"
+verifica "carta: un tocco mette un punto di rotta"         "si" "$(leggi4 punto)"
+verifica "carta: due dita la ingrandiscono"                "si" "$(leggi4 pinza)"
+
+fi
+
 echo
 if [[ "${FALLITI}" -eq 0 ]]; then printf '\033[0;32mTutte le verifiche superate.\033[0m\n'
 else printf '\033[0;31m%d verifiche fallite.\033[0m\n' "${FALLITI}"; exit 1; fi

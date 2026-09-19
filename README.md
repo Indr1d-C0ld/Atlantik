@@ -239,6 +239,36 @@ accesso verificati con sei identita' diverse, 39 carichi di ordini storti senza
 un solo errore, trenta giorni di crociera senza una deriva numerica, e il
 doppio clic che non spende due volte. Le verifiche automatiche salgono a **863**.
 
+**Sesta revisione tecnica: il dito, la scala, i sei mesi** (19/09/2026, notte).
+Tre angolazioni mai toccate prima: il JavaScript di bordo provato con un browser
+vero, cinquanta battelli nello stesso mondo, e sei mesi di esercizio proiettati
+invece che aspettati.
+
+La scala non ha trovato niente da correggere, ed e' una buona notizia: quaranta
+millisecondi per battello, lineari, e un incontro tattico con venticinque navi
+ne costa settantacinque. Il battito ha un minuto per girare e a cinquanta
+battelli ne usa il tre e mezzo per cento — il tetto e' dell'ordine del migliaio
+di battelli in mare.
+
+La durata ha reso il rilievo piu' insidioso della tornata: ogni incontro chiuso
+lasciava in tabella le venticinque navi della formazione, e finche' quelle
+righe c'erano la potatura del traffico **non poteva togliere le navi che
+nominavano**. Due tabelle che crescono, e la prima che impedisce alla seconda di
+essere potata. Adesso la manutenzione se ne occupa, e la proiezione a cinquanta
+giocatori attivi da' centoquarantasei megabyte l'anno, in equilibrio.
+
+Il browser ha reso due difetti sulla pagina che per un comandante conta piu' di
+ogni altra. Il tavolo di carteggio non rispondeva al **dito**: su un telefono si
+trascinava la pagina e la carta restava ferma, mentre la carta ammiraglia —
+l'altra carta, quella dell'amministratore — col dito funzionava benissimo. E su
+uno schermo stretto al tavolo restavano **quaranta pixel** di carta, per via di
+una griglia a colonne fisse scritta dentro il tag, che nessun foglio di stile
+poteva correggere da fuori. Adesso la carta si trascina col dito, si ingrandisce
+con la pinza, e su un telefono e' larga trecentoventotto pixel invece di
+quaranta.
+
+Le verifiche automatiche salgono a **880**.
+
 **Il gioco e' completo: da F0 a F7.** Quello che resta e' bilanciamento sul campo e beta.
 La pagina d'ingresso dice lo stato vero — con i numeri del mondo in corso, presi dal database a
 ogni caricamento — e l'elenco di quello che e' arrivato dopo la chiusura della tabella di marcia.

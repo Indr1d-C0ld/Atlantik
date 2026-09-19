@@ -45,6 +45,49 @@ final class Encounter
         );
     }
 
+    /**
+     * Pota la zavorra degli incontri chiusi.
+     *
+     * Un incontro materializza la formazione del convoglio: venticinque righe
+     * di naviglio, piu' una riga per ogni siluro lanciato. Finito l'incontro
+     * non le legge piu' nessuno — tutte le letture sono sull'incontro in corso
+     * — e nessuno le toglieva.
+     *
+     * Non e' solo peso morto. Traffic::pota() si rifiuta di togliere una nave
+     * arrivata in porto se un'entita' la nomina ancora, quindi ogni convoglio
+     * mai attaccato da qualcuno teneva in vita le sue venticinque navi per
+     * sempre: due tabelle che crescono, e la prima che impedisce alla seconda
+     * di essere potata. Misurato il 19/09/2026 su un caso costruito — una nave
+     * arrivata quaranta giorni prima, trattenuta da un incontro concluso:
+     * tolta l'entita', la stessa potatura se la portava via subito.
+     *
+     * La RIGA dell'incontro resta, ed e' giusto: e' piccola, e tre trofei
+     * guardano i suoi totali (navi affondate in un solo incontro, cariche
+     * subite, essersi sganciati). Quello che se ne va e' la massa.
+     *
+     * @return array{entita:int,siluri:int}
+     */
+    public static function pota(int $gts, int $grazia = 7 * 86400): array
+    {
+        $limite = $gts - max(86400, $grazia);
+
+        $siluri = Database::run(
+            "DELETE tr FROM torpedo_runs tr JOIN encounters e ON e.id = tr.encounter_id
+              WHERE e.stato = 'concluso' AND COALESCE(e.ended_gts, e.last_step_gts) < ?
+              LIMIT 5000",
+            [$limite]
+        )->rowCount();
+
+        $entita = Database::run(
+            "DELETE ee FROM encounter_entities ee JOIN encounters e ON e.id = ee.encounter_id
+              WHERE e.stato = 'concluso' AND COALESCE(e.ended_gts, e.last_step_gts) < ?
+              LIMIT 5000",
+            [$limite]
+        )->rowCount();
+
+        return ['entita' => $entita, 'siluri' => $siluri];
+    }
+
     /** @return list<array<string,mixed>> */
     public static function entita(int $encounterId, bool $soloVive = true): array
     {

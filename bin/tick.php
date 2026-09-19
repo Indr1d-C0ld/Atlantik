@@ -122,7 +122,8 @@ try {
     // Potatura: una volta ogni mezz'ora, non a ogni battito. Il naviglio
     // arrivato in porto e i diari dei battiti vecchi non servono piu' a
     // nessuno, e crescendo rallenterebbero tutto (audit A4).
-    $potato = ['navi' => 0, 'convogli' => 0, 'battiti' => 0, 'radio' => 0];
+    $potato = ['navi' => 0, 'convogli' => 0, 'battiti' => 0, 'radio' => 0,
+               'entita' => 0, 'corse' => 0, 'contatti' => 0];
     if ((int) date('i') % 30 === 7) {
         $potato = $fase('potatura', static function (): array {
             $p = Traffic::pota(World::now()) + ['battiti' => 0];
@@ -138,6 +139,14 @@ try {
             // serve piu' a nessuno. I comunicati del BdU (destinatario "tutti")
             // e le sue risposte ("battello") nascono senza battello mittente e
             // restano dove sono.
+            // La zavorra degli incontri chiusi e i contatti spenti. Non e' solo
+            // peso: finche' stanno li' tengono in vita le navi che nominano, e
+            // la potatura del traffico non puo' toccarle.
+            $pe = Encounter::pota(World::now());
+            $p['entita'] = $pe['entita'];
+            $p['corse']  = $pe['siluri'];
+            $p['contatti'] = \App\Sim\Contacts::pota(World::now());
+
             $p['radio'] = Database::run(
                 'DELETE FROM radio_messages
                   WHERE boat_id IS NULL AND destinatario IN ("bdu", "branco") LIMIT 2000'
@@ -163,6 +172,9 @@ try {
                 'potati_convogli' => $potato['convogli'],
                 'potati_battiti' => $potato['battiti'],
                 'potati_radio'   => $potato['radio'] ?? 0,
+                'potate_entita'  => $potato['entita'] ?? 0,
+                'potate_corse'   => $potato['corse'] ?? 0,
+                'potati_contatti' => $potato['contatti'] ?? 0,
                 'posta_inviata'  => $posta['inviati'],
                 'posta_in_coda'  => $fase('conteggio posta',
                     static fn (): array => \App\Core\Posta::stato(), ['in_coda' => 0])['in_coda'],

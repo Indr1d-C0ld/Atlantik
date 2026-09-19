@@ -695,12 +695,79 @@
     return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
   }
 
-  tela.addEventListener('mousedown', function (e) {
+  // Eventi "pointer", non "mouse": cosi' la carta si muove col dito come col
+  // mouse, e col pennino di un tablet. Con i soli eventi del mouse, su un
+  // telefono, trascinare la carta faceva scorrere la PAGINA — il browser non
+  // sintetizza mousemove durante un trascinamento a dito — e la carta restava
+  // ferma. La carta ammiraglia lo faceva gia' bene; questa, che e' quella che
+  // usa il giocatore, no.
+  var dita = {};          // i tocchi attivi, per la pinza a due dita
+  var pinza = null;
+
+  function distanzaDita() {
+    var k = Object.keys(dita);
+    if (k.length < 2) { return null; }
+    var a = dita[k[0]], b = dita[k[1]];
+    return {
+      d: Math.hypot(a.x - b.x, a.y - b.y),
+      cx: (a.x + b.x) / 2,
+      cy: (a.y + b.y) / 2
+    };
+  }
+
+  /** Ingrandisce tenendo ferma la posizione geografica sotto il punto dato. */
+  function ingrandisci(fattore, x, y) {
+    var prima = latlon(x, y);
+    vista.scala = Math.max(scalaMinima(), Math.min(40, vista.scala * fattore));
+    var dopo = latlon(x, y);
+    vista.lon += prima.lon - dopo.lon;
+    vista.lat = mercInv(merc(vista.lat) + (merc(prima.lat) - merc(dopo.lat)));
+    limita();
+    disegna();
+  }
+
+  tela.addEventListener('pointerdown', function (e) {
     var p = puntoTela(e);
+    dita[e.pointerId] = p;
+    if (Object.keys(dita).length === 2) {
+      // Due dita: da qui in poi si ingrandisce, non si trascina.
+      trascino = null;
+      pinza = distanzaDita();
+      return;
+    }
     trascino = { x: p.x, y: p.y, lat: vista.lat, lon: vista.lon, mosso: false };
+    try { tela.setPointerCapture(e.pointerId); } catch (x) { /* non tutti lo hanno */ }
   });
-  window.addEventListener('mouseup', function (e) {
-    if (trascino && !trascino.mosso && e.target === tela) {
+
+  tela.addEventListener('pointermove', function (e) {
+    if (!(e.pointerId in dita)) { return; }
+    dita[e.pointerId] = puntoTela(e);
+
+    if (pinza) {
+      var ora = distanzaDita();
+      if (ora && pinza.d > 0) {
+        ingrandisci(ora.d / pinza.d, ora.cx, ora.cy);
+        pinza = ora;
+      }
+      return;
+    }
+    if (!trascino) { return; }
+    var p = puntoTela(e);
+    var dx = p.x - trascino.x, dy = p.y - trascino.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) { trascino.mosso = true; }
+    vista.lon = trascino.lon - dx / vista.scala;
+    vista.lat = mercInv(merc(trascino.lat) + dy / vista.scala);
+    limita();
+    disegna();
+  });
+
+  function finePunta(e) {
+    delete dita[e.pointerId];
+    if (Object.keys(dita).length < 2) { pinza = null; }
+    try { tela.releasePointerCapture(e.pointerId); } catch (x) { /* gia' rilasciato */ }
+
+    // Un tocco che non ha trascinato e' un punto di rotta.
+    if (trascino && !trascino.mosso && e.type === 'pointerup') {
       var p = puntoTela(e);
       if (dentroCarta(p.x, p.y)) {
         var g = latlon(p.x, p.y);
@@ -711,16 +778,17 @@
       }
     }
     trascino = null;
-  });
-  tela.addEventListener('mousemove', function (e) {
-    if (!trascino) { return; }
-    var p = puntoTela(e);
-    var dx = p.x - trascino.x, dy = p.y - trascino.y;
-    if (Math.abs(dx) + Math.abs(dy) > 4) { trascino.mosso = true; }
-    vista.lon = trascino.lon - dx / vista.scala;
-    vista.lat = mercInv(merc(trascino.lat) + dy / vista.scala);
-    limita();
-    disegna();
+  }
+
+  tela.addEventListener('pointerup', finePunta);
+  tela.addEventListener('pointercancel', finePunta);
+  tela.addEventListener('pointerleave', function (e) {
+    // Uscendo dalla tela col tasto premuto il trascinamento finisce, ma NON si
+    // aggiunge un punto: il dito non si e' alzato sulla carta.
+    if (e.buttons === 0) { return; }
+    delete dita[e.pointerId];
+    trascino = null;
+    pinza = null;
   });
   tela.addEventListener('wheel', function (e) {
     e.preventDefault();
@@ -729,13 +797,7 @@
     // quello. Si prende la posizione geografica sotto il cursore, si cambia
     // scala, e si sposta la vista quel tanto che serve a rimettercela sotto.
     var p = puntoTela(e);
-    var prima = latlon(p.x, p.y);
-    vista.scala = Math.max(scalaMinima(), Math.min(40, vista.scala * (e.deltaY < 0 ? 1.15 : 0.87)));
-    var dopo = latlon(p.x, p.y);
-    vista.lon += prima.lon - dopo.lon;
-    vista.lat = mercInv(merc(vista.lat) + (merc(prima.lat) - merc(dopo.lat)));
-    limita();
-    disegna();
+    ingrandisci(e.deltaY < 0 ? 1.15 : 0.87, p.x, p.y);
   }, { passive: false });
 
   // --- elenco dei punti di rotta --------------------------------------------

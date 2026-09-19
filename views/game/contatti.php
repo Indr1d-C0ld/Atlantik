@@ -15,7 +15,7 @@ $rosa = array_map(static fn (array $c): array => [
 <?= partial('nav_plancia', ['attiva' => 'contatti']) ?>
 <?= partial('intestazione_battello', compact('boat', 'type', 'clock', 'now')) ?>
 
-<div style="display:grid; grid-template-columns: minmax(0,22rem) minmax(0,1fr); gap:1rem; align-items:start">
+<div class="due-colonne due-colonne--ascolto">
   <div class="tavolo">
     <canvas id="rosa-idrofono" data-rosa="<?= e(json_encode([
         'contatti' => $rosa,

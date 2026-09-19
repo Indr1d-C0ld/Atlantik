@@ -6,7 +6,7 @@
  * installata sul telefono si comporti da applicazione; quando manca la rete
  * mostra una pagina che lo dice chiaramente.
  */
-const CACHE = 'atlantik-guscio-v8';
+const CACHE = 'atlantik-guscio-v9';
 const GUSCIO = [
   'assets/css/atlantik.css',
   'assets/js/plancia.js',
