@@ -6,9 +6,9 @@ declare(strict_types=1);
  * MODELLO di configurazione — solo segnaposto, nessun segreto.
  *
  * Il file vero viene generato da deploy/00-bootstrap.sh in
- *   /data/atlantik-config/config.php
+ *   /etc/atlantik/config.php
  * L'app lo cerca, in ordine: $ATLANTIK_CONFIG, /etc/atlantik/config.php,
- * /data/atlantik-config/config.php, <progetto>/config/config.php.
+ * /etc/atlantik/config.php, <progetto>/config/config.php.
  */
 
 return [

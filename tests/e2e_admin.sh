@@ -14,6 +14,8 @@ set -uo pipefail
 BASE_URL="${BASE_URL:-http://localhost/atlantik}"
 HOST_HDR="${HOST_HDR:-localhost}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Il file dei segreti: fuori dal DocumentRoot. ATLANTIK_CONFIG lo sposta.
+CONFIG_FILE="${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"
 JAR="$(mktemp)"
 USER_NAME="prova admin $(date +%s)"
 USER_PASS="kommandant42"
@@ -32,14 +34,14 @@ contiene() {
 
 trasporto_log() {
   php -r '
-  $f = "${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"; $c = require $f;
+  $f = "'"${CONFIG_FILE}"'"; $c = require $f;
   file_put_contents("/tmp/atlantik-transport-admin.bak", $c["mail"]["transport"]);
   $c["mail"]["transport"] = "log";
   file_put_contents($f, "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export($c, true) . ";\n");'
 }
 ripristina() {
   php -r '
-  $f = "${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"; $c = require $f;
+  $f = "'"${CONFIG_FILE}"'"; $c = require $f;
   $c["mail"]["transport"] = trim((string) @file_get_contents("/tmp/atlantik-transport-admin.bak")) ?: "log";
   file_put_contents($f, "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export($c, true) . ";\n");
   @unlink("/tmp/atlantik-transport-admin.bak");'

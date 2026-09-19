@@ -18,17 +18,17 @@
 #
 # Cosa fa:
 #   1. rende la cartella del sito scrivibile dall'utente indicato, gruppo www-data (setgid)
-#   2. crea /data/atlantik-config/ per i segreti (fuori dal DocumentRoot)
+#   2. crea la cartella dei segreti (fuori dal DocumentRoot)
 #   3. crea database e utente MariaDB atl_atlantik con password generata
-#   4. scrive /data/atlantik-config/config.php se non esiste
+#   4. scrive il file di configurazione se non esiste
 #   5. installa e abilita la conf Apache di Atlantik
 #
 set -euo pipefail
 
 OWNER_USER="${OWNER_USER:-$(logname 2>/dev/null || echo "$SUDO_USER")}"
 OWNER_GROUP="www-data"
-PROJECT_DIR="/data/html/atlantik"
-CONFIG_DIR="/data/atlantik-config"
+PROJECT_DIR="${SITE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+CONFIG_DIR="${CONFIG_DIR:-/etc/atlantik}"
 CONFIG_FILE="${CONFIG_DIR}/config.php"
 DB_NAME="atl_atlantik"
 DB_USER="atl_atlantik"

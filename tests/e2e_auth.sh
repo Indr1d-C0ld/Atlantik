@@ -23,6 +23,8 @@ set -uo pipefail
 BASE_URL="${BASE_URL:-http://localhost/atlantik}"
 HOST_HDR="${HOST_HDR:-localhost}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Il file dei segreti: fuori dal DocumentRoot. ATLANTIK_CONFIG lo sposta.
+CONFIG_FILE="${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"
 LOG="${ROOT}/storage/logs/app.log"
 JAR="$(mktemp)"
 # Nome con spazio (stile "Indrid Cold") e password al minimo consentito: la prova
@@ -51,7 +53,7 @@ echo "  utente di prova: ${USER_NAME}"
 
 # Trasporto e-mail forzato a 'log' per la durata della prova.
 php -r '
-$f = "${ATLANTIK_CONFIG:-/etc/atlantik/config.php}";
+$f = "'"${CONFIG_FILE}"'";
 $c = require $f;
 file_put_contents("/tmp/atlantik-transport.bak", $c["mail"]["transport"]);
 $c["mail"]["transport"] = "log";
@@ -68,7 +70,7 @@ sleep 3
 
 ripristina() {
   php -r '
-  $f = "${ATLANTIK_CONFIG:-/etc/atlantik/config.php}";
+  $f = "'"${CONFIG_FILE}"'";
   $c = require $f;
   $c["mail"]["transport"] = trim((string) @file_get_contents("/tmp/atlantik-transport.bak")) ?: "log";
   file_put_contents($f, "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export($c, true) . ";\n");
@@ -96,9 +98,9 @@ CODE=$(c -o /dev/null -w '%{http_code}' -X POST "${BASE_URL}/arruolamento" \
   --data-urlencode "password_confirm=${USER_PASS}")
 verifica "arruolamento accettato (redirect)" "302" "${CODE}"
 
-STATO=$(mariadb -N -B --skip-ssl -u"$(php -r '$c=require "${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"; echo $c["db"]["user"];')" \
-        -p"$(php -r '$c=require "${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"; echo $c["db"]["pass"];')" \
-        "$(php -r '$c=require "${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"; echo $c["db"]["name"];')" \
+STATO=$(mariadb -N -B --skip-ssl -u"$(php -r '$c=require "'"${CONFIG_FILE}"'"; echo $c["db"]["user"];')" \
+        -p"$(php -r '$c=require "'"${CONFIG_FILE}"'"; echo $c["db"]["pass"];')" \
+        "$(php -r '$c=require "'"${CONFIG_FILE}"'"; echo $c["db"]["name"];')" \
         -e "SELECT status FROM users WHERE username='${USER_NAME}'" 2>/dev/null)
 verifica "account creato in stato pending" "pending" "${STATO}"
 
