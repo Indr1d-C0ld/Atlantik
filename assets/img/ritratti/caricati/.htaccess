@@ -1,0 +1,14 @@
+# Le fotografie e gli emblemi che i comandanti portano da casa.
+#
+# Il nome di ogni file e' l'impronta del suo contenuto: serve a non tenere due
+# volte la stessa immagine, e a non far indovinare un nome. Un elenco della
+# cartella renderebbe inutile l'impronta — chiunque potrebbe scorrere le
+# fotografie di tutti — quindi l'elenco non si da'.
+Options -Indexes
+
+# E non si esegue niente di quello che c'e' dentro: sono immagini, e devono
+# restare immagini anche se qualcuno riuscisse a farci entrare altro.
+<FilesMatch "\.(php|phtml|phar|cgi|pl|py|sh)$">
+    Require all denied
+</FilesMatch>
+php_flag engine off
