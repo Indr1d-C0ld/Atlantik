@@ -297,8 +297,12 @@ ognuna dice che cos'e' con i numeri veri del momento, e rimanda alle tabelle
 dove la stessa roba e' gia' scritta in parole.
 
 I dati storici, controllati uno per uno, reggono: nove tipi di U-Boot e sei
-siluri, fino alle tre regolazioni del G7a. Le verifiche automatiche salgono a
-**903**.
+siluri, fino alle tre regolazioni del G7a. E la copia di sicurezza e' stata
+ripristinata per davvero, non solo ispezionata: il dump caricato in un database
+temporaneo restituisce gli stessi numeri del mondo in esercizio, tabella per
+tabella. Era l'ultima cosa che restava creduta e non misurata.
+
+Le verifiche automatiche salgono a **903**, tutte verdi.
 
 **Il gioco e' completo: da F0 a F7.** Quello che resta e' bilanciamento sul campo e beta.
 La pagina d'ingresso dice lo stato vero — con i numeri del mondo in corso, presi dal database a
