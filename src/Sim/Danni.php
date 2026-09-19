@@ -270,6 +270,15 @@ final class Danni
             return;
         }
 
+        // Una nave, un affondamento (migrazione 0038). Una ritardataria che
+        // affonda ore dopo puo' essere gia' stata accreditata a un altro
+        // battello che l'ha finita nel frattempo: il merito e' di chi ce l'ha
+        // mandata a fondo, non di chi l'aveva colpita per primo.
+        $gia = Database::first('SELECT boat_id FROM sinkings WHERE ship_id = ? LIMIT 1', [(int) $n['id']]);
+        if ($gia !== null) {
+            return;
+        }
+
         $siluri = (int) (Database::first(
             "SELECT COUNT(*) c FROM torpedo_runs WHERE boat_id = ? AND esito = 'colpito'",
             [(int) $boat['id']]

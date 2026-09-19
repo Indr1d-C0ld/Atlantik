@@ -355,7 +355,8 @@ final class BoatSim
                 // anche in superficie. Niente nafta consumata, niente ricarica,
                 // e la batteria cala come se si fosse immersi.
                 $s['battery'] = max(0.0, $s['battery']
-                    - Consumption::batteryDrainPerHour($type, $s['speed'], $s['silent']) / max(0.2, $effetti['batteria']) * $ore);
+                    - Consumption::batteryDrainPerHour($type, $s['speed'], $s['silent'])
+                        / max(0.2, $effetti['batteria'] * ($mig['batteria'] ?? 1.0)) * $ore);
                 $s['air'] = min(100.0, $s['air'] + Consumption::airGainPerHour() * $effetti['aria'] * $ore);
             } elseif ($s['mode'] === 'superficie') {
                 $ricarica = $s['battery'] < 99.5;

@@ -1,0 +1,31 @@
+-- Una nave si affonda una volta sola.
+--
+-- Due battelli che attaccano lo stesso convoglio aprono due incontri distinti,
+-- e ognuno si materializza la sua copia della formazione. E' giusto che sia
+-- cosi': e' esattamente la tattica del branco, ed e' il cuore del gioco a piu'
+-- giocatori. Quello che non e' giusto e' il seguito.
+--
+-- Misurato il 19/09/2026 con due giocatori veri sullo stesso convoglio SL114:
+-- il piroscafo Jonathan Cabot, 4.130 GRT, una sola riga nella tabella delle
+-- navi, e' stato affondato in tutti e due gli incontri e accreditato a tutti e
+-- due i comandanti. Quattromilacentotrenta tonnellate ciascuno, per un solo
+-- piroscafo.
+--
+-- In un gioco dove il punteggio E' il tonnellaggio, questo non e' un dettaglio
+-- contabile: due giocatori d'accordo fra loro raddoppiano tutto navigando
+-- insieme, e le statistiche di campagna — il rapporto di scambio, l'albo, la
+-- classifica — diventano un'invenzione.
+--
+-- Storicamente il doppio accredito capitava davvero: due comandanti
+-- rivendicavano la stessa nave e il BdU li accreditava entrambi, e il conto
+-- vero si e' saputo solo dopo la guerra. Ma una regola che premia chi
+-- rivendica non si puo' lasciare in un gioco: qui la nave va a fondo una volta
+-- e il merito e' di chi ce l'ha mandata.
+--
+-- Il codice controlla prima di scrivere; questo indice e' la rete sotto, per
+-- il caso in cui due incontri chiudano nello stesso istante. La colonna
+-- ammette NULL — un bersaglio che non ha una riga nel traffico — e MariaDB non
+-- considera due NULL uguali fra loro, quindi quelli restano liberi.
+
+ALTER TABLE sinkings
+    ADD UNIQUE INDEX uq_sinking_nave (ship_id);

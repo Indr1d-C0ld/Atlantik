@@ -391,10 +391,23 @@ final class Carriera
             return ['ok' => false, 'error' => "Servono {$costo} punti di assegnazione."];
         }
 
+        // Quanto rende il corso. Il seme tiene dentro la competenza che quella
+        // specialita' ha ADESSO, se no sarebbe costante per battello: prima di
+        // questa modifica il seme era soltanto (mondo + battello), e lo stesso
+        // battello pescava lo stesso identico incremento per sempre. Misurato:
+        // un battello a +4,55 per corso e un altro a +5,22, per tutta la
+        // carriera, su decine di corsi. Restando deterministico — il mondo non
+        // deve dipendere dal caso del momento — ma variando davvero.
+        $attuale = (float) (Database::first(
+            'SELECT COALESCE(SUM(competence), 0) c FROM crew_members WHERE boat_id = ? AND role_key = ?',
+            [(int) $boat['id'], $specialita]
+        )['c'] ?? 0);
+        $rng = new Rng(World::seed() + (int) $boat['id'] + (int) round($attuale * 100));
+
         $n = Database::run(
             'UPDATE crew_members SET competence = LEAST(100, competence + ?)
              WHERE boat_id = ? AND role_key = ?',
-            [round(4.5 + (new Rng(World::seed() + (int) $boat['id']))->range(0, 3), 2), (int) $boat['id'], $specialita]
+            [round(4.5 + $rng->range(0, 3), 2), (int) $boat['id'], $specialita]
         )->rowCount();
 
         if ($n === 0) {
