@@ -1,0 +1,29 @@
+# Atlantik — cosa non entra nel versionamento.
+
+# Segreti: la configurazione vera vive in /data/atlantik-config/config.php,
+# fuori dal DocumentRoot. Qui deve restare solo l'esempio coi segnaposto.
+config/config.php
+config/config.local.php
+
+# Stato di esercizio: log, lucchetti, file temporanei del motore.
+storage/logs/*
+storage/*.lock
+storage/*.png
+!storage/.gitkeep
+!storage/logs/.gitkeep
+
+# Roba di sistema e dell'editor.
+*.swp
+*~
+.DS_Store
+
+# Emblemi caricati dai comandanti: sono dati di esercizio, non codice. Stanno
+# nel dump del database e nella cartella, non nella storia del repository.
+assets/img/emblemi/caricati/*
+!assets/img/emblemi/caricati/.gitkeep
+
+# Ritratti caricati dai comandanti: come gli emblemi, sono dati di esercizio e
+# per giunta fotografie di persone. Stanno sul disco e nel backup, non nel
+# repository.
+assets/img/ritratti/caricati/*
+!assets/img/ritratti/caricati/.gitkeep

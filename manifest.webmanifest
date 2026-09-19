@@ -1,0 +1,16 @@
+{
+  "name": "Atlantik — Battaglia dell'Atlantico",
+  "short_name": "Atlantik",
+  "description": "Simulazione strategica multigiocatore della Battaglia dell'Atlantico: il comando di un U-Boot.",
+  "start_url": "./zentrale",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e1113",
+  "theme_color": "#151a1d",
+  "lang": "it",
+  "icons": [
+    { "src": "assets/img/icona.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/img/icona-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
