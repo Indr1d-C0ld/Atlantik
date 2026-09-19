@@ -48,7 +48,7 @@ $datiCarta = [
 <?= partial('nav_plancia', ['attiva' => 'carta']) ?>
 <?= partial('intestazione_battello', compact('boat', 'type', 'clock', 'now')) ?>
 
-<div style="display:grid; grid-template-columns: minmax(0,1fr) 17rem; gap:1rem; align-items:start">
+<div class="due-colonne">
   <div class="tavolo">
     <canvas id="carta" data-carta="<?= e(json_encode($datiCarta, JSON_UNESCAPED_UNICODE)) ?>"></canvas>
     <p class="carta-aiuto">
