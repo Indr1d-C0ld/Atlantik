@@ -47,6 +47,9 @@ final class Emblema
     private const LATO = 256;               // il disegno viene rifatto a questa misura
     private const PESO_MAX = 3145728;       // 3 MB in ingresso
 
+    /** Pixel massimi dell'immagine in ingresso: e' l'area che GD deve tenere in memoria. */
+    private const PIXEL_MAX = 16000000;
+
     /** @var array<string,array<string,mixed>>|null */
     private static ?array $repertorio = null;
 
@@ -227,6 +230,27 @@ final class Emblema
         }
         if ($larghezza > 4000 || $altezza > 4000) {
             return ['ok' => false, 'error' => 'Immagine troppo grande: non oltre 4000 pixel per lato.'];
+        }
+        // Il lato non basta: quello che GD deve tenere in memoria e' l'AREA,
+        // quattro byte per pixel, e la conta si fa prima di aprire l'immagine
+        // perche' dopo sarebbe tardi. Un PNG di centodiciassette kilobyte da
+        // seimila per seimila pixel sono centoquarantaquattro megabyte di
+        // bitmap: misurato il 19/09/2026 su questa macchina, un solo
+        // caricamento portava un processo Apache da 80 a 235 megabyte, per un
+        // secondo, e qualche decina di richieste insieme avrebbero messo in
+        // ginocchio tutto quello che gira sul server, non solo il gioco.
+        //
+        // Sedici milioni di pixel accettano comodamente la fotografia di un
+        // telefono (4032 x 3024 fanno dodici milioni e due) e tengono GD sotto
+        // i sessantaquattro megabyte. Di piu' non servirebbe comunque: quello
+        // che si salva e' un quadrato di poche centinaia di pixel.
+        if ($larghezza * $altezza > self::PIXEL_MAX) {
+            return ['ok' => false, 'error' => sprintf(
+                'Immagine troppo grande: %s milioni di pixel, e il limite e\' %d. '
+                . 'Ridimensionala prima di caricarla.',
+                number_format($larghezza * $altezza / 1000000, 1, ',', '.'),
+                (int) (self::PIXEL_MAX / 1000000)
+            )];
         }
 
         $sorgente = match (self::FORMATI[$info[2]]) {

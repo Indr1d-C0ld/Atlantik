@@ -8,7 +8,27 @@ Options -Indexes
 
 # E non si esegue niente di quello che c'e' dentro: sono immagini, e devono
 # restare immagini anche se qualcuno riuscisse a farci entrare altro.
-<FilesMatch "\.(php|phtml|phar|cgi|pl|py|sh)$">
+<FilesMatch "\.(php|phtml|php[0-9]|phps|phar|cgi|pl|py|sh)$">
     Require all denied
 </FilesMatch>
-php_flag engine off
+<IfModule php_module>
+    php_flag engine off
+</IfModule>
+
+# ATTENZIONE, e vale la pena leggerlo prima di fidarsi di questo file.
+#
+# Un .htaccess vale SOLO se il server e' configurato per leggerlo, cioe' con
+# AllowOverride diverso da None. La configurazione che Atlantik spedisce —
+# deploy/apache-atlantik.conf — usa AllowOverride None, che e' la scelta giusta
+# per prestazioni e prevedibilita': quindi su un'installazione fatta con quella
+# configurazione QUESTO FILE NON VIENE LETTO AFFATTO.
+#
+# Fino al 19/09/2026 qui c'era scritto che l'esecuzione era negata, e non lo
+# era: un file .php messo a mano in questa cartella rispondeva 200 ed eseguiva.
+# La regola che conta sta adesso in deploy/apache-atlantik.conf, dentro un
+# DirectoryMatch, dove il server la legge di sicuro.
+#
+# Questo file resta perche' su un hosting condiviso, dove la configurazione del
+# server non si tocca, e' l'unica difesa disponibile. Ma non e' quella su cui
+# si fa conto: tests/e2e_caricamenti.sh prova sul serio, a ogni esecuzione, che
+# un .php in questa cartella non venga eseguito.

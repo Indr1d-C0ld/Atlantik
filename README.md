@@ -269,6 +269,37 @@ quaranta.
 
 Le verifiche automatiche salgono a **880**.
 
+**Settima revisione tecnica: i caricamenti e il lettore di schermo**
+(19/09/2026, notte fonda). Il punto piu' esposto di tutto il gioco e' l'unico in
+cui accetta un file binario da un estraneo: la fotografia del comandante e
+l'emblema di torretta.
+
+Nelle due cartelle dei caricamenti c'era un `.htaccess` che dichiarava, nero su
+bianco, di negare l'esecuzione. Provato: **un file .php messo li' dentro
+risponde 200 ed esegue**. Il motivo sta nel progetto stesso — la configurazione
+Apache che Atlantik spedisce imposta `AllowOverride None`, ed e' la scelta
+giusta, ma con quella opzione gli `.htaccess` non vengono letti nemmeno. Una
+difesa scritta, documentata, creduta e inerte. Adesso la regola sta nella
+configurazione del server, dove viene letta di sicuro.
+
+Secondo rilievo, dello stesso capitolo: il controllo sulle immagini guardava il
+lato e non l'area. Un PNG di 117 kilobyte da 6000x6000 pixel sono 144 megabyte
+di bitmap, e GD alloca fuori dal limite di memoria di PHP: un solo caricamento
+portava un processo Apache da 80 a 235 megabyte. Adesso il limite e' sedici
+milioni di pixel — la fotografia di un telefono passa, la bomba viene respinta
+in venti millisecondi senza essere aperta.
+
+E il gioco e' stato guardato per la prima volta con un lettore di schermo. La
+disciplina del markup e' risultata buona, ma le **quattro tele** — carta di
+bordo, rosa dei rilevamenti, plotta dell'attacco, carta ammiraglia — non
+avevano ne' ruolo ne' nome: per chi non vede non esistevano affatto. Adesso
+ognuna dice che cos'e' con i numeri veri del momento, e rimanda alle tabelle
+dove la stessa roba e' gia' scritta in parole.
+
+I dati storici, controllati uno per uno, reggono: nove tipi di U-Boot e sei
+siluri, fino alle tre regolazioni del G7a. Le verifiche automatiche salgono a
+**903**.
+
 **Il gioco e' completo: da F0 a F7.** Quello che resta e' bilanciamento sul campo e beta.
 La pagina d'ingresso dice lo stato vero — con i numeri del mondo in corso, presi dal database a
 ogni caricamento — e l'elenco di quello che e' arrivato dopo la chiusura della tabella di marcia.
@@ -334,7 +365,7 @@ php tests/test_vista.php             # quello che si vede davvero dalla stazione
 php tests/test_profilo.php           # fascicoli, ritratti, emblemi, unicità
 php tests/test_date.php              # forma italiana delle date e fuso orario
 php tests/test_coerenza.php          # promesse a vuoto: manopole morte, pannelli inerti
-php tests/test_viste.php             # annidamento dei form nei modelli di pagina
+php tests/test_viste.php             # annidamento dei form, tele con alternativa, titolo di pagina
 php tests/test_coste.php             # coste, porti, navigabilità
 php tests/test_posta.php             # coda di posta e ritentativi
 php tests/test_concorrenza.php       # lucchetti e avanzamento serializzato
@@ -344,6 +375,9 @@ php tests/test_equita.php            # lo stesso mondo comunque ci si colleghi
 php tests/test_limiti.php            # casi limite: riserve finite, quota di collasso
 php tests/test_siluri.php            # ricarica dei tubi, contenitori di coperta, siluri guasti
 php tests/test_pedinamento.php       # ordine di pedinamento del BdU, dalla radio all'incasso
+php tests/test_due_battelli.php      # due giocatori sullo stesso convoglio: una nave, un affondamento
+php tests/test_apparati.php          # gli apparati del cantiere fanno quello che promettono
+php tests/test_potatura.php          # il mondo non cresce per sempre: incontri chiusi, contatti, naviglio
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse
@@ -352,6 +386,9 @@ bash tests/e2e_congedo.sh            # congedo dal servizio attivo, dal modulo a
 bash tests/e2e_admin.sh              # pannello di amministrazione
 bash tests/e2e_mensa.sh              # mensa ufficiali: flottiglia e moderazione
 bash tests/e2e_mondo.sh              # stanza dei bottoni, registro, carta navigabile
+bash tests/e2e_permessi.sh           # sei identità contro tutte le rotte: chi non deve entrare, non entra
+bash tests/e2e_ordini_storti.sh      # ordini assurdi a ogni postazione: niente 500, niente stati impossibili
+bash tests/e2e_caricamenti.sh        # quello che i giocatori portano da casa: polyglot, SVG, bombe, esecuzione
 bash tests/e2e_browser.sh            # il JavaScript di bordo, con un browser vero
 ```
 

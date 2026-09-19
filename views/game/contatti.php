@@ -17,10 +17,19 @@ $rosa = array_map(static fn (array $c): array => [
 
 <div class="due-colonne due-colonne--ascolto">
   <div class="tavolo">
-    <canvas id="rosa-idrofono" data-rosa="<?= e(json_encode([
+    <?php /* Come per la carta: la rosa e' un disegno, e quello che dice si
+       puo' dire a parole. L'elenco dei contatti, qui sotto, e' la stessa cosa
+       scritta — e per chi usa un lettore di schermo e' l'unica. */ ?>
+    <canvas id="rosa-idrofono" role="img"
+            aria-label="<?= e(sprintf(
+              'Rosa dei rilevamenti, prua %03d gradi. %s',
+              (int) round((float) $boat['heading']),
+              $rosa === [] ? 'Nessun contatto.' : sprintf('%d contatti in ascolto.', count($rosa))
+            )) ?>"
+            data-rosa="<?= e(json_encode([
         'contatti' => $rosa,
         'prua'     => (float) $boat['heading'],
-    ], JSON_UNESCAPED_UNICODE)) ?>"></canvas>
+    ], JSON_UNESCAPED_UNICODE)) ?>">La rosa e' un disegno: gli stessi contatti, in forma di elenco, stanno qui sotto.</canvas>
     <p class="carta-aiuto">
       Rosa dei rilevamenti. Il tratto pieno è un contatto in mano, quello sbiadito un contatto perso.
       La lunghezza dice quanto è netto: all'idrofono si ha il rilevamento, non la distanza.

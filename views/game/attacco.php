@@ -32,7 +32,14 @@ $scorteVicine = array_values(array_filter($unita, static fn (array $u): bool => 
 
 <div class="griglia-attacco">
   <div class="tavolo">
-    <canvas id="plotta" data-plotta="<?= e(json_encode([
+    <?php /* La plotta dell'attacco: bersagli, scorte e siluri in acqua. Chi
+       non la vede trova gli stessi bersagli nell'elenco qui accanto. */ ?>
+    <canvas id="plotta" role="img"
+            aria-label="<?= e(sprintf(
+              'Plotta dell\'attacco: %d unita\' in vista, prua %03d gradi. L\'elenco dei bersagli sta qui accanto.',
+              count($unita), (int) round((float) $boat['heading'])
+            )) ?>"
+            data-plotta="<?= e(json_encode([
       'battello' => ['lat' => (float) $boat['lat'], 'lon' => (float) $boat['lon'], 'rotta' => (float) $boat['heading']],
       'unita'    => $unita,
       'siluri'   => array_map(static fn (array $r): array => [

@@ -441,7 +441,7 @@ footer {
 .intestazione-battello {
   display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: .8rem;
 }
-.intestazione-battello .numero { font: 700 1.6rem var(--mono); color: var(--testo); letter-spacing: .06em; }
+.intestazione-battello .numero { font: 700 1.6rem var(--mono); color: var(--testo); letter-spacing: .06em; margin: 0; }
 .intestazione-battello .tipo { color: var(--testo-2); font-size: .85rem; letter-spacing: .1em; text-transform: uppercase; }
 .intestazione-battello .ora {
   margin-left: auto; font: 700 1.1rem var(--mono); color: var(--verde-fosf);
