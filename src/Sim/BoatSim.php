@@ -217,6 +217,7 @@ final class BoatSim
         // C'e' qualcosa da fare in camera di lancio? Un tubo vuoto, una
         // ricarica in corso. Si guarda una volta per avanzamento: durante la
         // crociera non si lancia, quindi la risposta non cambia strada facendo.
+
         $siluriDaSistemare = (int) (Database::first(
             "SELECT COUNT(*) n FROM boat_torpedoes
              WHERE boat_id = ? AND stato IN ('lanciato', 'in_carica')",
@@ -546,6 +547,25 @@ final class BoatSim
                 }
             }
 
+            // --- contatti che si spengono ----------------------------------------
+            //
+            // Va fatto QUI e non a fine avanzamento: un contatto si perde
+            // nell'istante in cui si perde, e scrivere quella riga all'ora in
+            // cui il giocatore si e' collegato vorrebbe dire che due comandanti
+            // identici leggono due giornali diversi. Misurato: la stessa
+            // perdita di contatto annotata alle 05:15 per chi ricaricava e alle
+            // 11:00 per chi era tornato una volta sola.
+            //
+            // E si guarda a ogni passo, senza bandierine alzate all'inizio:
+            // i contatti nascono DENTRO l'avanzamento, quindi una bandierina
+            // direbbe "non ce n'e' nessuno" proprio nel caso che conta — il
+            // contatto preso e perso nella stessa mezza giornata. Provato, e
+            // sbagliato: il collegamento unico non annotava la perdita, gli
+            // altri tre si'.
+            foreach (Contacts::scadi($boatId, $t) as $cosa) {
+                $eventi[] = self::ev($t, 'contatto', 'attenzione', $s, Narrator::contattoPerso($cosa));
+            }
+
             // --- i tubi si ricaricano --------------------------------------------
             //
             // Fino all'audit del 19/09/2026 Torpedo::ricarica() non la chiamava
@@ -628,9 +648,7 @@ final class BoatSim
         }
 
         // Contatti che non si confermano piu': persi.
-        foreach (Contacts::scadi($boatId, $toGts) as $cosa) {
-            $eventi[] = self::ev($toGts, 'contatto', 'attenzione', $s, Narrator::contattoPerso($cosa));
-        }
+
 
         // Ordini del BdU e appuntamenti col battello cisterna: si verificano a
         // fine avanzamento, quando la posizione e' quella definitiva.

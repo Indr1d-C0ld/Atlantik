@@ -66,7 +66,43 @@ $cv = Database::first(
     "SELECT * FROM convoys WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ? LIMIT 1",
     [$gts, $gts]
 );
-$boat = Database::first("SELECT * FROM boats ORDER BY id DESC LIMIT 1");
+// Un battello di prova, suo, che si porta via alla fine.
+//
+// Prima questa prova prendeva "l'ultimo battello che c'e'" — e quando le altre
+// prove hanno finito di ripulire i loro, l'ultimo battello che c'e' e' quello
+// del giocatore vero. Gli apriva un incontro addosso, gli affondava navi che
+// finivano nel suo registro, e da quando c'e' la verifica sul collasso gli
+// ammazzava anche il comandante. Rimetteva a posto la posizione e poco altro.
+// Misurato il 19/09/2026: un affondamento, un trofeo, due navi e 8.076 GRT
+// accreditati a un comandante che non era mai uscito dal porto.
+//
+// Una prova non tocca mai roba che non ha creato lei.
+$utente = 'prova incontro ' . time();
+$reg = \App\Auth\Auth::register($utente, 'inc_' . time() . '@esempio.invalid', 'kommandant42', '127.0.0.1');
+$userId = (int) ($reg['user_id'] ?? 0);
+if ($userId > 0) {
+    Database::run("UPDATE users SET status = 'active', email_verified_at = NOW() WHERE id = ?", [$userId]);
+}
+register_shutdown_function(static function () use ($userId): void {
+    if ($userId > 0) {
+        Database::run('DELETE FROM users WHERE id = ?', [$userId]);
+    }
+});
+
+$cmd = $userId > 0 ? \App\Game\Comandante::crea($userId, [
+    'nome' => 'Incontro Prova ' . substr((string) time(), -5), 'nato_il' => '1912-11-30',
+    'nato_a' => 'Kiel', 'ritratto' => 'r1', 'base' => 'lorient',
+]) : ['ok' => false];
+$boat = $userId > 0 && ($cmd['ok'] ?? false) ? \App\Game\Fleet::ensureBoat($userId) : null;
+if ($boat !== null) {
+    Database::run(
+        "INSERT INTO patrols (boat_id, user_id, commander_id, number, departed_gts, state, base_key)
+         SELECT id, user_id, commander_id, 1, ?, 'in_corso', home_port_key FROM boats WHERE id = ?",
+        [$gts - 86400, (int) $boat['id']]
+    );
+    Database::run("UPDATE boats SET state = 'mare' WHERE id = ?", [(int) $boat['id']]);
+    $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
+}
 
 if ($cv === null || $boat === null) {
     echo "  \033[0;90mniente convoglio o niente battello: prove saltate\033[0m\n";
@@ -182,21 +218,13 @@ $cv = Database::first(
     "SELECT * FROM convoys WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ? LIMIT 1",
     [$gts, $gts]
 );
-// Un battello sano: non uno qualunque fra quelli lasciati in giro dalle altre
-// prove. Ci si e' arrivati per davvero — la prova ha pescato un relitto fermo
-// a duecentosessanta metri e l'incontro si e' chiuso con "battello perduto",
-// il che e' perfino giusto, ma non e' quello che si voleva misurare.
-$boat = Database::first(
-    "SELECT * FROM boats WHERE encounter_id IS NULL AND state <> 'perduto' ORDER BY id DESC LIMIT 1"
+// Sempre il battello di prova, rimesso a nuovo.
+Database::run(
+    "UPDATE boats SET state = 'mare', mode = 'superficie', depth_m = 0, ordered_depth_m = 0,
+            encounter_id = NULL, hull_stress = 0, hull_integrity = 100 WHERE id = ?",
+    [(int) $boat['id']]
 );
-if ($boat !== null) {
-    Database::run(
-        "UPDATE boats SET state = 'mare', mode = 'superficie', depth_m = 0, ordered_depth_m = 0,
-                hull_stress = 0, hull_integrity = 100 WHERE id = ?",
-        [(int) $boat['id']]
-    );
-    $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
-}
+$boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
 
 if ($cv === null || $boat === null) {
     echo "  \033[0;90mniente convoglio o niente battello libero: prove saltate\033[0m\n";

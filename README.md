@@ -210,7 +210,10 @@ scariche; il **recupero della password** con invalidazione di tutte le sessioni 
 una sola; l'**ordine di pedinamento** del BdU, che e' la meta' mancante della Rudeltaktik;
 e tre modi in cui il mondo dipendeva ancora da quanto spesso si ricarica la pagina.
 
-Le verifiche automatiche salgono a **815**, con sei suite nuove.
+Le verifiche automatiche salgono a **818**, con sei suite nuove — e la suite
+intera, eseguita di fila, adesso lascia l'account di un giocatore esattamente
+com'era: due prove scrivevano sul primo battello che trovavano, che a suite
+pulita e' quello vero.
 
 **Il gioco e' completo: da F0 a F7.** Quello che resta e' bilanciamento sul campo e beta.
 La pagina d'ingresso dice lo stato vero — con i numeri del mondo in corso, presi dal database a

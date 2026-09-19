@@ -153,7 +153,12 @@ $vivi = static function (int $passo) use ($boatId, $patrolId, $partenza, $arrivo
     $p = Database::first('SELECT distance_nm FROM patrols WHERE id = ?', [$patrolId]);
     $e = Database::all('SELECT kind, gts FROM patrol_events WHERE patrol_id = ? ORDER BY gts, kind', [$patrolId]);
     $rip = Database::first("SELECT state, repair_progress FROM boat_systems WHERE boat_id = ? AND skey = 'idrofono'", [$boatId]);
+    $cont = Database::all('SELECT target_kind, first_gts, last_gts, perso FROM contacts WHERE boat_id = ? ORDER BY first_gts, target_kind', [$boatId]);
     return [
+        'contatti' => implode(' ', array_map(
+            static fn (array $c): string => sprintf('%s@%d..%d%s', $c['target_kind'], $c['first_gts'], $c['last_gts'], $c['perso'] ? 'x' : ''),
+            $cont
+        )),
         'idrofono' => (string) ($rip['state'] ?? '—'),
         'lavoro'   => (float) ($rip['repair_progress'] ?? 0),
         'miglia'   => (float) $p['distance_nm'],
@@ -188,6 +193,23 @@ $improntaTraffico = static function (): string {
     $n = Database::first("SELECT COUNT(*) n, COALESCE(SUM(id), 0) s FROM ships WHERE state = 'in_mare'");
     return implode('|', [$c['n'], $c['s'], $c['d'], $n['n'], $n['s']]);
 };
+
+// Il battello di prova resta in mare per tutta la prova, e in mare ci arriva
+// anche bin/tick.php, che passa ogni minuto e fa avanzare tutti i battelli:
+// se capita in mezzo a un ritmo, quel ritmo vive un pezzo di mondo in piu'
+// degli altri. Non si puo' fermare il battito — e non si deve — ma il
+// lucchetto del battello si puo' tenere in mano: chi arriva secondo aspetta
+// tre secondi e poi lascia perdere, che e' esattamente quello che deve fare.
+//
+// Il lucchetto e' rientrante sulla stessa connessione, quindi le chiamate a
+// BoatSim::advance qui dentro se lo riprendono senza accorgersi di niente.
+if (!\App\Core\Lock::prendi('boat:' . $boatId, 5)) {
+    echo "  \033[0;33m--\033[0m    il battello di prova e' occupato da un altro processo: prova saltata\n";
+    exit(0);
+}
+register_shutdown_function(static function () use ($boatId): void {
+    \App\Core\Lock::lascia('boat:' . $boatId);
+});
 
 $ris = [];
 $tentativi = 0;
@@ -251,6 +273,25 @@ foreach ($ris as $nome => $r) {
 }
 ok('le stesse righe, nello stesso ordine, alla stessa ora', $uguali,
     $uguali ? substr_count($rif['giornale'], '@') . ' righe' : "diverge con «{$diverso}»");
+// Gli stessi contatti, presi e persi alle stesse ore. E' la prova che ha
+// smascherato l'ultima dipendenza dal ritmo: un contatto preso e perso dentro
+// la stessa mezza giornata veniva annotato da tre ritmi su quattro.
+$contUguali = true;
+$contDiverso = '';
+foreach ($ris as $nome => $r) {
+    if ($r['contatti'] !== $rif['contatti']) {
+        $contUguali = false;
+        $contDiverso = $nome;
+    }
+}
+ok('gli stessi contatti, presi e persi alle stesse ore', $contUguali,
+    $contUguali ? ($rif['contatti'] !== '' ? $rif['contatti'] : 'nessun contatto in dodici ore')
+                : "diverge con «{$contDiverso}»");
+if (!$contUguali && getenv('ATL_DIFF') !== false) {
+    foreach ($ris as $nome => $r) {
+        printf("  %-32s %s\n", $nome, $r['contatti'] ?: '(nessuno)');
+    }
+}
 if (!$uguali && getenv('ATL_DIFF') !== false) {
     foreach ($ris as $nome => $r) {
         printf("  %-32s %s\n", $nome, $r['giornale']);

@@ -19,6 +19,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_FILE="$(php -r 'require "'"${ROOT}"'/bin/_bootstrap.php"; echo App\Core\Config::sourceFile();')"
 JAR="$(mktemp)"
 USER_NAME="prova admin $(date +%s)"
+ALTRO_NAME="prova fascicolo $(date +%s)"
 USER_PASS="kommandant42"
 FALLITI=0
 
@@ -48,6 +49,7 @@ ripristina() {
   @unlink("/tmp/atlantik-transport-admin.bak");'
   php "${ROOT}/bin/console.php" config:set traffic.scala 1.0 float >/dev/null 2>&1
   php "${ROOT}/bin/_cleanup_test_user.php" "${USER_NAME}" >/dev/null 2>&1
+  php "${ROOT}/bin/_cleanup_test_user.php" "${ALTRO_NAME}" >/dev/null 2>&1
   rm -f "${JAR}"
 }
 trap ripristina EXIT
@@ -166,8 +168,24 @@ PAGINA=$(c "${BASE_URL}/admin/comunicazioni")
 contiene "comunicazione vuota respinta" "vuoto" "${PAGINA}"
 
 # --- fascicoli altrui ---------------------------------------------------------
+# Un comandante di prova, di un ALTRO account di prova: la nota sul fascicolo
+# di un altro e' un'azione da amministratore, e su se stessi non lo e'.
+php "${ROOT}/bin/_prova_utente.php" "${ALTRO_NAME}" "rotta0909" >/dev/null 2>&1
+
+# Un comandante di prova, suo. Prima questa parte prendeva "l'ultimo
+# comandante che c'e'" — e quando le altre prove hanno finito di ripulire i
+# loro, l'ultimo comandante che c'e' e' quello del giocatore vero: gli
+# scriveva una nota sul fascicolo pubblico. La nota la cancellava, l'ora
+# dell'ultima modifica al profilo no. Una prova non tocca roba che non ha
+# creato lei.
 CMD=$(php -r 'require "'"${ROOT}"'/bin/_bootstrap.php";
-$c = App\Core\Database::first("SELECT id FROM commanders ORDER BY id DESC LIMIT 1"); echo (int) ($c["id"] ?? 0);')
+$u = App\Core\Database::first("SELECT id FROM users WHERE username = ?", [$argv[1]]);
+if ($u === null) { echo 0; exit; }
+$c = App\Game\Comandante::crea((int) $u["id"], [
+    "nome" => "Ispezione Prova " . substr((string) time(), -5), "nato_il" => "1913-06-15",
+    "nato_a" => "Kiel", "ritratto" => "r1", "base" => "lorient",
+]);
+echo (int) ($c["commander_id"] ?? 0);' "${ALTRO_NAME}")
 if [[ "${CMD}" -gt 0 ]]; then
   PAGINA=$(c "${BASE_URL}/admin/comandante/${CMD}")
   contiene "l'amministratore apre il fascicolo di un altro" "Amministrazione" "${PAGINA}"
