@@ -54,6 +54,9 @@ final class BattelloController
         $c['compartimenti'] = Database::all('SELECT * FROM boat_compartments WHERE boat_id = ? ORDER BY seq', [$id]);
         $c['effetti']       = Damage::effects($sistemi, (float) $c['boat']['hull_stress'],
             \App\Game\Carriera::effettiMiglioramenti((int) $c['boat']['id'])['quota_max'] ?? 1.0);
+        $c['banda']         = Damage::bandaCollasso(
+            $c['type'], $c['effetti']['quota_max'], (float) $c['boat']['hull_integrity']
+        );
         $c['scorte']        = Outfitting::stores($id);
         $c['voci']          = Outfitting::voci();
         $c['ciurma']        = Crew::aggregate($id);

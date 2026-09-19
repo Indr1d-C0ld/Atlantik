@@ -54,7 +54,14 @@ $scorteVicine = array_values(array_filter($unita, static fn (array $u): bool => 
       <div class="riga"><span class="etichetta">Velocità / rotta</span><span class="valore piccolo"><span data-campo="velocita"><?= e(number_format((float) $boat['speed_kn'], 1, ',', '')) ?></span> kn · <span data-campo="rotta"><?= e(str_pad(number_format((float) $boat['heading'], 0, ',', ''), 3, '0', STR_PAD_LEFT)) ?></span>°</span></div>
       <div class="riga"><span class="etichetta">Batteria / aria</span><span class="valore piccolo"><span data-campo="batteria"><?= e(number_format((float) $boat['battery_pct'], 0, ',', '')) ?></span>% · <span data-campo="aria"><?= e(number_format((float) $boat['air_pct'], 0, ',', '')) ?></span>%</span></div>
       <div class="riga"><span class="etichetta">Scafo</span><span class="valore piccolo"><span data-campo="stress"><?= e(number_format((float) $boat['hull_stress'], 0, ',', '')) ?></span>%</span></div>
-      <div class="riga"><span class="etichetta">Siluri</span><span class="valore piccolo"><?= e($inventario['tubi']) ?> nei tubi, <?= e($inventario['riserve']) ?> in riserva</span></div>
+      <div class="riga"><span class="etichetta">Siluri</span><span class="valore piccolo"><?= e($inventario['tubi']) ?> nei tubi, <?= e($inventario['riserve']) ?> in riserva<?php
+        if (($inventario['esterni'] ?? 0) > 0): ?> (<?= e($inventario['esterni']) ?> in coperta)<?php endif; ?></span></div>
+      <?php if (($inventario['in_carica'] ?? 0) > 0): ?>
+        <div class="riga"><span class="etichetta">In carica</span><span class="valore piccolo"><?= e($inventario['in_carica']) ?> fra le mani dei siluristi</span></div>
+      <?php endif; ?>
+      <?php if (($inventario['guasti'] ?? 0) > 0): ?>
+        <div class="riga"><span class="etichetta">Guasti</span><span class="valore piccolo attenzione"><?= e($inventario['guasti']) ?> inservibili</span></div>
+      <?php endif; ?>
 
       <form method="post" action="<?= e(url('/attacco/manovra')) ?>" style="margin-top:.7rem">
         <?= csrf_field() ?>

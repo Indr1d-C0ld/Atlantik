@@ -74,6 +74,18 @@ final class Patrol
         );
         $patrolId = Database::lastInsertId();
 
+        // L'area operativa assegnata dal BdU resta scritta nella missione. Il
+        // fascicolo pubblico ha una colonna apposta, e mostrava un trattino per
+        // ogni missione di ogni comandante: la colonna non la scriveva nessuno.
+        $area = Database::first(
+            "SELECT quadrat FROM bdu_orders WHERE boat_id = ? AND tipo = 'area'
+                    AND stato IN ('aperto','accettato') ORDER BY emesso_gts DESC LIMIT 1",
+            [(int) $boat['id']]
+        );
+        if ($area !== null && $area['quadrat'] !== null) {
+            Database::run('UPDATE patrols SET area_quadrat = ? WHERE id = ?', [(string) $area['quadrat'], $patrolId]);
+        }
+
         // Battello pronto: casse piene, batterie cariche, aria buona.
         Database::run(
             'UPDATE boats SET state = "mare", lat = ?, lon = ?, est_lat = ?, est_lon = ?, est_error_nm = 0,

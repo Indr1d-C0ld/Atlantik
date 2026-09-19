@@ -133,13 +133,47 @@ final class Contacts
         return ['id' => Database::lastInsertId(), 'nuovo' => true];
     }
 
-    /** Marca come persi i contatti che non si confermano da troppo tempo. */
-    public static function scadi(int $boatId, int $gts): int
+    /**
+     * Marca come persi i contatti che non si confermano da troppo tempo.
+     *
+     * Torna la descrizione di quelli persi adesso, perche' un contatto che si
+     * spegne va scritto nel giornale: e' un fatto, e spesso e' IL fatto — un
+     * convoglio agganciato e poi perduto e' la differenza fra una crociera e
+     * niente. Prima si spegnevano in silenzio, e il comandante se ne accorgeva
+     * solo guardando una tabella vuota.
+     *
+     * @return list<string>
+     */
+    public static function scadi(int $boatId, int $gts): array
     {
-        return Database::run(
+        $soglia = $gts - self::SCADENZA_S;
+        $persi = Database::all(
+            'SELECT target_kind, classe_est FROM contacts
+             WHERE boat_id = ? AND perso = 0 AND last_gts < ?',
+            [$boatId, $soglia]
+        );
+        if ($persi === []) {
+            return [];
+        }
+
+        Database::run(
             'UPDATE contacts SET perso = 1 WHERE boat_id = ? AND perso = 0 AND last_gts < ?',
-            [$boatId, $gts - self::SCADENZA_S]
-        )->rowCount();
+            [$boatId, $soglia]
+        );
+
+        $fuori = [];
+        foreach ($persi as $p) {
+            $classe = trim((string) ($p['classe_est'] ?? ''));
+            $fuori[] = $classe !== '' && !str_starts_with($classe, 'segnalazione')
+                ? $classe
+                : match ((string) $p['target_kind']) {
+                    'convoglio' => 'il convoglio',
+                    'aereo'     => 'l\'aereo',
+                    default     => 'la nave',
+                };
+        }
+
+        return $fuori;
     }
 
     /** @return list<array<string,mixed>> */

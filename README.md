@@ -73,7 +73,8 @@ geolocalizzati: manderebbe il dato di un giocatore a un servizio di terzi.
 **Seconda revisione tecnica** (18/09/2026, sera). Audit del gioco in esercizio: undici
 rilievi trovati e chiusi, fra cui il piu' grave dell'intero progetto — **l'incontro tattico
 non avanzava mai**, quindi in tutta la storia di questo mondo non era mai affondato niente.
-Dettaglio, prove e osservazioni aperte in [docs/AUDIT.md](docs/AUDIT.md), seconda parte.
+Dettaglio, prove e osservazioni aperte nell'audit tecnico, che resta nel deployment perche'
+parla di quella macchina e non del gioco.
 Le verifiche automatiche salgono a **529**.
 
 **Il danno che resta, e quello che si vede** (18/09/2026, sera). Una nave colpita e non
@@ -191,6 +192,26 @@ inquadrare un battello o un convoglio, e un pulsante per tornare a tutto il teat
 proiezione resta equirettangolare a ogni ingrandimento: i quadrati Marinequadrat restano
 rettangoli, e un rilevamento letto qui somiglia a uno letto in plancia.
 
+**Quarta revisione tecnica: quello che era scritto e non girava** (19/09/2026). Audit
+completo con un metodo nuovo — non «questo codice e' giusto» ma «questo codice gira?».
+Diciassette rilievi, tutti chiusi. Il piu' grave e' anche il piu' semplice da raccontare:
+`Torpedo::ricarica()` esisteva, era scritta bene, e **non la chiamava nessuno**. Un VII
+parte con quattordici siluri, cinque nei tubi; lanciati quelli, il battello restava
+disarmato per tutto il resto della crociera, con nove siluri a bordo e nessun modo di
+usarli. Il secondo attacco allo stesso convoglio — il cuore della tattica del branco — non
+poteva esistere.
+
+Nella stessa tornata: la **quota di collasso** adesso esiste davvero (ogni scafo ha il suo
+punto di cedimento, fisso e sconosciuto, dentro l'intervallo del cantiere, e si abbassa con
+le deformazioni permanenti); la simulazione **si ferma** quando il battello e' perduto,
+invece di far navigare il relitto; l'**aria** che finisce fa emergere come le batterie
+scariche; il **recupero della password** con invalidazione di tutte le sessioni aperte; il
+**congedo dal servizio attivo**, perche' il mestiere aveva due uscite e il gioco ne offriva
+una sola; l'**ordine di pedinamento** del BdU, che e' la meta' mancante della Rudeltaktik;
+e tre modi in cui il mondo dipendeva ancora da quanto spesso si ricarica la pagina.
+
+Le verifiche automatiche salgono a **815**, con sei suite nuove.
+
 **Il gioco e' completo: da F0 a F7.** Quello che resta e' bilanciamento sul campo e beta.
 La pagina d'ingresso dice lo stato vero — con i numeri del mondo in corso, presi dal database a
 ogni caricamento — e l'elenco di quello che e' arrivato dopo la chiusura della tabella di marcia.
@@ -262,9 +283,15 @@ php tests/test_posta.php             # coda di posta e ritentativi
 php tests/test_concorrenza.php       # lucchetti e avanzamento serializzato
 php tests/test_segnaposto.php        # sagome e registro delle fonti
 php tests/test_username.php          # validatore dei nomi utente
+php tests/test_equita.php            # lo stesso mondo comunque ci si colleghi
+php tests/test_limiti.php            # casi limite: riserve finite, quota di collasso
+php tests/test_siluri.php            # ricarica dei tubi, contenitori di coperta, siluri guasti
+php tests/test_pedinamento.php       # ordine di pedinamento del BdU, dalla radio all'incasso
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
+bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse
 bash tests/e2e_navigazione.sh        # dalla base al mare e ritorno
+bash tests/e2e_congedo.sh            # congedo dal servizio attivo, dal modulo all'albo d'oro
 bash tests/e2e_admin.sh              # pannello di amministrazione
 bash tests/e2e_mensa.sh              # mensa ufficiali: flottiglia e moderazione
 bash tests/e2e_mondo.sh              # stanza dei bottoni, registro, carta navigabile

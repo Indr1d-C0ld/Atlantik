@@ -154,10 +154,10 @@ final class Damage
 
     /**
      * Danno da pressione. Oltre la quota di prova lo scafo accumula
-     * sollecitazione; oltre l'intervallo di collasso e' un'altra storia, e per
-     * ora si limita a fare molto male.
+     * sollecitazione elastica — che si riassorbe — e deformazione permanente,
+     * che non si riassorbe: quella la raddrizza solo il cantiere.
      *
-     * @return array{stress:float,evento:?string}
+     * @return array{stress:float,evento:?string,permanente:float}
      */
     public static function pressureStep(float $quota, array $type, float $stress, float $ore, Rng $rng): array
     {
@@ -165,7 +165,7 @@ final class Damage
         if ($quota <= $prova || $ore <= 0) {
             // Sotto la quota di prova lo scafo "riposa": una parte del lavoro
             // elastico si riassorbe, la deformazione permanente no.
-            return ['stress' => max(0.0, $stress - 0.4 * $ore), 'evento' => null];
+            return ['stress' => max(0.0, $stress - 0.4 * $ore), 'evento' => null, 'permanente' => 0.0];
         }
 
         $scala = (float) GameConfig::get('damage.pressure_scale', 1.0);
@@ -183,7 +183,69 @@ final class Damage
             $evento = $eccesso >= 0.9 ? 'scafo_grave' : 'scafo_lamenti';
         }
 
-        return ['stress' => round($stress, 2), 'evento' => $evento];
+        // La parte che non si riassorbe. E' piccola per ora — un'ora al limite
+        // del collasso vale un punto e mezzo di scafo — ma non torna piu'
+        // indietro a mare: e' questa che abbassa la quota di collasso per
+        // sempre, come l'intestazione di questa classe promette dal primo
+        // giorno e come il battello dice al comandante nella pagina del
+        // battello. Fino all'audit del 19/09/2026 non la scriveva nessuno:
+        // hull_integrity restava 100 dalla consegna all'affondamento.
+        $permanente = $scala * $ore * (0.35 * $eccesso + 1.1 * $eccesso ** 2);
+
+        return ['stress' => round($stress, 2), 'evento' => $evento, 'permanente' => round($permanente, 4)];
+    }
+
+    /**
+     * La quota a cui QUESTO scafo cede.
+     *
+     * Due battelli gemelli non cedevano alla stessa quota: dipendeva dalla
+     * saldatura, dal lotto delle lamiere, da quanto il battello aveva gia'
+     * lavorato. Il cantiere dichiarava un intervallo — per il VIIB 220-250
+     * metri — e dentro quell'intervallo ogni scafo aveva il suo punto, che
+     * nessuno a bordo conosceva: lo si scopriva una volta sola.
+     *
+     * Qui e' lo stesso: un punto fisso per battello, seminato sul suo
+     * identificativo, che non cambia mai e che il comandante non vede. Quello
+     * che vede e' l'intervallo, e l'intervallo si stringe man mano che lo
+     * scafo si consuma.
+     */
+    public static function quotaCollasso(array $type, int $boatId, float $quotaMaxEff = 1.0, float $integrita = 100.0): float
+    {
+        $banda = self::bandaCollasso($type, $quotaMaxEff, $integrita);
+        $rng = Rng::for(World::seed(), 'collasso', $boatId);
+
+        return $banda['min'] + ($banda['max'] - $banda['min']) * $rng->float();
+    }
+
+    /**
+     * L'intervallo di collasso come lo vede il comandante: la banda del
+     * cantiere ridotta dalle deformazioni — quelle elastiche di adesso, che
+     * stanno in $quotaMaxEff, e quelle permanenti, che stanno in $integrita.
+     *
+     * Il pavimento e' la quota di prova: sopra quella lo scafo tiene comunque.
+     * Serve perche' un battello conciato male non affondi da solo a
+     * cinquanta metri, che sarebbe una condanna senza scampo e senza colpa.
+     *
+     * @return array{min:float,max:float}
+     */
+    public static function bandaCollasso(array $type, float $quotaMaxEff = 1.0, float $integrita = 100.0): array
+    {
+        $prova = (float) $type['test_depth_m'];
+        $usura = 0.55 + 0.45 * max(0.0, min(100.0, $integrita)) / 100.0;
+
+        // $quotaMaxEff e' il coefficiente di efficienza: tiene dentro le avarie,
+        // l'acqua imbarcata, i rinforzi di cantiere E la sollecitazione del
+        // momento. Sul collasso pero' non pesa per intero: la sollecitazione e'
+        // in buona parte elastica e si riassorbe, mentre la parte che non torna
+        // indietro e' gia' contata in $integrita. Contarla due volte per intero
+        // vorrebbe dire far cedere a centocinque metri un battello che ha solo
+        // passato una brutta giornata, e non e' quello che succedeva.
+        $fattore = (1.0 - (1.0 - max(0.0, $quotaMaxEff)) * 0.66) * $usura;
+
+        return [
+            'min' => max($prova, (float) $type['crush_depth_min_m'] * $fattore),
+            'max' => max($prova, (float) $type['crush_depth_max_m'] * $fattore),
+        ];
     }
 
     /**
@@ -257,9 +319,9 @@ final class Damage
         $progressi[$chiave] = $progresso;
         Database::run(
             'UPDATE boat_systems SET repair_progress = ? WHERE boat_id = ? AND skey = ?',
-            [round($progresso, 2), $boatId, $chiave]
+            [round($progresso, 5), $boatId, $chiave]
         );
-        return ['skey' => $chiave, 'riparato' => false, 'progresso' => round($progresso, 2)];
+        return ['skey' => $chiave, 'riparato' => false, 'progresso' => round($progresso, 5)];
     }
 
     /**

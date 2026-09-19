@@ -72,10 +72,11 @@ $stressPct = (float) $boat['hull_stress'];
     <div class="riga"><span class="etichetta">Sollecitazione accumulata</span><span class="valore grande"><?= e(number_format($stressPct, 0, ',', '')) ?>%</span></div>
     <div class="misuratore <?= $stressPct > 60 ? 'allarme' : ($stressPct > 30 ? 'attenzione' : '') ?>"><i style="width:<?= e(number_format($stressPct, 1, '.', '')) ?>%"></i></div>
     <div class="riga"><span class="etichetta">Quota di prova</span><span class="valore piccolo"><?= e($type['test_depth_m']) ?> m</span></div>
+    <div class="riga"><span class="etichetta">Scafo</span><span class="valore piccolo"><?= e(number_format((float) $boat['hull_integrity'], 0, ',', '')) ?>%</span></div>
     <div class="riga"><span class="etichetta">Collasso stimato</span><span class="valore piccolo">
-      <?= e(number_format((float) $type['crush_depth_min_m'] * $effetti['quota_max'], 0, ',', '')) ?>–<?= e(number_format((float) $type['crush_depth_max_m'] * $effetti['quota_max'], 0, ',', '')) ?> m
+      <?= e(number_format($banda['min'], 0, ',', '')) ?>–<?= e(number_format($banda['max'], 0, ',', '')) ?> m
     </span></div>
-    <p class="aiuto">Le deformazioni da pressione non si raddrizzano a mare: ogni ora passata sotto la quota di prova abbassa il limite per sempre.</p>
+    <p class="aiuto">Le deformazioni da pressione non si raddrizzano a mare: ogni ora passata sotto la quota di prova abbassa il limite per sempre. Dentro quell'intervallo questo scafo ha il suo punto di cedimento, e nessuno a bordo sa quale sia.</p>
   </div>
 
   <div class="strumento">

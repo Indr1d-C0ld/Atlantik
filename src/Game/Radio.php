@@ -114,6 +114,22 @@ final class Radio
             Branco::segnalaContatto($branco, $boat, $lat, $lon, $gts);
         }
 
+        // E il BdU risponde. Fino all'audit del 19/09/2026 non rispondeva: chi
+        // segnalava un convoglio fuori da un branco non riceveva niente da
+        // nessuno, e l'ordine di pedinamento — previsto nello schema e gia'
+        // letto in Bdu::verifica — non l'aveva mai emesso nessuno.
+        $ordine = null;
+        if ($tipoMsg === 'contatto') {
+            $contatto = Database::first(
+                "SELECT convoy_id FROM contacts WHERE boat_id = ? AND perso = 0 AND convoy_id IS NOT NULL
+                 ORDER BY last_gts DESC LIMIT 1",
+                [(int) $boat['id']]
+            );
+            if ($contatto !== null) {
+                $ordine = Bdu::ordinaPedinamento($boat, (int) $contatto['convoy_id'], $gts);
+            }
+        }
+
         $patrol = Database::first(
             "SELECT id FROM patrols WHERE boat_id = ? AND state = 'in_corso' ORDER BY id DESC LIMIT 1",
             [(int) $boat['id']]
@@ -125,9 +141,18 @@ final class Radio
                 'text' => sprintf('Trasmesso (%d secondi di antenna): %s', $durata, $testo)
                     . ($fix !== null ? ' — il Funkmaat non ha modo di saperlo, ma qualcuno stava ascoltando.' : ''),
             ], (int) $patrol['id'], (int) $boat['id']);
+
+            if ($ordine !== null) {
+                BoatSim::save([
+                    'gts' => $gts, 'kind' => 'bdu', 'severity' => 'nota',
+                    'lat' => $lat, 'lon' => $lon, 'quadrat' => $quadrat,
+                    'text' => 'Dal BdU: ' . (string) $ordine['testo'],
+                ], (int) $patrol['id'], (int) $boat['id']);
+            }
         }
 
-        return ['ok' => true, 'message_id' => $msgId, 'durata' => $durata, 'fix' => $fix, 'testo' => $testo];
+        return ['ok' => true, 'message_id' => $msgId, 'durata' => $durata, 'fix' => $fix,
+                'testo' => $testo, 'ordine' => $ordine];
     }
 
     /**

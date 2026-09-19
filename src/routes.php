@@ -29,6 +29,12 @@ $router->get('/verifica-inviata', [AuthController::class, 'verificationSent']);
 $router->get('/verifica', [AuthController::class, 'verify']);
 $router->post('/rinvia-verifica', [AuthController::class, 'resend'], ['throttle']);
 
+// Password dimenticata: chiedere il collegamento, e poi usarlo.
+$router->get('/recupero-richiesta', [AuthController::class, 'recuperoForm'], ['guest']);
+$router->post('/recupero-richiesta', [AuthController::class, 'recuperoInvia'], ['guest', 'throttle']);
+$router->get('/recupero', [AuthController::class, 'recuperoForm2'], ['guest']);
+$router->post('/recupero', [AuthController::class, 'recuperoSalva'], ['guest', 'throttle']);
+
 // Accesso
 $router->get('/accesso', [AuthController::class, 'showLogin'], ['guest']);
 $router->post('/accesso', [AuthController::class, 'login'], ['guest', 'throttle']);
@@ -39,6 +45,7 @@ $router->get('/comandante', [CarrieraController::class, 'comandante'], ['active'
 $router->post('/comandante/crea', [CarrieraController::class, 'crea'], ['active', 'throttle']);
 $router->post('/comandante/compra', [CarrieraController::class, 'compra'], ['active', 'throttle']);
 $router->post('/comandante/addestra', [CarrieraController::class, 'addestra'], ['active', 'throttle']);
+$router->post('/comandante/congedo', [CarrieraController::class, 'congeda'], ['active', 'throttle']);
 $router->get('/rapporto/{id}', [CarrieraController::class, 'rapporto'], ['active']);
 $router->get('/albo', [CarrieraController::class, 'albo']);
 

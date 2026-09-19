@@ -22,6 +22,20 @@ final class Torpedo
     /** Tempo di ricarica di un tubo, in secondi di gioco (interno, con mare calmo). */
     public const RICARICA_S = 900;
 
+    /**
+     * Tempo per tirare dentro un siluro dal contenitore di coperta.
+     *
+     * E' un'altra cosa rispetto alla ricarica di un tubo: si apre il
+     * contenitore stagno in coperta, si imbraca un tubo d'acciaio da una
+     * tonnellata e mezza, lo si cala per il portello di carico con gli uomini
+     * allo scoperto. Un'ora buona, in superficie e col mare calmo, e per tutto
+     * il tempo il battello non puo' immergersi in fretta.
+     */
+    public const RECUPERO_ESTERNO_S = 4200;
+
+    /** Oltre questo stato del mare il portello di carico non si apre. */
+    public const MARE_MAX_ESTERNO = 3;
+
     /** @var array<string,array<string,mixed>>|null */
     private static ?array $tipi = null;
 
@@ -354,19 +368,42 @@ final class Torpedo
     {
         $tubi = 0;
         $riserve = 0;
+        $esterni = 0;
+        $inCarica = 0;
+        $guasti = 0;
         $perTipo = [];
         foreach (Database::all(
             "SELECT tkey, posizione, stato FROM boat_torpedoes WHERE boat_id = ? AND stato <> 'lanciato'",
             [$boatId]
         ) as $r) {
+            // Un siluro guasto e' a bordo ma non si lancia: contarlo fra quelli
+            // buoni vuol dire far credere al comandante di avere un'arma che
+            // non ha, e quella bugia si scopre nel momento peggiore.
+            if ((string) $r['stato'] === 'guasto') {
+                $guasti++;
+                continue;
+            }
+            // In movimento fra la stiva e il tubo: a bordo, ma per adesso in
+            // mano ai siluristi.
+            if ((string) $r['stato'] === 'in_carica') {
+                $inCarica++;
+                $perTipo[(string) $r['tkey']] = ($perTipo[(string) $r['tkey']] ?? 0) + 1;
+                continue;
+            }
             if (str_starts_with((string) $r['posizione'], 'tubo')) {
                 $tubi++;
             } else {
                 $riserve++;
+                if ((string) $r['posizione'] === 'riserva_esterna') {
+                    $esterni++;
+                }
             }
             $perTipo[(string) $r['tkey']] = ($perTipo[(string) $r['tkey']] ?? 0) + 1;
         }
-        return ['tubi' => $tubi, 'riserve' => $riserve, 'per_tipo' => $perTipo];
+        return [
+            'tubi' => $tubi, 'riserve' => $riserve, 'esterni' => $esterni,
+            'in_carica' => $inCarica, 'guasti' => $guasti, 'per_tipo' => $perTipo,
+        ];
     }
 
     /**
@@ -374,16 +411,40 @@ final class Torpedo
      * lungo: quattro uomini che manovrano un tubo d'acciaio da una tonnellata e
      * mezza in un corridoio largo un metro, col battello che rolla.
      */
-    public static function ricarica(int $boatId, int $gts, int $statoMare, float $resaSiluristi): int
-    {
+    public static function ricarica(
+        int $boatId,
+        int $gts,
+        int $statoMare,
+        float $resaSiluristi,
+        bool $inSuperficie = false,
+        array &$eventi = [],
+        ?Rng $rng = null,
+    ): int {
         $ricaricati = 0;
         $vuoti = Database::all(
             "SELECT * FROM boat_torpedoes WHERE boat_id = ? AND stato = 'in_carica' AND ricarica_fine_gts <= ?",
             [$boatId, $gts]
         );
         foreach ($vuoti as $v) {
+            // Un siluro che arrivava dal contenitore di coperta puo' essere
+            // stato in acqua salata per settimane: e' li' che si scopre se la
+            // guarnizione ha tenuto. La crisi dei siluri del '40 nasceva anche
+            // da questo, e il posto giusto per scoprirlo e' adesso, non al
+            // momento del lancio.
+            $daFuori = (string) $v['posizione'] === 'riserva_interna' && $v['tubo'] === null;
+            if ($daFuori && $rng !== null && $rng->chance(0.12)) {
+                Database::run("UPDATE boat_torpedoes SET stato = 'guasto', ricarica_fine_gts = NULL WHERE id = ?",
+                    [(int) $v['id']]);
+                $eventi[] = 'Il siluro recuperato dal contenitore di coperta ha l\'impianto d\'aria allagato: '
+                    . 'non si lancia. Resta in stiva, e il Torpedomaat non ha parole.';
+                continue;
+            }
+
             Database::run("UPDATE boat_torpedoes SET stato = 'pronto', ricarica_fine_gts = NULL WHERE id = ?", [(int) $v['id']]);
             $ricaricati++;
+            $eventi[] = $daFuori
+                ? 'Siluro recuperato dal contenitore di coperta e messo in stiva: uno in piu\' da giocarsi.'
+                : sprintf('Tubo %d ricaricato: il Torpedomaat segnala pronto al lancio.', (int) $v['tubo']);
         }
 
         // Tubi liberi da riempire, se ci sono riserve interne.
@@ -402,6 +463,33 @@ final class Torpedo
              ORDER BY tubo LIMIT 1",
             [$boatId]
         );
+
+        // Niente piu' riserve dentro, ma qualcosa c'e' ancora fuori: si apre il
+        // contenitore di coperta. Fino all'audit del 19/09/2026 quei siluri
+        // erano zavorra per tutta la crociera — imbarcati, contati
+        // nell'inventario mostrato al comandante, e impossibili da usare,
+        // perche' la ricarica pescava soltanto dalle riserve interne.
+        if ($riserva === null && $tuboVuoto !== null && $inSuperficie && $statoMare <= self::MARE_MAX_ESTERNO) {
+            $giaDentro = Database::first(
+                "SELECT COUNT(*) n FROM boat_torpedoes WHERE boat_id = ? AND stato = 'in_carica'",
+                [$boatId]
+            );
+            $fuori = Database::first(
+                "SELECT * FROM boat_torpedoes WHERE boat_id = ? AND stato = 'pronto'
+                        AND posizione = 'riserva_esterna' LIMIT 1",
+                [$boatId]
+            );
+            if ((int) ($giaDentro['n'] ?? 0) === 0 && $fuori !== null) {
+                $durata = (int) round(self::RECUPERO_ESTERNO_S / max(0.4, $resaSiluristi));
+                Database::run(
+                    "UPDATE boat_torpedoes SET posizione = 'riserva_interna', stato = 'in_carica',
+                            ricarica_fine_gts = ? WHERE id = ?",
+                    [$gts + $durata, (int) $fuori['id']]
+                );
+                $eventi[] = 'Mare calmo e nessuna riserva in camera di lancio: si apre il contenitore di coperta. '
+                    . 'Un\'ora buona con gli uomini allo scoperto, e il battello che non puo\' immergersi in fretta.';
+            }
+        }
 
         if ($riserva !== null && $tuboVuoto !== null) {
             $durata = (int) round(self::RICARICA_S * (1.0 + 0.12 * max(0, $statoMare - 3)) / max(0.4, $resaSiluristi));

@@ -276,6 +276,7 @@ final class Encounter
         $cariche = (int) $enc['cariche_subite'];
         $affondate = (int) $enc['affondate'];
         $grtAffondato = (int) $enc['grt_affondato'];
+        $perduto = false;
 
         for ($i = 0; $i < $passi; $i++) {
             $t += $passo;
@@ -309,6 +310,43 @@ final class Encounter
 
             $press = Damage::pressureStep($b['depth'], $type, $b['stress'], $ore, $rng);
             $b['stress'] = $press['stress'];
+            if ($press['permanente'] > 0.0) {
+                Database::run(
+                    'UPDATE boats SET hull_integrity = GREATEST(0, hull_integrity - ?) WHERE id = ?',
+                    [$press['permanente'], (int) $boat['id']]
+                );
+            }
+
+            // Scendere sotto il collasso per sfuggire alle cariche e' una
+            // scelta, non una scorciatoia: il fondo dell'Atlantico e' pieno di
+            // battelli che l'hanno fatta.
+            $integrita = (float) (Database::first('SELECT hull_integrity FROM boats WHERE id = ?', [(int) $boat['id']])['hull_integrity'] ?? 100.0);
+            if ($b['depth'] > Damage::quotaCollasso($type, (int) $boat['id'], $effetti['quota_max'] ?? 1.0, $integrita)) {
+                $eventi[] = Narrator::collasso($b['depth']);
+                $boatRow = array_merge($boat, ['depth_m' => $b['depth'], 'lat' => $b['lat'], 'lon' => $b['lon']]);
+                $fine = \App\Game\Comandante::perdita($boatRow, 'scafo collassato sotto la quota di sicurezza', $t);
+                $eventi[] = $fine['testo'];
+                $b['speed'] = 0.0;
+                $perduto = true;
+                break;
+            }
+
+            // --- camera di lancio ------------------------------------------------
+            //
+            // Ricaricare un tubo sono venti minuti buoni, e durante l'attacco
+            // sono i venti minuti piu' lunghi che ci siano: quattro uomini che
+            // manovrano una tonnellata e mezza d'acciaio mentre le eliche si
+            // avvicinano. Senza questo, il secondo attacco allo stesso convoglio
+            // non esisteva.
+            $eventiSiluri = [];
+            Torpedo::ricarica(
+                (int) $boat['id'], $t, $mare,
+                min(1.4, ($ciurma['specialita']['silurista'] ?? 1.5) / 2.0 + 0.4),
+                $b['mode'] === 'superficie', $eventiSiluri, $rng
+            );
+            foreach ($eventiSiluri as $testo) {
+                $eventi[] = $testo;
+            }
 
             // --- il naviglio ----------------------------------------------------
             foreach ($entita as &$e) {
@@ -340,7 +378,7 @@ final class Encounter
                 if ((string) $e['stato'] === 'affonda' && $e['affonda_gts'] !== null && $t >= (int) $e['affonda_gts']) {
                     $e['stato'] = 'affondata';
                     Database::run("UPDATE encounter_entities SET stato = 'affondata' WHERE id = ?", [(int) $e['id']]);
-                    $testoAffondamento = self::registraAffondamento($enc, $boat, $e, $t, 'siluro');
+                    $testoAffondamento = self::registraAffondamento($enc, $boat, $e, $t, self::armaCheHaAffondato($e));
                     $affondate++;
                     $grtAffondato += (int) $e['grt'];
                     // Va nella cronaca in diretta, ma NON di nuovo nel giornale:
@@ -364,6 +402,15 @@ final class Encounter
                 }
                 if ($esitiScorte['danno'] > 0.0) {
                     Scorte::applicaDanno((int) $boat['id'], $b, $type, $esitiScorte['danno'], $t, $rng, $eventi);
+                    if ($b['stress'] >= 100.0) {
+                        // Lo scafo ha ceduto sotto le cariche: applicaDanno ha
+                        // gia' chiuso il fascicolo. Quello che mancava era
+                        // fermarsi — il relitto proseguiva l'incontro fino
+                        // all'ultimo passo, manovrando e sparando.
+                        $b['speed'] = 0.0;
+                        $perduto = true;
+                        break;
+                    }
                 }
                 $allarme = $allarme || $esitiScorte['scoperti'];
             }
@@ -385,8 +432,19 @@ final class Encounter
         }
         foreach ($siluri as $sil) {
             Database::run(
-                'UPDATE torpedo_runs SET lat = ?, lon = ?, percorso_m = ?, esito = ?, esito_gts = ?, nota = ? WHERE id = ?',
-                [$sil['lat'], $sil['lon'], $sil['percorso_m'], $sil['esito'], $sil['esito_gts'], $sil['nota'], (int) $sil['id']],
+                'UPDATE torpedo_runs SET lat = ?, lon = ?, percorso_m = ?, esito = ?, esito_gts = ?, nota = ?,
+                        entity_id = ? WHERE id = ?',
+                [
+                    $sil['lat'], $sil['lon'], $sil['percorso_m'], $sil['esito'], $sil['esito_gts'], $sil['nota'],
+                    // Su chi e' andato a finire. La colonna c'era e non la
+                    // scriveva nessuno, cosi' il conto dei siluri spesi per
+                    // affondare una nave — che si fa proprio contando le corse
+                    // finite addosso a quella nave — trovava sempre zero, e nel
+                    // registro degli affondamenti finiva zero siluri per
+                    // qualunque nave, comprese quelle affondate a siluri.
+                    isset($sil['entity_id']) ? (int) $sil['entity_id'] : null,
+                    (int) $sil['id'],
+                ],
             );
         }
 
@@ -416,6 +474,27 @@ final class Encounter
                 $b['lat'], $b['lon'], (int) $boat['id'],
             ]
         );
+
+        // Se il battello e' perduto non c'e' nessun incontro da portare avanti:
+        // si chiude qui, o resterebbe aperto per sempre con dentro un relitto.
+        if ($perduto) {
+            self::chiudi($encId, 'Battello perduto in combattimento.', $t, $affondate, $grtAffondato);
+            if ($enc['patrol_id'] !== null) {
+                foreach ($eventi as $testo) {
+                    if (isset($giaNelGiornale[$testo])) {
+                        continue;
+                    }
+                    BoatSim::save([
+                        'gts' => $t, 'kind' => 'combattimento', 'severity' => 'allarme',
+                        'lat' => $b['lat'], 'lon' => $b['lon'],
+                        'quadrat' => Grid::toQuadrat($b['lat'], $b['lon']),
+                        'text' => $testo,
+                    ], (int) $enc['patrol_id'], (int) $boat['id']);
+                }
+            }
+
+            return ['passi' => $passi, 'eventi' => $eventi, 'stato' => 'chiuso', 'chiuso' => true];
+        }
 
         // Fine dell'incontro: tutti affondati, tutti lontani, o finestra scaduta.
         $vive = array_values(array_filter($entita, static fn (array $e): bool => (string) $e['stato'] !== 'affondata'));
@@ -463,7 +542,7 @@ final class Encounter
                 $quando = $condannata['affonda_gts'] !== null ? max($t, (int) $condannata['affonda_gts']) : $t;
                 $condannata['stato'] = 'affondata';
                 Database::run("UPDATE encounter_entities SET stato = 'affondata' WHERE id = ?", [(int) $condannata['id']]);
-                self::registraAffondamento($enc, $boat, $condannata, $quando, 'siluro');
+                self::registraAffondamento($enc, $boat, $condannata, $quando, self::armaCheHaAffondato($condannata));
                 $affondate++;
                 $grtAffondato += (int) $condannata['grt'];
                 $eventi[] = sprintf(
@@ -666,6 +745,9 @@ final class Encounter
             $e['incendio'] = min(100.0, (float) $e['incendio'] + $danno['incendio']);
             $sil['esito'] = 'colpito';
             $sil['entity_id'] = (int) $e['id'];
+            // Chi l'ha colpita: serve al registro per dire di che cosa e' morta.
+            $e['colpita_siluro'] = 1;
+            Database::run('UPDATE encounter_entities SET colpita_siluro = 1 WHERE id = ?', [(int) $e['id']]);
 
             $testo = sprintf('Colpita %s (%s GRT) sul %s.', (string) $e['name'],
                 number_format((int) $e['grt'], 0, ',', '.'),
@@ -714,6 +796,42 @@ final class Encounter
      *
      * @return string il testo, per la cronaca in diretta
      */
+    /**
+     * Di che cosa e' morta: lo dicono le bandierine lasciate da chi l'ha colpita.
+     *
+     * Prima l'arma arrivava scritta a mano, e in tutte e due le chiamate era
+     * "siluro": una nave finita a cannonate risultava affondata a siluri, il
+     * trofeo del cannoniere era inottenibile e il rendimento per siluro
+     * contava anche quello che il siluro non aveva fatto.
+     *
+     * @param array<string,mixed> $e
+     */
+    private static function armaCheHaAffondato(array $e): string
+    {
+        // Si rilegge dalla riga invece di fidarsi della copia in memoria: il
+        // cannone e il siluro arrivano da azioni diverse del comandante, e la
+        // copia che ha in mano chi sta affondando la nave puo' essere di prima.
+        $riga = Database::first(
+            'SELECT colpita_siluro, colpita_cannone FROM encounter_entities WHERE id = ?',
+            [(int) $e['id']]
+        ) ?? $e;
+
+        $siluro  = (int) ($riga['colpita_siluro'] ?? 0) === 1;
+        $cannone = (int) ($riga['colpita_cannone'] ?? 0) === 1;
+
+        if ($siluro && $cannone) {
+            // Il caso piu' comune di tutti: il siluro la ferma, il cannone la
+            // finisce per non spendere il secondo siluro.
+            return 'siluro_e_cannone';
+        }
+        if ($cannone) {
+            return 'cannone';
+        }
+        // Senza bandierine si torna al siluro: e' quello che succede quando una
+        // nave va giu' per un danno preso prima che l'incontro la registrasse.
+        return 'siluro';
+    }
+
     private static function registraAffondamento(array $enc, array $boat, array $e, int $t, string $arma): string
     {
         $sh = $e['ship_id'] !== null ? Database::first('SELECT * FROM ships WHERE id = ?', [(int) $e['ship_id']]) : null;
@@ -726,7 +844,7 @@ final class Encounter
         $siluriUsati = (int) (Database::first(
             "SELECT COUNT(*) n FROM torpedo_runs WHERE encounter_id = ? AND entity_id = ? AND esito = 'colpito'",
             [(int) $enc['id'], (int) $e['id']]
-        )['n'] ?? 1);
+        )['n'] ?? 0);
 
         Database::run(
             'INSERT INTO sinkings (boat_id, patrol_id, commander_id, ship_id, nome, bandiera, class_key, grt, carico, arma,
@@ -1014,8 +1132,10 @@ final class Encounter
         }
 
         Database::run(
-            'UPDATE encounter_entities SET integrita = ?, allagamento = ?, stato = ?, affonda_gts = ? WHERE id = ?',
-            [$integrita, $allagamento, $stato, $affonda, $entityId]
+            'UPDATE encounter_entities SET integrita = ?, allagamento = ?, stato = ?, affonda_gts = ?,
+                    colpita_cannone = CASE WHEN ? > 0 THEN 1 ELSE colpita_cannone END
+             WHERE id = ?',
+            [$integrita, $allagamento, $stato, $affonda, $centri, $entityId]
         );
 
         $testo = sprintf(

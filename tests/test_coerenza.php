@@ -23,6 +23,10 @@ use App\Core\GameConfig;
 $falliti = 0;
 
 function titolo(string $t): void { echo "\n\033[1m{$t}\033[0m\n"; }
+function saltata(string $titolo, string $perche): void
+{
+    echo "  \033[0;33m--\033[0m    {$titolo}  \033[0;90m{$perche}\033[0m\n";
+}
 function ok(string $titolo, bool $esito, string $dettaglio = ''): void
 {
     global $falliti;
@@ -102,6 +106,68 @@ if ($scritte) {
     ok('finche\' i compartimenti non sono collegati, la pagina lo dichiara',
         str_contains($compartimenti, 'non è ancora collegato'),
         'nessuno scrive integrity/flooding/fire: la pagina non puo\' far finta di niente');
+}
+
+// --- 3b. Gli indici di unicita' filtrano davvero? ----------------------------
+//
+// Non e' una domanda oziosa. Tre garanzie di unicita' del gioco — il numero di
+// un battello vivo, il nome e il ritratto di un comandante in servizio — sono
+// indici UNIQUE costruiti sopra colonne VIRTUALI generate. Un DROP COLUMN
+// "istantaneo" su quelle tabelle lascia l'indice nel catalogo, visibile in
+// SHOW INDEX, e SPENTO. Successo davvero con la migrazione 0036: due battelli
+// vivi potevano portare lo stesso numero, senza un errore, senza un avviso.
+//
+// Qui non si guarda il catalogo: si prova a violare la regola e si pretende
+// che il database dica di no.
+titolo('Le garanzie del database, messe alla prova');
+
+$violabile = static function (string $tabella, string $colonna, callable $riga) use (&$falliti): bool {
+    $primo = null;
+    $secondo = null;
+    try {
+        $primo = $riga('AAA' . substr((string) microtime(true), -6));
+        $secondo = $riga('BBB' . substr((string) microtime(true), -6));
+        if ($primo === null || $secondo === null) {
+            return false;
+        }
+        $valore = Database::first("SELECT {$colonna} v FROM {$tabella} WHERE id = ?", [$primo]);
+        try {
+            Database::run("UPDATE {$tabella} SET {$colonna} = ? WHERE id = ?", [(string) $valore['v'], $secondo]);
+            return true;    // accettato: l'indice non filtra
+        } catch (PDOException $e) {
+            return $e->getCode() !== '23000';
+        }
+    } finally {
+        foreach ([$primo, $secondo] as $id) {
+            if ($id !== null) {
+                Database::run("DELETE FROM {$tabella} WHERE id = ?", [$id]);
+            }
+        }
+    }
+};
+
+$modello = Database::first("SELECT * FROM boats LIMIT 1");
+if ($modello === null) {
+    saltata('il numero di un battello vivo non si puo\' rubare', 'nessun battello da cui copiare');
+} else {
+    $rotto = $violabile('boats', 'uboat_number', static function (string $n) use ($modello): ?int {
+        Database::run(
+            'INSERT INTO boats (user_id, type_key, uboat_number, state, home_port_key, flotilla,
+                                lat, lon, est_lat, est_lon, heading, fuel_t, battery_pct, air_pct,
+                                provisions_days, last_sim_gts)
+             VALUES (?, ?, ?, "base", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                (int) $modello['user_id'], (string) $modello['type_key'], 'U-9' . substr($n, 3),
+                (string) $modello['home_port_key'], (string) $modello['flotilla'],
+                $modello['lat'], $modello['lon'], $modello['est_lat'], $modello['est_lon'],
+                $modello['heading'], $modello['fuel_t'], $modello['battery_pct'], $modello['air_pct'],
+                $modello['provisions_days'], $modello['last_sim_gts'],
+            ]
+        );
+        return Database::lastInsertId();
+    });
+    ok('il numero di un battello vivo non si puo\' rubare', !$rotto,
+        $rotto ? 'l\'indice uq_vivo_numero e\' nel catalogo ma non filtra piu\'' : 'uq_vivo_numero filtra');
 }
 
 // --- 4. Nessuna promessa a una fase gia' chiusa ------------------------------

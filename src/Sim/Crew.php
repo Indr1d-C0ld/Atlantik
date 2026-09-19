@@ -201,6 +201,16 @@ final class Crew
      * eternamente fresco o eternamente a pezzi, secondo il minuto in cui
      * capita il calcolo.
      *
+     * Dall'audit del 19/09/2026 BoatSim chiama questo metodo una volta per
+     * sotto-passo, cinque minuti per volta, e la via degli intervalli lunghi
+     * resta solo per chi la usa da fuori. Il motivo sta nell'avvicinamento
+     * all'equilibrio: applicarlo una volta su dodici ore non dava lo stesso
+     * risultato di applicarlo centoquarantaquattro volte su cinque minuti, e
+     * l'equipaggio — che entra nelle avarie e nelle riparazioni — finiva per
+     * dipendere da quanto spesso il giocatore apriva una pagina. Adesso il
+     * fattore e' l'esponenziale vero, 1 - e^(-k t), che si compone da solo:
+     * due mezze ore fanno esattamente un'ora.
+     *
      * Il morale tende a un valore di equilibrio dettato dalle condizioni: e'
      * questo che impedisce derive assurde in su o in giu' e che rende il
      * logoramento di una patrol lunga una cosa lenta e inevitabile.
@@ -254,7 +264,7 @@ final class Crew
 
         // Ci si avvicina all'equilibrio del 3,5% all'ora: in mezza giornata si
         // sente, in una settimana e' fatta.
-        $k = min(0.9, 0.035 * $ore);
+        $k = 1.0 - exp(-0.035 * $ore);
 
         Database::run(
             'UPDATE crew_members

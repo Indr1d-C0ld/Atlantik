@@ -122,6 +122,58 @@ final class CarrieraController
         return redirect('/comandante');
     }
 
+    /**
+     * Congedo volontario: si chiude la carriera da vivi.
+     *
+     * Il mestiere aveva due uscite, e il gioco ne offriva una sola. Chi
+     * sopravviveva abbastanza veniva tolto dal mare e mandato a insegnare, a
+     * comandare una flottiglia, a lavorare al BdU: Kretschmer, Lehmann-
+     * Willenbrock, Topp, Luth, Schepke — di quelli che sono diventati un nome,
+     * piu' di uno e' finito cosi'. Fino all'audit del 19/09/2026 in Atlantik
+     * si poteva solo morire: Comandante::congeda() era scritta e non la
+     * chiamava nessuno, e lo stato 'congedato' non poteva esistere — mentre
+     * l'albo d'oro prometteva in testa "i comandanti che non sono tornati, e
+     * quelli che si sono congedati".
+     *
+     * Si congeda dalla base, non dal mare: si lascia il comando in banchina.
+     * E si scrive il nome per esteso, perche' e' definitivo come morire — il
+     * fascicolo si chiude, il prestigio resta all'albo, e il comandante dopo
+     * eredita la sua quota come se fosse caduto.
+     */
+    public function congeda(Request $request): Response
+    {
+        $user = Auth::user();
+        $cmd  = Comandante::corrente((int) $user['id']);
+        if ($cmd === null) {
+            return redirect('/comandante');
+        }
+
+        $boat = Fleet::ensureBoat((int) $user['id']);
+        if ((string) $boat['state'] !== 'base') {
+            Session::flash('error', 'Il comando si lascia in banchina, non in mezzo all\'Atlantico: '
+                . 'prima si rientra alla base.');
+            return redirect('/comandante');
+        }
+
+        if (trim($request->str('conferma')) !== (string) $cmd['nome']) {
+            Session::flash('error', 'Per chiudere una carriera bisogna scriverne il nome esatto: '
+                . 'e\' una decisione che non si disfa.');
+            return redirect('/comandante');
+        }
+
+        Comandante::congeda($cmd, World::now());
+        \App\Support\Audit::log('carriera.congedo', (int) $user['id'], 'commander', (int) $cmd['id'], [
+            'nome' => (string) $cmd['nome'],
+            'grt'  => (int) $cmd['grt_affondato'],
+        ], $request->ip());
+
+        Session::flash('success', sprintf(
+            '%s lascia il servizio attivo con %s GRT affondati. Il fascicolo si chiude e resta nell\'albo.',
+            (string) $cmd['nome'], number_format((int) $cmd['grt_affondato'], 0, ',', '.')
+        ));
+        return redirect('/comandante');
+    }
+
     /** L'albo d'oro: consultabile da chiunque, anche senza account. */
     public function albo(Request $request): Response
     {

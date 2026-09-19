@@ -68,6 +68,53 @@ final class AuthMail
     }
 
     /**
+     * Il collegamento per rifare la password.
+     *
+     * Stessa forma della conferma dell'indirizzo, e stessa priorita': se
+     * l'SMTP non risponde adesso il messaggio resta in coda e riparte da solo,
+     * perche' anche questa e' una porta d'ingresso al gioco — e per chi ha
+     * perso la password e' l'unica.
+     *
+     * @return array{ok:bool, error?:string}
+     */
+    public static function sendRecupero(int $userId, string $email, string $username, string $token): array
+    {
+        $link = self::publicUrl('/recupero?token=' . $token);
+        $ttl  = (int) \App\Core\GameConfig::int('auth.verify_ttl_hours', 48);
+
+        $subject = 'Atlantik — rifare la password';
+        $body = <<<TXT
+        BEFEHLSHABER DER U-BOOTE
+        Ufficio arruolamenti — Atlantik
+
+        {$username},
+
+        qualcuno ha chiesto di rifare la password di questo account. Se sei
+        stato tu, apri questo collegamento e scegline una nuova:
+
+        {$link}
+
+        Il collegamento resta valido {$ttl} ore e si puo' usare una volta sola.
+        Appena la password cambia, tutte le sessioni gia' aperte cadono: se
+        qualcuno era entrato, si ritrova fuori.
+
+        Se non hai chiesto niente, non devi fare niente: senza questo
+        collegamento la password resta quella di prima. Nessuno puo' sapere,
+        dalla richiesta, se questo indirizzo risulta iscritto o no.
+
+        --
+        Atlantik — simulazione della Battaglia dell'Atlantico
+        Messaggio automatico: non rispondere a questo indirizzo.
+        TXT;
+
+        $res = Posta::invia($email, $subject, $body, 'recupero', 1);
+        if (!$res['ok']) {
+            logger('recupero per user ' . $userId . ' messo in coda: ' . ($res['error'] ?? '?'), 'warning');
+        }
+        return $res;
+    }
+
+    /**
      * Avviso all'amministratore di una nuova iscrizione. Non deve mai bloccare
      * la registrazione: se fallisce, resta solo una riga di log.
      */

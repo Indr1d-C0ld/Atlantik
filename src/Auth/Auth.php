@@ -26,6 +26,9 @@ final class Auth
     // --- Stato ---------------------------------------------------------------
 
     /** @return array<string,mixed>|null */
+    /** L'istante in cui questa sessione e' nata: serve a farla cadere se la password cambia. */
+    private const SESSION_GEN = 'sessione_gen';
+
     public static function user(): ?array
     {
         if (self::$resolved) {
@@ -39,13 +42,31 @@ final class Auth
         }
 
         $row = Database::first(
-            'SELECT id, username, email, status, role, email_verified_at, created_at, last_login_at
+            'SELECT id, username, email, status, role, email_verified_at, created_at, last_login_at,
+                    sessioni_da, sessioni_gen
              FROM users WHERE id = ?',
             [(int) $id]
         );
 
         if ($row === null || in_array((string) $row['status'], ['banned', 'suspended'], true)) {
             Session::forget(self::SESSION_KEY);
+            return self::$cached = null;
+        }
+
+        // Una sessione nata prima dell'ultimo cambio di password non vale piu'.
+        // E' cosi' che rifare la password butta fuori chi era gia' dentro —
+        // che e' il motivo per cui quasi sempre la si rifa'.
+        //
+        // Si confrontano generazioni, non istanti (migrazione 0035): un
+        // orologio con la risoluzione del secondo non sa mettere in fila due
+        // fatti dentro lo stesso secondo, e i due fatti che capitano dentro lo
+        // stesso secondo sono proprio quelli — il cambio della password e
+        // l'accesso di chi l'ha appena cambiata.
+        // Le sessioni aperte prima di questa modifica non hanno la chiave: valgono
+        // generazione zero, cioe' restano buone per chi non ha mai rifatto la
+        // password. Buttarle fuori tutte sarebbe stato un dispetto gratuito.
+        if ((int) Session::get(self::SESSION_GEN, 0) < (int) $row['sessioni_gen']) {
+            Session::flush();
             return self::$cached = null;
         }
 
@@ -253,7 +274,8 @@ final class Auth
         // quindi il passaggio e' innocuo anche quando si entra con quello.
         $login = self::normalizeUsername($login);
         $row = Database::first(
-            'SELECT id, username, email, password_hash, status, role FROM users WHERE username = ? OR email = ?',
+            'SELECT id, username, email, password_hash, status, role, sessioni_gen
+             FROM users WHERE username = ? OR email = ?',
             [$login, mb_strtolower($login)]
         );
 
@@ -285,6 +307,8 @@ final class Auth
 
         Session::regenerate();
         Session::put(self::SESSION_KEY, (int) $row['id']);
+        // Quando e' nata questa sessione: se la password cambia dopo, cade.
+        Session::put(self::SESSION_GEN, (int) ($row['sessioni_gen'] ?? 0));
         self::$resolved = false;
         self::$cached = null;
 
@@ -295,6 +319,130 @@ final class Auth
         Audit::log('auth.login', (int) $row['id'], 'user', (int) $row['id'], [], $ip);
 
         return ['ok' => true, 'user' => $row];
+    }
+
+    /**
+     * Chiede il collegamento per rifare la password.
+     *
+     * Risponde SEMPRE nello stesso modo, che l'indirizzo esista o no. Dire
+     * "questo indirizzo non risulta" vorrebbe dire regalare a chiunque un modo
+     * per sapere chi e' iscritto: si prova un indirizzo, si legge la risposta,
+     * e si e' imparato qualcosa che non si doveva imparare.
+     *
+     * @return array{ok:bool, error?:string}
+     */
+    public static function richiediRecupero(string $email, ?string $ip = null): array
+    {
+        $email = trim(mb_strtolower($email));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['ok' => false, 'error' => 'Indirizzo non valido.'];
+        }
+
+        $u = Database::first(
+            'SELECT id, username, email, status FROM users WHERE LOWER(email) = ?',
+            [$email]
+        );
+
+        // Account che non esiste, o sospeso, o revocato: silenzio. Chi ha
+        // davvero quell'indirizzo non riceve niente e non capisce perche', ma
+        // un account sospeso non si riapre da solo con una password nuova.
+        if ($u !== null && in_array((string) $u['status'], ['active', 'pending'], true)) {
+            $token = self::issueToken((int) $u['id'], 'reset_password', $ip);
+            AuthMail::sendRecupero((int) $u['id'], (string) $u['email'], (string) $u['username'], $token);
+            Audit::log('auth.recupero_richiesto', (int) $u['id'], 'user', (int) $u['id'], [], $ip);
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
+     * Guarda se un gettone di recupero e' ancora buono, senza consumarlo.
+     *
+     * Serve alla pagina che chiede la password nuova: si apre il modulo solo se
+     * il collegamento vale, invece di farla scrivere e poi dire di no.
+     *
+     * @return array{ok:bool, error?:string, user_id?:int}
+     */
+    public static function recuperoValido(string $token): array
+    {
+        $token = trim($token);
+        if ($token === '' || !ctype_xdigit($token)) {
+            return ['ok' => false, 'error' => 'Collegamento non valido.'];
+        }
+
+        $row = Database::first(
+            'SELECT t.id, t.user_id, t.used_at, t.expires_at, u.status
+             FROM user_tokens t JOIN users u ON u.id = t.user_id
+             WHERE t.token_hash = ? AND t.kind = ?',
+            [hash('sha256', $token), 'reset_password']
+        );
+
+        if ($row === null) {
+            return ['ok' => false, 'error' => 'Collegamento non valido.'];
+        }
+        if ($row['used_at'] !== null) {
+            return ['ok' => false, 'error' => 'Questo collegamento è già stato usato.'];
+        }
+        if (strtotime((string) $row['expires_at']) < time()) {
+            return ['ok' => false, 'error' => 'Il collegamento è scaduto: chiedine uno nuovo.'];
+        }
+        if (!in_array((string) $row['status'], ['active', 'pending'], true)) {
+            return ['ok' => false, 'error' => 'Questo account non può accedere.'];
+        }
+
+        return ['ok' => true, 'user_id' => (int) $row['user_id']];
+    }
+
+    /**
+     * Consuma il gettone e mette la password nuova.
+     *
+     * Chiude anche tutte le sessioni aperte: se qualcuno era entrato con la
+     * password vecchia — ed e' il motivo per cui di solito si rifa' — deve
+     * uscire. E' la meta' del lavoro che quasi sempre si dimentica.
+     *
+     * @return array{ok:bool, error?:string}
+     */
+    public static function rifaiPassword(string $token, string $password, ?string $ip = null): array
+    {
+        $valido = self::recuperoValido($token);
+        if (!$valido['ok']) {
+            return $valido;
+        }
+        if (mb_strlen($password) < self::minPasswordLength()) {
+            return ['ok' => false, 'error' => sprintf(
+                'La password deve avere almeno %d caratteri.', self::minPasswordLength()
+            )];
+        }
+
+        $userId = (int) $valido['user_id'];
+
+        Database::run(
+            'UPDATE users SET password_hash = ? WHERE id = ?',
+            [self::hashPassword($password), $userId]
+        );
+        Database::run(
+            'UPDATE user_tokens SET used_at = NOW() WHERE token_hash = ? AND kind = ?',
+            [hash('sha256', $token), 'reset_password']
+        );
+
+        // Un account ancora in attesa che rifa' la password ha dimostrato di
+        // leggere quella casella: vale come conferma dell'indirizzo.
+        Database::run(
+            "UPDATE users SET status = 'active', email_verified_at = COALESCE(email_verified_at, NOW())
+             WHERE id = ? AND status = 'pending'",
+            [$userId]
+        );
+
+        // Tutte le sessioni aperte prima di adesso cadono: se ne accorgono alla
+        // prima pagina che aprono. La generazione e' quella che decide; la data
+        // resta perche' e' comoda da leggere nel registro.
+        Database::run(
+            'UPDATE users SET sessioni_da = NOW(), sessioni_gen = sessioni_gen + 1 WHERE id = ?',
+            [$userId]
+        );
+        Audit::log('auth.password_rifatta', $userId, 'user', $userId, [], $ip);
+
+        return ['ok' => true];
     }
 
     public static function logout(): void

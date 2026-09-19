@@ -168,3 +168,29 @@ foreach ($miglioramenti as $m) { $perCategoria[(string) $m['categoria']][] = $m;
   </table>
   <?php endif; ?>
 </div>
+
+<div class="pannello">
+  <h2>Congedo dal servizio attivo</h2>
+  <?php if ((string) $boat['state'] !== 'base'): ?>
+    <p class="sommario">Il comando si lascia in banchina. Finché il battello è in mare, questa pagina non ha niente da offrire.</p>
+  <?php else: ?>
+    <p class="sommario">
+      Il mestiere aveva due uscite. Chi sopravviveva abbastanza veniva tolto dal mare e mandato a
+      insegnare, a comandare una flottiglia, a lavorare al BdU: di quelli che sono diventati un nome,
+      più di uno è finito così. Qui si può fare lo stesso: chiudere la carriera da vivi.
+    </p>
+    <p class="aiuto">
+      Il fascicolo si chiude con <?= e(number_format((int) $cmd['grt_affondato'], 0, ',', '.')) ?> GRT affondati
+      e resta nell'albo d'oro. Il comandante che verrà dopo eredita la sua quota di prestigio, come se
+      fosse caduto — con la differenza che questo torna a casa. Non si torna indietro.
+    </p>
+    <form method="post" action="<?= e(url('/comandante/congedo')) ?>" style="display:flex;gap:.7rem;flex-wrap:wrap;align-items:flex-end">
+      <?= csrf_field() ?>
+      <div class="campo" style="margin:0">
+        <label for="conferma">Per confermare, scrivi il nome del comandante</label>
+        <input type="text" id="conferma" name="conferma" autocomplete="off" placeholder="<?= e($cmd['nome']) ?>">
+      </div>
+      <button type="submit" class="bottone--fantasma">Chiedere il congedo</button>
+    </form>
+  <?php endif; ?>
+</div>
