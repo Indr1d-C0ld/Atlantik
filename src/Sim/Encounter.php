@@ -303,8 +303,16 @@ final class Encounter
                 $b['fuel'] = max(0.0, $b['fuel'] - Consumption::fuelPerHour($type, $b['speed']) * $ore);
                 $b['air'] = min(100.0, $b['air'] + Consumption::airGainPerHour() * $ore);
             } else {
+                // Le batterie maggiorate valgono anche qui — anzi, soprattutto
+                // qui. Fino all'audit del 19/09/2026 l'apparato piu' caro del
+                // cantiere (centodieci punti di assegnazione) funzionava
+                // soltanto durante la crociera tranquilla e si spegneva
+                // nell'unico momento in cui la riserva di corrente decide se si
+                // torna a casa: sotto le cariche, in immersione, a fare i nodi
+                // che servono per non farsi prendere.
                 $b['battery'] = max(0.0, $b['battery']
-                    - Consumption::batteryDrainPerHour($type, $b['speed'], $b['silent']) / max(0.2, $effetti['batteria']) * $ore);
+                    - Consumption::batteryDrainPerHour($type, $b['speed'], $b['silent'])
+                        / max(0.2, $effetti['batteria'] * ($migBoat['batteria'] ?? 1.0)) * $ore);
                 $b['air'] = max(0.0, $b['air'] - Consumption::airDrainPerHour(max(1, $ciurma['uomini']), (int) $type['crew_max'], $b['silent']) * $ore);
             }
 
@@ -379,13 +387,24 @@ final class Encounter
                     $e['stato'] = 'affondata';
                     Database::run("UPDATE encounter_entities SET stato = 'affondata' WHERE id = ?", [(int) $e['id']]);
                     $testoAffondamento = self::registraAffondamento($enc, $boat, $e, $t, self::armaCheHaAffondato($e));
-                    $affondate++;
-                    $grtAffondato += (int) $e['grt'];
-                    // Va nella cronaca in diretta, ma NON di nuovo nel giornale:
-                    // la sua riga l'ha gia' scritta registraAffondamento, con
-                    // l'ora esatta e il genere giusto.
-                    $eventi[] = $testoAffondamento;
-                    $giaNelGiornale[$testoAffondamento] = true;
+                    if ($testoAffondamento === null) {
+                        // Ci era arrivato prima un altro battello. La si vede
+                        // andare giu' lo stesso — ed e' giusto che il giornale
+                        // lo dica — ma nel registro ci va una volta sola.
+                        $eventi[] = sprintf(
+                            '%s va a fondo, ma l\'aveva gia\' colpita un altro battello: '
+                            . 'il BdU accredita a chi ce l\'ha mandata per primo.',
+                            (string) $e['name']
+                        );
+                    } else {
+                        $affondate++;
+                        $grtAffondato += (int) $e['grt'];
+                        // Va nella cronaca in diretta, ma NON di nuovo nel giornale:
+                        // la sua riga l'ha gia' scritta registraAffondamento, con
+                        // l'ora esatta e il genere giusto.
+                        $eventi[] = $testoAffondamento;
+                        $giaNelGiornale[$testoAffondamento] = true;
+                    }
                 }
             }
             unset($e);
@@ -393,7 +412,7 @@ final class Encounter
             // --- le scorte -----------------------------------------------------------
             if ($allarme || $rng->chance(0.02)) {
                 $esitiScorte = Scorte::ai($entita, $b, $type, $encId, $t, $passo, $mare, $strato,
-                    (float) $cielo['luce'], $effetti, $rng, $allarme);
+                    (float) $cielo['luce'], $effetti, $rng, $allarme, $migBoat);
                 foreach ($esitiScorte['eventi'] as $ev) {
                     $eventi[] = $ev;
                 }
@@ -542,7 +561,17 @@ final class Encounter
                 $quando = $condannata['affonda_gts'] !== null ? max($t, (int) $condannata['affonda_gts']) : $t;
                 $condannata['stato'] = 'affondata';
                 Database::run("UPDATE encounter_entities SET stato = 'affondata' WHERE id = ?", [(int) $condannata['id']]);
-                self::registraAffondamento($enc, $boat, $condannata, $quando, self::armaCheHaAffondato($condannata));
+                $accreditata = self::registraAffondamento(
+                    $enc, $boat, $condannata, $quando, self::armaCheHaAffondato($condannata)
+                );
+                if ($accreditata === null) {
+                    $eventi[] = sprintf(
+                        '%s e\' andata giu\', ma il merito e\' di un altro battello: '
+                        . 'ci era arrivato prima.',
+                        (string) $condannata['name']
+                    );
+                    continue;
+                }
                 $affondate++;
                 $grtAffondato += (int) $condannata['grt'];
                 $eventi[] = sprintf(
@@ -832,8 +861,33 @@ final class Encounter
         return 'siluro';
     }
 
-    private static function registraAffondamento(array $enc, array $boat, array $e, int $t, string $arma): string
+    /**
+     * Scrive l'affondamento nel registro, e torna la riga per il giornale.
+     *
+     * Torna null quando la nave era gia' stata accreditata a qualcuno: e'
+     * andata a fondo lo stesso, e l'equipaggio l'ha vista andare giu', ma il
+     * merito e' di chi ce l'ha mandata per primo. Chi chiama non deve contarla
+     * nei totali dell'incontro.
+     */
+    private static function registraAffondamento(array $enc, array $boat, array $e, int $t, string $arma): ?string
     {
+        // Una nave, un affondamento. Due battelli sullo stesso convoglio
+        // aprono due incontri distinti, ognuno con la sua copia della
+        // formazione: la stessa nave puo' andare a fondo in tutti e due.
+        // Misurato il 19/09/2026 — Jonathan Cabot, 4.130 GRT, accreditati per
+        // intero a due comandanti diversi. In un gioco dove il punteggio e' il
+        // tonnellaggio, due giocatori d'accordo raddoppierebbero tutto
+        // navigando insieme.
+        if ($e['ship_id'] !== null) {
+            $gia = Database::first(
+                'SELECT boat_id FROM sinkings WHERE ship_id = ? LIMIT 1',
+                [(int) $e['ship_id']]
+            );
+            if ($gia !== null) {
+                return null;
+            }
+        }
+
         $sh = $e['ship_id'] !== null ? Database::first('SELECT * FROM ships WHERE id = ?', [(int) $e['ship_id']]) : null;
         $convoglio = null;
         if ($enc['convoy_id'] !== null) {
@@ -846,19 +900,32 @@ final class Encounter
             [(int) $enc['id'], (int) $e['id']]
         )['n'] ?? 0);
 
-        Database::run(
-            'INSERT INTO sinkings (boat_id, patrol_id, commander_id, ship_id, nome, bandiera, class_key, grt, carico, arma,
-                                   siluri_usati, convoglio, gts, lat, lon, quadrat)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                (int) $boat['id'], $enc['patrol_id'] !== null ? (int) $enc['patrol_id'] : null,
-                $boat['commander_id'] !== null ? (int) $boat['commander_id'] : null,
-                $e['ship_id'] !== null ? (int) $e['ship_id'] : null,
-                (string) $e['name'], (string) ($sh['flag'] ?? 'britannica'), (string) $e['class_key'],
-                (int) $e['grt'], $sh['carico'] ?? null, $arma, $siluriUsati, $convoglio, $t,
-                (float) $e['lat'], (float) $e['lon'], Grid::toQuadrat((float) $e['lat'], (float) $e['lon']),
-            ]
-        );
+        // Il controllo di sopra copre il caso normale; questo copre la corsa.
+        // Due incontri che si chiudono nello stesso istante passano tutti e due
+        // dalla lettura e arrivano tutti e due a scrivere: l'indice unico ne
+        // ferma uno, e senza questa rete l'eccezione arriverebbe fino al
+        // giocatore come una pagina rotta — proprio nel momento in cui ha
+        // appena affondato qualcosa.
+        try {
+            Database::run(
+                'INSERT INTO sinkings (boat_id, patrol_id, commander_id, ship_id, nome, bandiera, class_key, grt, carico, arma,
+                                       siluri_usati, convoglio, gts, lat, lon, quadrat)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    (int) $boat['id'], $enc['patrol_id'] !== null ? (int) $enc['patrol_id'] : null,
+                    $boat['commander_id'] !== null ? (int) $boat['commander_id'] : null,
+                    $e['ship_id'] !== null ? (int) $e['ship_id'] : null,
+                    (string) $e['name'], (string) ($sh['flag'] ?? 'britannica'), (string) $e['class_key'],
+                    (int) $e['grt'], $sh['carico'] ?? null, $arma, $siluriUsati, $convoglio, $t,
+                    (float) $e['lat'], (float) $e['lon'], Grid::toQuadrat((float) $e['lat'], (float) $e['lon']),
+                ]
+            );
+        } catch (\PDOException $ex) {
+            if ($ex->getCode() === '23000') {
+                return null;   // ci e' arrivato un altro un istante fa
+            }
+            throw $ex;
+        }
 
         if ($e['ship_id'] !== null) {
             Database::run(

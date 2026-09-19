@@ -215,6 +215,30 @@ intera, eseguita di fila, adesso lascia l'account di un giocatore esattamente
 com'era: due prove scrivevano sul primo battello che trovavano, che a suite
 pulita e' quello vero.
 
+**Quinta revisione tecnica: gira dove serve?** (19/09/2026, sera). Quattro
+angolazioni che nessuna revisione aveva toccato — il gioco a due, la matrice dei
+permessi provata invece che letta, gli ordini assurdi a ogni postazione, una
+crociera di trenta giorni — e quattro rilievi.
+
+Il piu' grave riguarda proprio il multigiocatore: due battelli che attaccano lo
+stesso convoglio aprono due incontri distinti, e **la stessa nave andava a fondo
+in tutti e due e veniva accreditata a tutti e due i comandanti**. In un gioco
+dove il punteggio e' il tonnellaggio, due giocatori d'accordo raddoppiavano
+tutto navigando insieme. Adesso la nave va a fondo una volta e il merito e' di
+chi ce l'ha mandata.
+
+Il piu' istruttivo: due apparati del cantiere da centodieci punti di
+assegnazione l'uno avevano la chiave d'effetto regolarmente letta dal codice —
+un grep li dava per buoni — ma letta nel posto sbagliato. Le batterie
+maggiorate non valevano durante l'attacco, cioe' nell'unico momento in cui la
+riserva di corrente decide se si torna a casa; le sospensioni elastiche non
+valevano sotto una scorta che ascolta, cioe' l'unico posto per cui si comprano.
+
+Restano pulite, e adesso sorvegliate, quattro aree intere: 151 rifiuti di
+accesso verificati con sei identita' diverse, 39 carichi di ordini storti senza
+un solo errore, trenta giorni di crociera senza una deriva numerica, e il
+doppio clic che non spende due volte. Le verifiche automatiche salgono a **863**.
+
 **Il gioco e' completo: da F0 a F7.** Quello che resta e' bilanciamento sul campo e beta.
 La pagina d'ingresso dice lo stato vero — con i numeri del mondo in corso, presi dal database a
 ogni caricamento — e l'elenco di quello che e' arrivato dopo la chiusura della tabella di marcia.

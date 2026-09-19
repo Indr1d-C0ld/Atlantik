@@ -48,6 +48,7 @@ final class Scorte
         array $effetti,
         Rng $rng,
         bool $allarme,
+        array $mig = [],
     ): array {
         $eventi = [];
         $cariche = 0;
@@ -76,7 +77,13 @@ final class Scorte
         if ($b['mode'] === 'periscopio' && $b['periscopio']) {
             $sagoma *= Detection::baffaPeriscopio($b['speed'], $mare);
         }
-        $rumoreNostro = Acoustics::ownNoise($b['speed'], $b['silent'], (float) $type['speed_sub_kn']);
+        // Le sospensioni elastiche valgono qui. Fino all'audit del 19/09/2026
+        // l'apparato — centodieci punti di assegnazione, meno ventidue per
+        // cento di rumore proprio — si applicava soltanto in crociera, dove
+        // serve a non farsi sentire da un piroscafo di passaggio, e si spegneva
+        // esattamente dove era stato comprato: sotto una scorta che ascolta.
+        $rumoreNostro = Acoustics::ownNoise($b['speed'], $b['silent'], (float) $type['speed_sub_kn'])
+            * (float) ($mig['rumore_proprio'] ?? 1.0);
 
         foreach ($entita as &$e) {
             if ((string) $e['ruolo'] !== 'scorta' || in_array((string) $e['stato'], ['affondata', 'fuggita'], true)) {
