@@ -64,6 +64,75 @@ final class AuthController
         return redirect('/verifica-inviata');
     }
 
+    /**
+     * Il modulo per chiedere il collegamento di recupero.
+     */
+    public function recuperoForm(Request $request): Response
+    {
+        if (Auth::check()) {
+            return redirect('/base');
+        }
+        return Response::html(view('auth/recupero_richiesta', ['title' => 'Password dimenticata']));
+    }
+
+    /**
+     * Manda il collegamento — o fa finta, se l'indirizzo non risulta.
+     *
+     * La risposta e' sempre la stessa: dire "questo indirizzo non c'e'"
+     * regalerebbe a chiunque un modo per sapere chi e' iscritto.
+     */
+    public function recuperoInvia(Request $request): Response
+    {
+        $res = Auth::richiediRecupero($request->str('email'), $request->ip());
+        if (!$res['ok']) {
+            Session::flash('error', $res['error'] ?? 'Richiesta non valida.');
+            Session::flashInput(['email' => $request->str('email')]);
+            return redirect('/recupero-richiesta');
+        }
+
+        Session::flash('success', 'Se quell\'indirizzo risulta iscritto, il collegamento è partito. '
+            . 'Controlla la posta, anche fra lo spam.');
+        return redirect('/accesso');
+    }
+
+    /**
+     * La pagina dove si scrive la password nuova, aperta dal collegamento.
+     */
+    public function recuperoForm2(Request $request): Response
+    {
+        $token = $request->str('token');
+        $stato = Auth::recuperoValido($token);
+
+        return Response::html(view('auth/recupero', [
+            'title'  => 'Password nuova',
+            'token'  => $token,
+            'valido' => (bool) $stato['ok'],
+            'errore' => $stato['error'] ?? null,
+        ]));
+    }
+
+    /** Scrive la password nuova e fa cadere le sessioni aperte. */
+    public function recuperoSalva(Request $request): Response
+    {
+        $token = $request->str('token');
+        $pw    = (string) $request->input('password', '');
+        $pw2   = (string) $request->input('password_confirm', '');
+
+        if ($pw !== $pw2) {
+            Session::flash('error', 'Le due password non coincidono.');
+            return redirect('/recupero?token=' . urlencode($token));
+        }
+
+        $res = Auth::rifaiPassword($token, $pw, $request->ip());
+        if (!$res['ok']) {
+            Session::flash('error', $res['error'] ?? 'Non è stato possibile cambiare la password.');
+            return redirect('/recupero?token=' . urlencode($token));
+        }
+
+        Session::flash('success', 'Password cambiata. Le sessioni aperte sono state chiuse: entra con quella nuova.');
+        return redirect('/accesso');
+    }
+
     public function verificationSent(Request $request): Response
     {
         return Response::html(view('auth/verify_sent', [

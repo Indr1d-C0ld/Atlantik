@@ -24,6 +24,12 @@ use App\Sim\World;
  */
 final class Bdu
 {
+    /** Ore di gioco che un pedinamento deve durare per essere assolto. */
+    private const PEDINAMENTO_ORE = 6;
+
+    /** Miglia entro cui si considera mantenuto il contatto. */
+    private const PEDINAMENTO_NM = 45.0;
+
     /** @return list<array<string,mixed>> */
     public static function ordini(int $boatId, bool $soloAperti = false): array
     {
@@ -101,6 +107,85 @@ final class Bdu
             ]
         );
 
+        $id = Database::lastInsertId();
+
+        // Se il battello e' gia' in mare, l'area finisce anche nella missione
+        // in corso: e' quella che il fascicolo pubblico mostra accanto a ogni
+        // uscita.
+        Database::run(
+            "UPDATE patrols SET area_quadrat = ? WHERE boat_id = ? AND state = 'in_corso'",
+            [$quadrat, (int) $boat['id']]
+        );
+
+        return Database::first('SELECT * FROM bdu_orders WHERE id = ?', [$id]);
+    }
+
+    /**
+     * Ordine di pedinamento: tieni il contatto e continua a segnalare.
+     *
+     * E' il mestiere del Fuehlungshalter, ed e' il piu' ingrato che ci fosse:
+     * si sta attaccati a un convoglio per ore senza attaccarlo, si trasmette —
+     * e ogni trasmissione e' un rilevamento regalato all'HF/DF — perche' gli
+     * altri possano arrivare. Chi pedinava non affondava niente, e senza un
+     * premio del BdU non l'avrebbe fatto nessuno.
+     *
+     * L'ordine nasce da solo quando un battello segnala per radio un convoglio:
+     * il BdU risponde chiedendo di restarci attaccato. Non e' obbligatorio —
+     * come tutti gli ordini si puo' rifiutare, e costa.
+     *
+     * @return array<string,mixed>|null l'ordine emesso, o null se non serviva
+     */
+    public static function ordinaPedinamento(array $boat, int $convoyId, int $gts): ?array
+    {
+        $aperto = Database::first(
+            "SELECT id FROM bdu_orders WHERE boat_id = ? AND tipo = 'pedinamento'
+                    AND stato IN ('aperto','accettato')",
+            [(int) $boat['id']]
+        );
+        if ($aperto !== null) {
+            return null;   // uno per volta: non si pedinano due convogli insieme
+        }
+
+        $cv = Database::first(
+            "SELECT * FROM convoys WHERE id = ? AND state = 'in_mare'",
+            [$convoyId]
+        );
+        if ($cv === null) {
+            return null;
+        }
+
+        // Quanto puo' durare: fino all'arrivo del convoglio, e comunque non
+        // piu' di un giorno di gioco. Nessuno regge di piu' a quel mestiere.
+        $scade = min((int) $cv['eta_gts'], $gts + 86400);
+        if ($scade - $gts < self::PEDINAMENTO_ORE * 3600) {
+            return null;   // arriva troppo presto: non c'e' niente da pedinare
+        }
+
+        $pos = Traffic::posizione(
+            (string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts,
+            (float) ($cv['deviazione'] ?? 0)
+        );
+        if ($pos === null) {
+            return null;
+        }
+
+        $quadrat = Grid::toQuadrat($pos['lat'], $pos['lon']);
+        $testo = sprintf(
+            'Contatto ricevuto. Mantenere il contatto con %s %s in quadrato %s e continuare a segnalare. '
+            . 'NON attaccare finche\' gli altri non sono sul posto: %d ore di pedinamento.',
+            (string) $cv['serie'], (string) $cv['numero'], $quadrat ?? '—', self::PEDINAMENTO_ORE
+        );
+
+        Database::run(
+            'INSERT INTO bdu_orders (boat_id, commander_id, convoy_id, tipo, quadrat, lat, lon, testo,
+                                     emesso_gts, scade_gts, stato, prestigio, punti)
+             VALUES (?, ?, ?, "pedinamento", ?, ?, ?, ?, ?, ?, "aperto", 340, 45)',
+            [
+                (int) $boat['id'], $boat['commander_id'] !== null ? (int) $boat['commander_id'] : null,
+                (int) $cv['id'], $quadrat, $pos['lat'], $pos['lon'], $testo, $gts, $scade,
+            ]
+        );
+
         return Database::first('SELECT * FROM bdu_orders WHERE id = ?', [Database::lastInsertId()]);
     }
 
@@ -144,6 +229,15 @@ final class Bdu
             "SELECT * FROM bdu_orders WHERE boat_id = ? AND stato = 'accettato' AND tipo IN ('area','pedinamento')",
             [(int) $boat['id']]
         ) as $o) {
+            if ((string) $o['tipo'] === 'pedinamento') {
+                // Il bersaglio si muove: non basta arrivare da qualche parte,
+                // bisogna restarci attaccati. Si misura la distanza dal
+                // convoglio DOVE E' ADESSO, non dal punto segnalato allora.
+                foreach (self::verificaPedinamento($boat, $o, $gts) as $e) {
+                    $eventi[] = $e;
+                }
+                continue;
+            }
             if ($o['lat'] === null) {
                 continue;
             }
@@ -170,6 +264,89 @@ final class Bdu
             );
         }
         return $eventi;
+    }
+
+    /**
+     * Un pedinamento in corso: si tiene, si perde, o si porta a termine.
+     *
+     * @param array<string,mixed> $boat
+     * @param array<string,mixed> $o
+     * @return list<string>
+     */
+    private static function verificaPedinamento(array $boat, array $o, int $gts): array
+    {
+        $chiudi = static function (string $stato) use ($o): void {
+            Database::run('UPDATE bdu_orders SET stato = ? WHERE id = ?', [$stato, (int) $o['id']]);
+        };
+
+        $cv = $o['convoy_id'] !== null
+            ? Database::first('SELECT * FROM convoys WHERE id = ?', [(int) $o['convoy_id']])
+            : null;
+        if ($cv === null) {
+            $chiudi('scaduto');
+            return [];
+        }
+
+        $pos = Traffic::posizione(
+            (string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts,
+            (float) ($cv['deviazione'] ?? 0)
+        );
+
+        // Il convoglio e' arrivato, o e' stato distrutto: il pedinamento
+        // finisce comunque. Se si e' stati attaccati abbastanza a lungo, vale.
+        $ore = ($gts - (int) $o['emesso_gts']) / 3600.0;
+        if ($pos === null || (string) $cv['state'] !== 'in_mare') {
+            if ($ore >= self::PEDINAMENTO_ORE) {
+                $chiudi('assolto');
+                self::paga($boat, $o);
+                return [sprintf(
+                    'Il convoglio e\' fuori dalla partita: pedinamento concluso (+%d prestigio, +%d punti).',
+                    (int) $o['prestigio'], (int) $o['punti']
+                )];
+            }
+            $chiudi('scaduto');
+            return ['Il convoglio pedinato e\' uscito di scena prima del tempo: ordine chiuso senza merito.'];
+        }
+
+        $d = Geo::distanceNm((float) $boat['lat'], (float) $boat['lon'], $pos['lat'], $pos['lon']);
+
+        if ($d > self::PEDINAMENTO_NM * 2.5) {
+            $chiudi('scaduto');
+            return [sprintf(
+                'Contatto perduto: il convoglio e\' a %.0f miglia e non lo si riprende piu\'. Pedinamento fallito.',
+                $d
+            )];
+        }
+
+        if ($o['scade_gts'] !== null && $gts > (int) $o['scade_gts']) {
+            $chiudi('scaduto');
+            return ['Pedinamento scaduto: il tempo utile e\' finito.'];
+        }
+
+        if ($ore >= self::PEDINAMENTO_ORE && $d <= self::PEDINAMENTO_NM) {
+            $chiudi('assolto');
+            self::paga($boat, $o);
+            return [sprintf(
+                'Sei ore attaccati al convoglio, a %.0f miglia: il BdU ha quello che gli serviva '
+                . '(+%d prestigio, +%d punti).',
+                $d, (int) $o['prestigio'], (int) $o['punti']
+            )];
+        }
+
+        return [];
+    }
+
+    /** Incassa un ordine assolto. @param array<string,mixed> $boat @param array<string,mixed> $o */
+    private static function paga(array $boat, array $o): void
+    {
+        if ($boat['commander_id'] === null) {
+            return;
+        }
+        Database::run(
+            'UPDATE commanders SET prestigio = prestigio + ?, prestigio_tot = prestigio_tot + ?, punti = punti + ?
+             WHERE id = ?',
+            [(int) $o['prestigio'], (int) $o['prestigio'], (int) $o['punti'], (int) $boat['commander_id']]
+        );
     }
 
     /**

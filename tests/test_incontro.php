@@ -182,7 +182,21 @@ $cv = Database::first(
     "SELECT * FROM convoys WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ? LIMIT 1",
     [$gts, $gts]
 );
-$boat = Database::first("SELECT * FROM boats WHERE encounter_id IS NULL ORDER BY id DESC LIMIT 1");
+// Un battello sano: non uno qualunque fra quelli lasciati in giro dalle altre
+// prove. Ci si e' arrivati per davvero — la prova ha pescato un relitto fermo
+// a duecentosessanta metri e l'incontro si e' chiuso con "battello perduto",
+// il che e' perfino giusto, ma non e' quello che si voleva misurare.
+$boat = Database::first(
+    "SELECT * FROM boats WHERE encounter_id IS NULL AND state <> 'perduto' ORDER BY id DESC LIMIT 1"
+);
+if ($boat !== null) {
+    Database::run(
+        "UPDATE boats SET state = 'mare', mode = 'superficie', depth_m = 0, ordered_depth_m = 0,
+                hull_stress = 0, hull_integrity = 100 WHERE id = ?",
+        [(int) $boat['id']]
+    );
+    $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
+}
 
 if ($cv === null || $boat === null) {
     echo "  \033[0;90mniente convoglio o niente battello libero: prove saltate\033[0m\n";
@@ -245,6 +259,100 @@ if ($cv === null || $boat === null) {
 
         // Pulizia dei conti: questa prova non deve regalare tonnellaggio.
         Database::run('DELETE FROM sinkings WHERE boat_id = ?', [(int) $boat['id']]);
+
+        // --- scendere sotto il collasso per sfuggire alle cariche ------------
+        //
+        // In crociera lo scafo cede (test_limiti); qui si guarda che ceda anche
+        // dentro l'incontro tattico, che e' proprio il momento in cui viene la
+        // tentazione di scendere a duecentocinquanta metri e aspettare che
+        // passi. Il ciclo tattico ha un suo passo e un suo salvataggio: che la
+        // verifica ci sia in un posto non dice niente sull'altro.
+        titolo('Sotto le cariche, giu\' fino a rompersi');
+
+        // Si torna addosso al convoglio: la sezione di prima ha portato il
+        // battello a venti miglia per rompere il contatto, e da li' un incontro
+        // nuovo si chiuderebbe al primo passo.
+        $adesso = World::now();
+        $pc = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'],
+            $adesso, (float) $cv['deviazione']);
+        if ($pc !== null) {
+            Database::run('UPDATE boats SET lat = ?, lon = ?, est_lat = ?, est_lon = ? WHERE id = ?',
+                [$pc['lat'], $pc['lon'], $pc['lat'], $pc['lon'], (int) $boat['id']]);
+            $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
+        }
+
+        $enc2 = Encounter::apri($boat, ['convoy_id' => (int) $cv['id'], 'ship_id' => null], $adesso);
+        if (!($enc2['ok'] ?? false)) {
+            saltata('lo scafo cede anche durante l\'incontro', (string) ($enc2['error'] ?? 'incontro non aperto'));
+        } else {
+            $encId = (int) $enc2['encounter_id'];
+            // --- quanti siluri e' costata -------------------------------------
+            //
+            // torpedo_runs.entity_id non la scriveva nessuno, e il conto dei
+            // siluri spesi per affondare una nave si fa contando le corse
+            // finite addosso a QUELLA nave: trovava sempre zero, e nel registro
+            // risultava zero siluri per qualunque nave, comprese quelle
+            // affondate a siluri.
+            $viva = Database::first(
+                "SELECT * FROM encounter_entities WHERE encounter_id = ? AND stato NOT IN ('affondata','fuggita')
+                        AND ruolo <> 'scorta' ORDER BY id LIMIT 1",
+                [$encId]
+            );
+            $tS = (int) Database::first('SELECT last_step_gts FROM encounters WHERE id = ?', [$encId])['last_step_gts'];
+            if ($viva === null) {
+                saltata('la corsa ricorda la nave che ha colpito', 'nessuna nave viva nell\'incontro');
+            } else {
+                Database::run(
+                    "INSERT INTO torpedo_runs (encounter_id, boat_id, tkey, tubo, lanciato_gts, lat, lon, heading,
+                                               speed_kn, quota_m, spoletta, corsa_max_m, esito)
+                     VALUES (?, ?, 'G7a', 1, ?, ?, ?, 0, 30, 4, 'contatto', 6000, 'in_corsa')",
+                    [
+                        $encId, (int) $boat['id'], $tS,
+                        (float) $viva['lat'] - 0.0004, (float) $viva['lon'],
+                    ]
+                );
+                $runId = Database::lastInsertId();
+                Encounter::step($encId, $tS + 600);
+                $run = Database::first('SELECT esito, entity_id FROM torpedo_runs WHERE id = ?', [$runId]);
+                ok('la corsa ricorda la nave che ha colpito',
+                    (string) $run['esito'] === 'colpito' && (int) $run['entity_id'] === (int) $viva['id'],
+                    sprintf('esito=%s, entity_id=%s (nave %d)',
+                        (string) $run['esito'], var_export($run['entity_id'], true), (int) $viva['id']));
+            }
+
+            $tipo = World::type((string) $boat['type_key']);
+            $fondo = (float) $tipo['crush_depth_max_m'] + 15;
+            Database::run(
+                "UPDATE boats SET depth_m = ?, ordered_depth_m = ?, mode = 'immersione', speed_kn = 2,
+                        hull_stress = 0, hull_integrity = 100 WHERE id = ?",
+                [$fondo, $fondo, (int) $boat['id']]
+            );
+            Database::run('UPDATE commanders SET stato = \'attivo\', uscito_gts = NULL WHERE id = ?',
+                [(int) $boat['commander_id']]);
+
+            $t2 = (int) Database::first('SELECT last_step_gts FROM encounters WHERE id = ?', [$encId])['last_step_gts'];
+            Encounter::step($encId, $t2 + 600);
+
+            $dopo2 = Database::first('SELECT state, speed_kn, encounter_id FROM boats WHERE id = ?', [(int) $boat['id']]);
+            $enc2r = Database::first('SELECT stato, esito FROM encounters WHERE id = ?', [$encId]);
+            ok('lo scafo cede anche durante l\'incontro', (string) $dopo2['state'] === 'perduto',
+                sprintf('a %.0f m', $fondo));
+            ok('e l\'incontro si chiude invece di restare aperto con dentro un relitto',
+                (string) $enc2r['stato'] === 'concluso', (string) $enc2r['stato'] . ' — ' . (string) $enc2r['esito']);
+            ok('il relitto non manovra piu\'', (float) $dopo2['speed_kn'] < 0.01);
+
+            // Si rimette in piedi tutto: questa prova non affonda battelli veri.
+            Database::run("UPDATE boats SET state = 'mare', depth_m = 0, ordered_depth_m = 0,
+                           mode = 'superficie', hull_stress = 0, hull_integrity = 100, encounter_id = NULL
+                           WHERE id = ?", [(int) $boat['id']]);
+            Database::run("UPDATE crew_members SET health = 'ok' WHERE boat_id = ?", [(int) $boat['id']]);
+            if ($boat['commander_id'] !== null) {
+                Database::run("UPDATE commanders SET stato = 'attivo', uscito_gts = NULL, sorte = NULL
+                               WHERE id = ?", [(int) $boat['commander_id']]);
+            }
+            Database::run("UPDATE patrols SET state = 'in_corso', returned_gts = NULL
+                           WHERE boat_id = ? AND state = 'perduta'", [(int) $boat['id']]);
+        }
     } finally {
         if ($encId !== null) {
             Database::run('DELETE FROM torpedo_runs WHERE encounter_id = ?', [$encId]);

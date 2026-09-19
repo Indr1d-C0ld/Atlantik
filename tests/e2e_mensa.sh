@@ -53,6 +53,11 @@ non_contiene() {
 sql1() { php -r 'require "'"${ROOT}"'/bin/_bootstrap.php";
 $r = App\Core\Database::first($argv[1], array_slice($argv, 2)); echo $r === null ? "" : (string) reset($r);' "$@"; }
 
+# Il freno all'accesso e' cumulativo fra le prove: venti tentativi per IP ogni
+# quarto d'ora, e tutte le prove arrivano da 127.0.0.1. Frenate, le verifiche
+# negative passerebbero per il motivo sbagliato.
+php "${ROOT}/bin/_prova_sfrena.php" >/dev/null 2>&1
+
 echo "Prova end-to-end della mensa ufficiali — ${BASE_URL}"
 
 # --- Tre comandanti, tre basi diverse ----------------------------------------

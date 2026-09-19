@@ -49,6 +49,11 @@ verifica() { # nome, atteso, ottenuto
   fi
 }
 
+# Il freno all'accesso e' cumulativo fra le prove: venti tentativi per IP ogni
+# quarto d'ora, e tutte le prove arrivano da 127.0.0.1. Frenate, le verifiche
+# negative passerebbero per il motivo sbagliato.
+php "${ROOT}/bin/_prova_sfrena.php" >/dev/null 2>&1
+
 echo "Prova end-to-end autenticazione — ${BASE_URL}"
 echo "  utente di prova: ${USER_NAME}"
 

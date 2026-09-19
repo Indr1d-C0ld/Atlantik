@@ -101,6 +101,38 @@ final class BoatSim
             return ['steps' => 0, 'from' => $from, 'to' => $from, 'dist_nm' => 0.0, 'events' => 0];
         }
 
+        // --- si avanza SOLO per sotto-passi interi -----------------------------
+        //
+        // Il resto aspetta il giro dopo. Sembra un dettaglio ed e' la differenza
+        // fra un mondo uguale per tutti e uno che premia chi ricarica la pagina.
+        //
+        // Con un rapporto di 1:30, dieci secondi reali fanno trecento secondi di
+        // gioco: due pagine aperte a pochi secondi di distanza — cosa che succede
+        // di continuo — chiedevano un avanzamento piu' corto del sotto-passo. E
+        // un avanzamento piu' corto del sotto-passo fa due danni:
+        //
+        //   1. il consumo del passo parziale finisce sotto la risoluzione delle
+        //      colonne (nafta 0,002 t contro due decimali) e si perde nel
+        //      salvataggio. Misurato: un battello avanzato a spezzoni di un
+        //      minuto di gioco ha percorso centoquindici miglia senza consumare
+        //      una goccia di nafta;
+        //
+        //   2. il caso e' seminato sull'indice del sotto-passo, intdiv($t, $sub):
+        //      con passi parziali lo stesso indice torna piu' volte, quindi la
+        //      sequenza degli eventi — aerei, avarie, avvistamenti — dipende da
+        //      come il tempo e' stato spezzato, non da quanto ne e' passato.
+        //
+        // Avanzando a quanti interi, lo stesso tempo di gioco produce sempre lo
+        // stesso numero di passi con gli stessi indici, comunque uno si colleghi.
+        $sub = World::substepSeconds();
+        $interi = intdiv($toGts - $from, $sub);
+        if ($interi < 1) {
+            // Meno di un sotto-passo: non si simula e non si sposta l'orologio del
+            // battello, se no il resto andrebbe perduto un pezzetto per volta.
+            return ['steps' => 0, 'from' => $from, 'to' => $from, 'dist_nm' => 0.0, 'events' => 0];
+        }
+        $toGts = $from + $interi * $sub;
+
         $type   = World::type((string) $boat['type_key']);
         $patrol = Database::first(
             "SELECT * FROM patrols WHERE boat_id = ? AND state = 'in_corso' ORDER BY id DESC LIMIT 1",
@@ -111,7 +143,6 @@ final class BoatSim
             [$boatId]
         );
 
-        $sub    = World::substepSeconds();
         $seed   = World::seed();
         $eventi = [];
 
@@ -133,7 +164,6 @@ final class BoatSim
                 [(int) $patrol['id']]
             )['g'] ?? 0);
             $gia['__bf_ultima'] = $ultimaBurrascaDb;
-            $gia['__bf_conta'] = 0;
             foreach (Database::all(
                 'SELECT DISTINCT kind FROM patrol_events WHERE patrol_id = ? AND kind LIKE "%!_%" ESCAPE "!"',
                 [(int) $patrol['id']]
@@ -153,8 +183,6 @@ final class BoatSim
         $oreTotali = 0.0;
         $progressiRiparazione = [];
         $ultimoScafo = 0;
-        $mareMedio = 0.0;
-        $oreSuperficie = 0.0;
         $riparazioniFatte = 0;
 
         // Stato di lavoro.
@@ -177,23 +205,58 @@ final class BoatSim
             'last_fix' => $boat['last_fix_gts'] !== null ? (int) $boat['last_fix_gts'] : null,
             'sub_since'=> $boat['submerged_since'] !== null ? (int) $boat['submerged_since'] : null,
             'stress'   => (float) $boat['hull_stress'],
+            'scafo'    => (float) $boat['hull_integrity'],
             'auto_dive_fine'  => $boat['auto_dive_fine_gts'] !== null ? (int) $boat['auto_dive_fine_gts'] : null,
             'auto_dive_quota' => $boat['auto_dive_quota'] !== null ? (float) $boat['auto_dive_quota'] : null,
             'focus'    => $boat['repair_focus'] !== null ? (string) $boat['repair_focus'] : null,
         ];
 
+        $perduto = false;
+        $sistemiCambiati = false;
+
+        // C'e' qualcosa da fare in camera di lancio? Un tubo vuoto, una
+        // ricarica in corso. Si guarda una volta per avanzamento: durante la
+        // crociera non si lancia, quindi la risposta non cambia strada facendo.
+        $siluriDaSistemare = (int) (Database::first(
+            "SELECT COUNT(*) n FROM boat_torpedoes
+             WHERE boat_id = ? AND stato IN ('lanciato', 'in_carica')",
+            [$boatId]
+        )['n'] ?? 0) > 0;
         $dist = 0.0; $distSurf = 0.0; $distSub = 0.0; $fuelUsed = 0.0;
         $maxDepth = (float) ($patrol['max_depth_m'] ?? 0);
         $distDaRapporto = 0.0;
         $steps = 0;
-        $meteoPrec = null;
 
+        // --- il tempo di prima, senza portarsi dietro niente -------------------
+        //
+        // Tre avvisi guardano il passo PRECEDENTE: la burrasca (sei sotto-passi
+        // di fila sopra forza 8), la bonaccia che torna, la nebbia che cala.
+        // Tenere quella memoria in una variabile locale non funzionava: la
+        // variabile nasceva vuota a ogni chiamata, e chi ricaricava spesso non
+        // vedeva MAI una burrasca, perche' non arrivava mai a sei passi nella
+        // stessa chiamata.
+        //
+        // Ricostruirla dal passato non bastava: il tempo e' funzione del punto,
+        // e in mezz'ora il battello si sposta. Chi avanzava in un colpo solo
+        // confrontava passi calcolati in punti diversi, chi avanzava a pezzetti
+        // li ricalcolava tutti nel punto di adesso, e i due giornali
+        // divergevano — misurato: la burrasca c'era in un ritmo e non
+        // nell'altro.
+        //
+        // La regola adesso e' una sola, e non ha memoria: il passato del tempo
+        // si guarda SEMPRE dal punto in cui il battello sta adesso. Cosi' due
+        // comandanti che si collegano con ritmi diversi leggono lo stesso
+        // giornale, riga per riga, perche' ogni riga e' funzione soltanto
+        // dell'ora e della posizione.
         for ($t = $from; $t < $toGts; $t += $sub) {
             $dt = min($sub, $toGts - $t);
             $steps++;
             $rng = Rng::for($seed, 'boat', $boatId, 'step', intdiv($t, $sub));
 
             $meteo = World::weatherCon($t, $s['lat'], $s['lon'], $clock->date($t));
+            $meteoPrec = $t > $sub
+                ? World::weatherCon($t - $sub, $s['lat'], $s['lon'], $clock->date($t - $sub))
+                : null;
             $sun   = Astro::sun($clock->astroTs($t), $s['lat'], $s['lon']);
             $mare  = (int) $meteo['sea_state'];
 
@@ -293,7 +356,6 @@ final class BoatSim
                 $s['battery'] = max(0.0, $s['battery']
                     - Consumption::batteryDrainPerHour($type, $s['speed'], $s['silent']) / max(0.2, $effetti['batteria']) * $ore);
                 $s['air'] = min(100.0, $s['air'] + Consumption::airGainPerHour() * $effetti['aria'] * $ore);
-                $oreSuperficie += $ore;
             } elseif ($s['mode'] === 'superficie') {
                 $ricarica = $s['battery'] < 99.5;
                 $consumo = Consumption::fuelPerHour($type, $s['speed'], $ricarica) * $ore;
@@ -303,7 +365,6 @@ final class BoatSim
                     $s['battery'] = min(100.0, $s['battery'] + Consumption::batteryChargePerHour($type, $s['speed']) * $ore);
                 }
                 $s['air'] = min(100.0, $s['air'] + Consumption::airGainPerHour() * $effetti['aria'] * $ore);
-                $oreSuperficie += $ore;
             } elseif (($mig['schnorchel'] ?? 0) > 0 && $s['mode'] === 'periscopio' && $s['speed'] <= 6.0 && $mare <= 6) {
                 // Respiratore: i diesel girano a quota periscopica. Si ricarica
                 // senza emergere — e si resta comunque rilevabili dal radar,
@@ -360,12 +421,33 @@ final class BoatSim
             // --- rilevamento: chi vede per primo, vive -----------------------------
             self::rilevamento(
                 $boatId, $patrol !== null ? (int) $patrol['id'] : null, $s, $type, $meteo, $sun,
-                $unita, $zoneAeree, $ciurma, $sistemi, $t, $dt, $rng, $eventi, $gia, $clock, $mig, $scorte
+                $unita, $zoneAeree, $ciurma, $sistemi, $t, $dt, $rng, $eventi, $gia, $clock, $mig, $scorte,
+                $perduto, $sistemiCambiati
             );
+
+            // Le bombe hanno rotto qualcosa: la fotografia dei sistemi presa a
+            // inizio avanzamento non vale piu'. Senza questo, un battello
+            // bombardato in una richiesta che recuperava mezza giornata
+            // continuava a navigare a tutta forza coi motori sfondati fino alla
+            // pagina successiva — e chi si collegava spesso, no. Misurato: otto
+            // nodi contro quattro e quattro, nello stesso identico istante.
+            if ($sistemiCambiati) {
+                $sistemi = Damage::systems($boatId);
+                $sistemiCambiati = false;
+            }
+            if ($perduto) {
+                $toGts = $t;   // la simulazione finisce qui, non all'ora richiesta
+                // Il battello e' finito qui. Fino all'audit del 19/09/2026 la
+                // simulazione proseguiva per tutto l'avanzamento richiesto: un
+                // battello affondato da un aereo alla prima ora continuava a
+                // navigare, a consumare e a scrivere sul giornale per le cinque
+                // ore successive, e finiva l'avanzamento a centinaia di miglia
+                // dal punto in cui era morto.
+                break;
+            }
 
             // --- materiale: avarie, pressione, riparazioni ------------------------
             $oreTotali += $ore;
-            $mareMedio += $mare * $ore;
 
             // Carico delle macchine: e' il regime, non la velocita' assoluta,
             // che logora. A tutta forza i diesel si rompono molto piu' spesso.
@@ -406,6 +488,7 @@ final class BoatSim
                 }
             }
             $s['stress'] = $press['stress'];
+            $s['scafo'] = max(0.0, $s['scafo'] - $press['permanente']);
 
             // I compartimenti: la pressione apre le falle dove lo scafo e' gia'
             // ammaccato, e la squadra di falla lavora a fermarle. Prima di
@@ -431,6 +514,21 @@ final class BoatSim
                 $effetti['vel_immersione'] = ($effetti['vel_immersione'] ?? 1.0) * $zavorra['velocita'];
             }
 
+            // --- e se si e' scesi troppo ------------------------------------
+            //
+            // Qui finiva il tre per cento dei battelli perduti, e qui finiva
+            // ogni battello portato per gioco a duecentocinquanta metri per
+            // vedere che succedeva: non succedeva niente. L'intervallo di
+            // collasso era scritto nella scheda del tipo, mostrato al
+            // comandante nella pagina del battello, e non lo leggeva nessuno.
+            if ($s['depth'] > Damage::quotaCollasso($type, $boatId, $effetti['quota_max'] ?? 1.0, $s['scafo'])) {
+                $eventi[] = self::ev($t, 'scafo', 'allarme', $s, Narrator::collasso($s['depth']));
+                self::perduto($boatId, $s, $t, 'scafo collassato sotto la quota di sicurezza', $eventi);
+                $perduto = true;
+                $toGts = $t;
+                break;
+            }
+
             // Riparazioni: la squadra lavora di continuo, senza aspettare ordini.
             if ($effetti['guasti'] > 0) {
                 $rip = Damage::repairStep($boatId, $sistemi, $ore, $condizioni, $s['focus'], $progressiRiparazione);
@@ -448,9 +546,60 @@ final class BoatSim
                 }
             }
 
+            // --- i tubi si ricaricano --------------------------------------------
+            //
+            // Fino all'audit del 19/09/2026 Torpedo::ricarica() non la chiamava
+            // NESSUNO. Un VIIB parte con quattordici siluri: cinque nei tubi,
+            // otto in stiva, uno nel contenitore di coperta. Lanciati i primi
+            // cinque, il battello restava disarmato per tutto il resto della
+            // crociera, con nove siluri a bordo e nessun modo di usarli — e
+            // l'inventario sulla pagina d'attacco continuava a contarli.
+            if ($siluriDaSistemare) {
+                $eventiSiluri = [];
+                Torpedo::ricarica(
+                    $boatId, $t, $mare, (float) ($ciurma['specialita']['silurista'] ?? 1.0),
+                    $s['mode'] === 'superficie', $eventiSiluri, $rng
+                );
+                foreach ($eventiSiluri as $testo) {
+                    $eventi[] = self::ev($t, 'siluri', 'nota', $s, $testo);
+                }
+            }
+
+            // --- equipaggio -------------------------------------------------------
+            //
+            // La fatica e il morale si aggiornavano UNA VOLTA per avanzamento,
+            // sulle condizioni medie del periodo. Sembrava un risparmio
+            // ragionevole — sono grandezze lente — ed era invece l'ultimo posto
+            // in cui il mondo dipendeva ancora dal ritmo di collegamento:
+            //
+            //   - il quarto di guardia. Per un intervallo corto si logora solo
+            //     chi e' in coperta ADESSO; per uno lungo si spalma su tutti.
+            //     Dodici ore in un colpo davano quarantacinque uomini
+            //     mediamente stanchi, le stesse dodici ore a sotto-passi
+            //     davano un quarto sfinito e tre riposati;
+            //
+            //   - l'avvicinamento all'equilibrio era lineare nelle ore, e
+            //     applicarlo una volta su dodici ore non da' lo stesso
+            //     risultato di applicarlo centoquarantaquattro volte su cinque
+            //     minuti.
+            //
+            // E la resa dell'equipaggio entra nelle avarie e nelle riparazioni:
+            // due comandanti identici finivano la stessa giornata con avarie
+            // diverse. Misurato: l'idrofono riparato per chi si collegava una
+            // volta sola, ancora rotto per chi ricaricava di continuo.
+            Crew::step($boatId, $ore, $t, [
+                'aria'       => $s['air'],
+                'viveri'     => $s['prov'],
+                'mare'       => $mare,
+                'giorni'     => $condizioni['giorni'],
+                'avarie'     => $effetti['guasti'],
+                'superficie' => $s['mode'] === 'superficie',
+                'allarme'    => (bool) $boat['battle_stations'],
+            ]);
+            $ciurma = Crew::aggregate($boatId);
+
             // --- soglie e allarmi -----------------------------------------------
-            self::soglie($t, $s, $type, $boat, $eventi, $meteo, $meteoPrec, $gia);
-            $meteoPrec = $meteo;
+            self::soglie($t, $s, $type, $boat, $eventi, $meteo, $meteoPrec, $gia, $clock, $sub);
 
             // --- rapporto di posizione ogni sei ore ------------------------------
             $oraGioco = $clock->date($t);
@@ -465,22 +614,8 @@ final class BoatSim
             }
         }
 
-        // --- equipaggio ----------------------------------------------------------
-        // La fatica e il morale si aggiornano una volta per avanzamento, sulle
-        // condizioni medie del periodo: sono grandezze lente, non serve
-        // inseguirle a ogni sotto-passo.
+        // --- il morale che scende ------------------------------------------------
         if ($oreTotali > 0) {
-            Crew::step($boatId, $oreTotali, $toGts, [
-                'aria'       => $s['air'],
-                'viveri'     => $s['prov'],
-                'mare'       => (int) round($mareMedio / max(0.001, $oreTotali)),
-                'giorni'     => $giorniMissione,
-                'avarie'     => $effetti['guasti'],
-                'superficie' => $oreSuperficie > $oreTotali / 2,
-                'allarme'    => (bool) $boat['battle_stations'],
-            ]);
-            $ciurma = Crew::aggregate($boatId);
-
             // Il morale a terra va annotato: e' un fatto operativo, non un
             // dettaglio. Ma una volta ogni mezza giornata, non a ogni battito.
             $ultimoMorale = $patrol !== null ? (int) (Database::first(
@@ -493,7 +628,9 @@ final class BoatSim
         }
 
         // Contatti che non si confermano piu': persi.
-        Contacts::scadi($boatId, $toGts);
+        foreach (Contacts::scadi($boatId, $toGts) as $cosa) {
+            $eventi[] = self::ev($toGts, 'contatto', 'attenzione', $s, Narrator::contattoPerso($cosa));
+        }
 
         // Ordini del BdU e appuntamenti col battello cisterna: si verificano a
         // fine avanzamento, quando la posizione e' quella definitiva.
@@ -517,14 +654,14 @@ final class BoatSim
         Database::run(
             'UPDATE boats SET lat=?, lon=?, est_lat=?, est_lon=?, est_error_nm=?, heading=?, speed_kn=?,
                     ordered_speed_kn=?, depth_m=?, mode=?, fuel_t=?, battery_pct=?, air_pct=?, co2_pct=?,
-                    provisions_days=?, last_fix_gts=?, submerged_since=?, hull_stress=?,
+                    provisions_days=?, last_fix_gts=?, submerged_since=?, hull_stress=?, hull_integrity=?,
                     ordered_depth_m=?, auto_dive_fine_gts=?, auto_dive_quota=?, last_sim_gts=?, version=version+1
              WHERE id = ?',
             [
                 $s['lat'], $s['lon'], $s['est_lat'], $s['est_lon'], $errore, $s['heading'], $s['speed'],
                 $s['ordered'], $s['depth'], $s['mode'], $s['fuel'], $s['battery'], $s['air'],
                 Consumption::co2FromAir($s['air']), $s['prov'], $s['last_fix'], $s['sub_since'], $s['stress'],
-                $s['ord_depth'], $s['auto_dive_fine'], $s['auto_dive_quota'], $toGts,
+                $s['scafo'], $s['ord_depth'], $s['auto_dive_fine'], $s['auto_dive_quota'], $toGts,
                 $boatId,
             ]
         );
@@ -575,6 +712,8 @@ final class BoatSim
         Clock $clock,
         array $mig = [],
         array $scorte = [],
+        bool &$perduto = false,
+        bool &$sistemiCambiati = false,
     ): void {
         $minuti = $dt / 60.0;
         $mare   = (int) $meteo['sea_state'];
@@ -608,6 +747,24 @@ final class BoatSim
         $sagoma = Detection::sagomaBattello($s['mode'], $s['depth'], true);
 
         foreach ($unita as $u) {
+            // In mare adesso, non "in mare in un momento qualsiasi di questo
+            // avanzamento". L'elenco si legge una volta sola per tutta la
+            // chiamata, quindi in una richiesta che recupera dodici ore ci
+            // finisce dentro anche chi e' partito dopo e chi e' gia' arrivato.
+            // L'ora di arrivo non coincide sempre con la fine esatta della
+            // rotta: un piroscafo gia' entrato in porto poteva continuare a
+            // restituire una posizione, e allora veniva sentito, avvistato e
+            // sorteggiato come se fosse ancora al largo.
+            //
+            // Chi si collegava spesso non lo incontrava (la sua finestra era di
+            // cinque minuti), chi recuperava mezza giornata si'. E siccome ogni
+            // unita' considerata consuma sorteggi, da li' in poi TUTTO il
+            // sotto-passo cambiava: avarie diverse, aerei diversi. Misurato: lo
+            // stesso attacco aereo provocava due avarie a un ritmo e nessuna
+            // all'altro.
+            if ($t < (int) $u['departed_gts'] || $t > (int) $u['eta_gts']) {
+                continue;
+            }
             $pos = Traffic::posizione(
                 (string) $u['rotta_key'], (float) $u['speed_kn'], (int) $u['departed_gts'], $t,
                 (float) ($u['deviazione'] ?? 0)
@@ -795,7 +952,11 @@ final class BoatSim
                 // Se non siamo stati avvisati e la quota e' ancora zero, l'aereo
                 // arriva addosso prima che il boccaporto sia chiuso.
                 if (!$avvisati && $s['depth'] < 8.0) {
-                    self::attaccoAereo($boatId, $s, $type, $cls, $ciurma, $scorte, $mig, $t, $rng, $eventi);
+                    self::attaccoAereo($boatId, $s, $type, $cls, $ciurma, $scorte, $mig, $t, $rng, $eventi,
+                        $perduto, $sistemiCambiati);
+                }
+                if ($perduto) {
+                    return;
                 }
 
                 // Il Primo Ufficiale non aspetta l'ordine: con un aereo addosso
@@ -828,6 +989,8 @@ final class BoatSim
     private static function attaccoAereo(
         int $boatId, array &$s, array $type, array $cls, array $ciurma,
         array $scorte, array $mig, int $t, Rng $rng, array &$eventi,
+        bool &$perduto = false,
+        bool &$sistemiCambiati = false,
     ): void {
         // Antiaerea: serve la mitragliera in ordine, munizioni e uomini svegli.
         $flak = 1.0 + (($mig['flak'] ?? 1.0) - 1.0);
@@ -877,26 +1040,55 @@ final class BoatSim
             if ($rng->chance(min(0.5, $danno / 90.0) * 0.2)) {
                 $grave = $rng->chance(0.35);
                 Damage::applyFailure($boatId, (string) $sy['skey'], $grave, $t);
+                $sistemiCambiati = true;
                 $eventi[] = self::ev($t, 'avaria', $grave ? 'allarme' : 'attenzione', $s,
                     Narrator::avaria((string) $sy['name'], (string) $sy['compartment'], $grave, (bool) $sy['repairable_sea']));
             }
         }
 
         if ($s['stress'] >= 100.0) {
-            $boatRow = Database::first('SELECT * FROM boats WHERE id = ?', [$boatId]);
-            if ($boatRow !== null) {
-                $boatRow['depth_m'] = $s['depth'];
-                $boatRow['lat'] = $s['lat'];
-                $boatRow['lon'] = $s['lon'];
-                $fine = \App\Game\Comandante::perdita($boatRow, 'colpito da attacco aereo in superficie', $t);
-                $eventi[] = self::ev($t, 'perdita', 'allarme', $s, $fine['testo']);
-            }
+            self::perduto($boatId, $s, $t, 'colpito da attacco aereo in superficie', $eventi);
+            $perduto = true;
         }
     }
 
-    /** Soglie di consumo e cambi di tempo: gli avvisi che il comandante vuole trovare nel giornale. */
-    private static function soglie(int $t, array &$s, array $type, array $boat, array &$eventi, array $meteo, ?array $prec, array &$gia): void
+    /**
+     * Il battello e' perduto: si chiude il fascicolo e si ferma tutto.
+     *
+     * Chi chiama DEVE uscire dal ciclo subito dopo. Lo stato di lavoro viene
+     * azzerato nell'abbrivio perche' il salvataggio finale riscrive comunque
+     * la riga del battello, e un relitto che continua a fare otto nodi sulla
+     * carta ammiraglia e' una brutta cosa da vedere.
+     */
+    private static function perduto(int $boatId, array &$s, int $t, string $causa, array &$eventi): void
     {
+        $boatRow = Database::first('SELECT * FROM boats WHERE id = ?', [$boatId]);
+        if ($boatRow === null) {
+            return;
+        }
+        $boatRow['depth_m'] = $s['depth'];
+        $boatRow['lat'] = $s['lat'];
+        $boatRow['lon'] = $s['lon'];
+        $fine = \App\Game\Comandante::perdita($boatRow, $causa, $t);
+        $eventi[] = self::ev($t, 'perdita', 'allarme', $s, $fine['testo']);
+
+        $s['speed'] = 0.0;
+        $s['ordered'] = 0.0;
+    }
+
+    /** Soglie di consumo e cambi di tempo: gli avvisi che il comandante vuole trovare nel giornale. */
+    private static function soglie(
+        int $t,
+        array &$s,
+        array $type,
+        array $boat,
+        array &$eventi,
+        array $meteo,
+        ?array $prec,
+        array &$gia,
+        Clock $clock,
+        int $sub,
+    ): void {
         $unaVolta = static function (string $kind, callable $fn) use (&$gia, &$eventi): void {
             if (isset($gia[$kind])) {
                 return;
@@ -933,10 +1125,23 @@ final class BoatSim
                     $t, $k, 'attenzione', $s, Narrator::aria($s['air'])
                 ));
             }
+            // Con l'aria alla fine si emerge, esattamente come con le batterie
+            // scariche: l'anidride carbonica ammazzava un equipaggio molto
+            // prima che finisse la corrente. Fino all'audit del 19/09/2026
+            // l'aria poteva scendere a zero e restarci per giorni senza che
+            // succedesse niente: era l'unica delle quattro riserve senza
+            // conseguenze.
+            if ($s['air'] <= 2.0) {
+                $s['ord_depth'] = 0.0;
+                $unaVolta('aria_finita', fn (string $k): array => self::ev(
+                    $t, $k, 'allarme', $s, Narrator::ariaFinita()
+                ));
+            }
         } else {
             // Tornati in superficie, gli avvisi di batteria e aria tornano validi
             // per la prossima immersione.
-            unset($gia['batteria_25'], $gia['batteria_8'], $gia['aria_bassa'], $gia['emersione_forzata']);
+            unset($gia['batteria_25'], $gia['batteria_8'], $gia['aria_bassa'],
+                $gia['emersione_forzata'], $gia['aria_finita']);
         }
 
         if ($s['fuel'] <= 0.01) {
@@ -962,14 +1167,27 @@ final class BoatSim
             $bfPrima = (int) $prec['beaufort'];
             // Una burrasca si annota quando e' chiaro che e' una burrasca —
             // mezz'ora buona sopra forza 8 — e non piu' di una volta al giorno.
-            if ($bfOra >= 8) {
-                $gia['__bf_conta'] = (int) ($gia['__bf_conta'] ?? 0) + 1;
-                if ((int) $gia['__bf_conta'] === 6 && $t - (int) ($gia['__bf_ultima'] ?? 0) > 86400) {
+            if ($bfOra >= 8 && $t - (int) ($gia['__bf_ultima'] ?? 0) > 86400) {
+                // Sei sotto-passi di fila sopra forza 8, contati all'indietro
+                // dal punto in cui siamo: nessun contatore da portarsi dietro,
+                // e quindi nessun modo di perderlo fra una chiamata e l'altra.
+                $difila = 1;
+                for ($k = 1; $k < 6; $k++) {
+                    $tp = $t - $k * $sub;
+                    if ($tp <= 0
+                        || (int) World::weatherCon($tp, $s['lat'], $s['lon'], $clock->date($tp))['beaufort'] < 8) {
+                        break;
+                    }
+                    $difila++;
+                }
+                // Esattamente sei: al settimo la burrasca e' gia' annotata.
+                $settimo = $t - 6 * $sub;
+                $giaPrima = $difila === 6 && $settimo > 0
+                    && (int) World::weatherCon($settimo, $s['lat'], $s['lon'], $clock->date($settimo))['beaufort'] >= 8;
+                if ($difila === 6 && !$giaPrima) {
                     $gia['__bf_ultima'] = $t;
                     $eventi[] = self::ev($t, 'burrasca', 'attenzione', $s, Narrator::burrasca($bfOra, (int) $meteo['sea_state']));
                 }
-            } else {
-                $gia['__bf_conta'] = 0;
             }
             if ($bfOra <= 3 && $bfPrima >= 6) {
                 $eventi[] = self::ev($t, 'bonaccia', 'info', $s, Narrator::bonaccia());

@@ -191,6 +191,28 @@ final class Narrator
         );
     }
 
+    /**
+     * L'ultima riga del giornale. Non c'e' nessuno che possa scriverla per
+     * davvero: sono parole del BdU, ricostruite dopo, come per tutti i
+     * battelli che non risposero piu'.
+     */
+    /** L'aria e' finita: si va su, e non e' piu' una decisione del comandante. */
+    public static function ariaFinita(): string
+    {
+        return "L'aria e' finita. I fiammiferi non prendono, gli uomini respirano a bocca aperta senza "
+            . "riuscire a riempirsi i polmoni, chi si alza in piedi vede nero. Il Direttore di Macchina "
+            . "da' aria alle casse senza aspettare l'ordine: si emerge, qualunque cosa ci sia sopra.";
+    }
+
+    public static function collasso(float $quota): string
+    {
+        return sprintf(
+            "A %.0f metri lo scafo non regge piu'. Un colpo solo, lungo un istante, e l'acqua entra "
+            . "da ogni parte insieme. Non c'e' il tempo di dare un ordine.",
+            $quota
+        );
+    }
+
     public static function morale(float $morale, float $fatica): string
     {
         return sprintf(

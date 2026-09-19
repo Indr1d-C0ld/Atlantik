@@ -15,6 +15,7 @@
     <div class="azioni">
       <button type="submit">Entra</button>
       <a class="bottone bottone--fantasma" href="<?= e(url('/arruolamento')) ?>">Arruolati</a>
+      <a class="bottone bottone--fantasma" href="<?= e(url('/recupero-richiesta')) ?>">Password dimenticata</a>
     </div>
   </form>
 </div>

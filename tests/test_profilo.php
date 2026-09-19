@@ -390,7 +390,9 @@ if (count($comandanti) < 2) {
         } catch (PDOException $e) {
             $numeroBloccato = $e->getCode() === '23000';
         }
-        ok('e anche il numero e\' suo', $numeroBloccato);
+        ok('e anche il numero e\' suo', $numeroBloccato,
+            sprintf('b1=%s(%s) b2=%s(%s)', (string) $b1['uboat_number'], (string) $b1['state'],
+                (string) $b2['uboat_number'], (string) $b2['state']));
 
         Database::run("UPDATE boats SET state = 'perduto' WHERE id = ?", [(int) $b1['id']]);
 
