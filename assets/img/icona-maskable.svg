@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Atlantik">
+  <rect width="512" height="512" rx="0" fill="#151a1d"/>
+  <g fill="none" stroke="#c39a52" stroke-width="14" stroke-linecap="round">
+    <!-- orizzonte -->
+    <path d="M64 330 H448"/>
+    <!-- sagoma di U-Boot: scafo, torretta, periscopio -->
+    <path d="M118 300 h276 a34 34 0 0 1 -34 30 H152 a34 34 0 0 1 -34 -30 z" fill="#c39a52" stroke="none"/>
+    <path d="M232 300 v-46 h58 v46" fill="#c39a52" stroke="none"/>
+    <path d="M258 254 v-40"/>
+  </g>
+  <g stroke="#7fcf9b" stroke-width="9" opacity=".85">
+    <path d="M96 380 q40 -22 80 0 t80 0 t80 0 t80 0" fill="none"/>
+    <path d="M96 424 q40 -22 80 0 t80 0 t80 0 t80 0" fill="none"/>
+  </g>
+</svg>
