@@ -14,6 +14,8 @@ set -uo pipefail
 BASE_URL="${BASE_URL:-http://localhost/atlantik}"
 HOST_HDR="${HOST_HDR:-localhost}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Il file dei segreti: fuori dal DocumentRoot. ATLANTIK_CONFIG lo sposta.
+CONFIG_FILE="${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"
 JAR="$(mktemp)"
 USER_NAME="prova Kaleun $(date +%s)"
 USER_MAIL="prova_nav_$(date +%s)@esempio.invalid"
@@ -41,13 +43,13 @@ php "${ROOT}/bin/console.php" world:seed >/dev/null
 
 # 1. Arruolamento (trasporto e-mail forzato a log) e attivazione da console
 php -r '
-$f="${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"; $c=require $f;
+$f="'"${CONFIG_FILE}"'"; $c=require $f;
 file_put_contents("/tmp/atlantik-transport-nav.bak", $c["mail"]["transport"]);
 $c["mail"]["transport"]="log";
 file_put_contents($f, "<?php\n\ndeclare(strict_types=1);\n\nreturn ".var_export($c,true).";\n");'
 ripristina() {
   php -r '
-  $f="${ATLANTIK_CONFIG:-/etc/atlantik/config.php}"; $c=require $f;
+  $f="'"${CONFIG_FILE}"'"; $c=require $f;
   $c["mail"]["transport"]=trim((string)@file_get_contents("/tmp/atlantik-transport-nav.bak")) ?: "log";
   file_put_contents($f, "<?php\n\ndeclare(strict_types=1);\n\nreturn ".var_export($c,true).";\n");
   @unlink("/tmp/atlantik-transport-nav.bak");'
@@ -103,7 +105,7 @@ contiene "l'emblema compare sul battello" "spada.svg" "${CANT}"
 # Nessun emblema si porta in due: lo si verifica prendendone uno gia' preso da
 # un altro battello. Il vincolo sta nel database, non nel codice.
 ALTRO=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $r = App\Core\Database::first("SELECT emblema_key FROM boats WHERE emblema_key IS NOT NULL AND emblema_key <> \"spada\" LIMIT 1");
 echo $r["emblema_key"] ?? "";')
 if [[ -n "${ALTRO}" ]]; then
@@ -131,9 +133,9 @@ grep -q 'assets/assets' <<< "${CANT}" \
   && verifica "nessun doppio prefisso negli indirizzi" "no" "si" \
   || verifica "nessun doppio prefisso negli indirizzi" "no" "no"
 RISCRITTO=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.emblema_file FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
-$f = "/data/html/atlantik/assets/img/emblemi/caricati/" . $b["emblema_file"];
+$f = "'"${ROOT}"'/assets/img/emblemi/caricati/" . $b["emblema_file"];
 $i = @getimagesize($f);
 echo is_file($f) && $i !== false && $i[2] === IMAGETYPE_WEBP && $i[0] === 256 ? "si" : "no";' "${USER_NAME}")
 verifica "il file e' stato ridisegnato in WebP 256" "si" "${RISCRITTO}"
@@ -144,7 +146,7 @@ printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><scr
 TOKE=$(echo "$(c "${BASE_URL}/cantiere")" | token_da)
 c -o /dev/null -X POST "${BASE_URL}/cantiere/emblema/carica" -F "_token=${TOKE}" -F "emblema=@${SVG};type=image/svg+xml"
 SVGENTRATO=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.emblema_file FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 echo str_ends_with((string) $b["emblema_file"], ".svg") ? "si" : "no";' "${USER_NAME}")
 verifica "un SVG non entra" "no" "${SVGENTRATO}"
@@ -265,7 +267,7 @@ QUADRAT=$(php -r '$s=json_decode(file_get_contents("php://stdin"),true); echo $s
 # quanto si e' navigato sott'acqua nelle sei ore precedenti — che cambia a ogni
 # corsa, perche' cambiano gli aerei.
 php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 App\Core\Database::run("UPDATE boats SET battery_pct = 100 WHERE id = ?", [$b["id"]]);' "${USER_NAME}"
 
@@ -276,7 +278,7 @@ CODE=$(c -o /dev/null -w '%{http_code}' -X POST "${BASE_URL}/ordini" --data-urle
   --data-urlencode "speed=4" --data-urlencode "depth=60" --data-urlencode "silent=1")
 verifica "ordine di immersione accettato" "302" "${CODE}"
 ORDINATA=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.ordered_depth_m q FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 echo (int) round((float) $b["q"]);' "${USER_NAME}")
 verifica "quota ordinata registrata" "60" "${ORDINATA}"
@@ -286,7 +288,7 @@ MODO=$(php -r '$s=json_decode(file_get_contents("php://stdin"),true); echo $s["b
 # Se non e' in immersione, la prova deve dire PERCHE': senza, si legge solo
 # "atteso immersione, ottenuto superficie" e si ricomincia da capo ogni volta.
 DETTAGLIO=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.* FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 $e = App\Core\Database::first("SELECT text FROM patrol_events WHERE boat_id = ? AND kind IN (\"emersione_forzata\",\"emersione\",\"aereo\") ORDER BY id DESC LIMIT 1", [$b["id"]]);
 printf("quota %.0f m, ordinata %.0f m, batteria %.0f%%%s", $b["depth_m"], $b["ordered_depth_m"], $b["battery_pct"],
@@ -310,13 +312,13 @@ echo (int) ($s["materiale"]["avarie"] ?? -1);' <<< "$(c -H 'Accept: application/
 [[ "${UOMINI}" -ge 0 ]] && verifica "lo stato riporta il materiale" "si" "si" || verifica "lo stato riporta il materiale" "si" "no"
 
 ORGANICO=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 echo (int) (App\Core\Database::first("SELECT COUNT(*) n FROM crew_members WHERE boat_id = ?", [$b["id"]])["n"] ?? 0);' "${USER_NAME}")
 [[ "${ORGANICO}" -gt 30 ]] && verifica "equipaggio imbarcato (${ORGANICO} uomini)" "si" "si" || verifica "equipaggio imbarcato (${ORGANICO})" "si" "no"
 
 SISTEMI=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 echo (int) (App\Core\Database::first("SELECT COUNT(*) n FROM boat_systems WHERE boat_id = ?", [$b["id"]])["n"] ?? 0);' "${USER_NAME}")
 [[ "${SISTEMI}" -gt 12 ]] && verifica "sistemi installati (${SISTEMI})" "si" "si" || verifica "sistemi installati (${SISTEMI})" "si" "no"
@@ -329,13 +331,13 @@ contiene "portata idrofonica mostrata" "Un convoglio si sente fino a" "${PAGINA}
 contiene "calore del settore" "Sorveglianza" "${PAGINA}"
 
 TRAFFICO=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $s = App\Sim\Traffic::stato(App\Sim\World::now());
 echo (int) $s["navi"];')
 [[ "${TRAFFICO}" -gt 100 ]] && verifica "naviglio alleato in mare (${TRAFFICO} navi)" "si" "si" || verifica "naviglio in mare (${TRAFFICO})" "si" "no"
 
 CONVOGLI=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $s = App\Sim\Traffic::stato(App\Sim\World::now());
 echo (int) $s["convogli"];')
 [[ "${CONVOGLI}" -ge 8 ]] && verifica "convogli in navigazione (${CONVOGLI})" "si" "si" || verifica "convogli in navigazione (${CONVOGLI})" "si" "no"
@@ -348,7 +350,7 @@ contiene "contatti passati alla carta" "contatti" "${PAGINA}"
 # vera sta nel dato: un contatto all'idrofono non deve mai portarsi dietro una
 # classe riconosciuta, altrimenti la regola si aggira senza accorgersene.
 SPIONI=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 echo (int) App\Core\Database::first(
   "SELECT COUNT(*) n FROM contacts WHERE sensore <> \"vista\" AND classe_key_est IS NOT NULL"
 )["n"];')
@@ -375,7 +377,7 @@ contiene "stazione d'attacco" "Calcolatore di lancio" "${PAGINA}"
 # dentro non lo si guarda comunque.
 alzaPeriscopio() {
   php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 App\Core\Database::run("UPDATE boats SET mode=\"periscopio\", depth_m=12, ordered_depth_m=12, periscopio_alzato=?, periscopio_gts=NULL WHERE id=?",
   [(int) $argv[2], $b["id"]]);' "${USER_NAME}" "$1"
@@ -452,7 +454,7 @@ contiene "in immersione non si trasmette" "emergere" "${PAGINA}"
 # e' giusto cosi' — ma qui si verifica la trasmissione, non l'avaria. Come per
 # le batterie, si parte da uno stato noto.
 php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 App\Core\Database::run("UPDATE boat_systems SET state = \"ok\", repair_progress = 0 WHERE boat_id = ? AND skey = \"radio\"", [$b["id"]]);' "${USER_NAME}"
 
@@ -460,7 +462,7 @@ MESSAGGI=0
 for TENTATIVO in 1 2 3; do
   PAGINA=$(c "${BASE_URL}/radio"); TOKR=$(echo "${PAGINA}" | token_da)
   php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 App\Core\Database::run("UPDATE boats SET mode=\"superficie\", depth_m=0, ordered_depth_m=0,
     auto_dive_fine_gts=NULL, auto_dive_quota=NULL WHERE id=?", [$b["id"]]);' "${USER_NAME}"
@@ -469,7 +471,7 @@ App\Core\Database::run("UPDATE boats SET mode=\"superficie\", depth_m=0, ordered
     --data-urlencode "_token=${TOKR}" --data-urlencode "kurz=consumo")
 
   MESSAGGI=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 echo (int) (App\Core\Database::first("SELECT COUNT(*) n FROM radio_messages WHERE boat_id = ?", [$b["id"]])["n"] ?? 0);' "${USER_NAME}")
   [[ "${MESSAGGI}" -ge 1 ]] && break
@@ -486,7 +488,7 @@ contiene "pagina dei trofei" "Trofei" "${PAGINA}"
 contiene "trofei divisi per categoria" "Mestiere" "${PAGINA}"
 
 PATROL=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 $b = App\Core\Database::first("SELECT b.id FROM boats b JOIN users u ON u.id=b.user_id WHERE u.username = ?", [$argv[1]]);
 $p = App\Core\Database::first("SELECT id FROM patrols WHERE boat_id = ? ORDER BY id DESC LIMIT 1", [$b["id"]]);
 echo (int) ($p["id"] ?? 0);' "${USER_NAME}")
@@ -515,7 +517,7 @@ contiene "giornale di guerra compilato" "Mollati gli ormeggi" "${PAGINA}"
 # riga di genere "affondamento" non trovasse la sua nave, resterebbe muta senza
 # che nessuno se ne accorga.
 SPAIATE=$(php -r '
-require "/data/html/atlantik/bin/_bootstrap.php";
+require "'"${ROOT}"'/bin/_bootstrap.php";
 echo (int) App\Core\Database::first(
   "SELECT COUNT(*) n FROM patrol_events e
     WHERE e.kind = \"affondamento\"

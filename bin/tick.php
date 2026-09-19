@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Atlantik — battito del mondo.
  *
  * Da cron, ogni minuto:
- *   * * * * * /usr/bin/php /data/html/atlantik/bin/tick.php >/dev/null 2>&1
+ *   * * * * * /usr/bin/php <installazione>/bin/tick.php >/dev/null 2>&1
  *
  * Fa avanzare tutti i battelli in mare fino all'ora attuale. Non e' l'unico
  * modo in cui il mondo procede: anche la richiesta del giocatore fa avanzare
