@@ -308,6 +308,7 @@ final class Mondo
             'potati_navi'       => ['nave tolta dal mare', 'navi tolte dal mare'],
             'potati_convogli'   => ['convoglio tolto', 'convogli tolti'],
             'potati_battiti'    => ['battito potato', 'battiti potati'],
+            'potati_radio'      => ['trasmissione senza mittente rimossa', 'trasmissioni senza mittente rimosse'],
             'battelli'          => ['battello avanzato', 'battelli avanzati'],
             'incontri'          => ['incontro seguito', 'incontri seguiti'],
             'eventi'            => ['evento', 'eventi'],

@@ -254,10 +254,23 @@ final class Radio
     {
         $branco = Branco::corrente((int) $boat['id']);
         return Database::all(
+            // Chi riceve che cosa:
+            //   "tutti"    — i comunicati del BdU, che vanno a tutti;
+            //   "branco"   — quello che si dicono i compagni del proprio gruppo;
+            //   "battello" — la risposta del BdU a noi;
+            //   r.boat_id  — le nostre trasmissioni, che restano nel registro.
+            //
+            // C'era anche (destinatario = "bdu" AND boat_id IS NULL), e quella
+            // riga faceva entrare nella radio di TUTTI i rapporti che gli altri
+            // mandavano al BdU — appena il battello che li aveva spediti
+            // spariva, perche' la chiave esterna azzera boat_id invece di
+            // portarsi via la riga. Misurato il 19/09/2026: trecentoquarantadue
+            // messaggi di battelli che non esistono piu' in coda a ogni radio.
+            // Un rapporto AL BdU non e' un messaggio DAL BdU, e non e' roba che
+            // riguarda gli altri.
             'SELECT r.*, b.uboat_number AS mittente
              FROM radio_messages r LEFT JOIN boats b ON b.id = r.boat_id
-             WHERE (r.destinatario IN ("tutti") )
-                OR (r.destinatario = "bdu" AND r.boat_id IS NULL)
+             WHERE (r.destinatario = "tutti")
                 OR (r.destinatario = "branco" AND r.wolfpack_id = ?)
                 OR (r.destinatario = "battello" AND r.dest_boat_id = ?)
                 OR (r.boat_id = ?)
