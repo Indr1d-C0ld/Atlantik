@@ -99,6 +99,14 @@ try {
             $miglia += $r['dist_nm'];
             $eventi += $r['events'];
         } catch (\Throwable $e) {
+            // Un battello che sparisce fra la lettura dell'elenco e il suo
+            // turno non e' un guasto: e' un account cancellato mentre il
+            // battito era gia' partito. Succede a ogni pulizia delle prove, e
+            // marcava il battito come fallito nella diagnostica.
+            $c = Database::first('SELECT id FROM boats WHERE id = ?', [(int) $b['id']]);
+            if ($c === null) {
+                continue;
+            }
             $errori++;
             logger('tick: battello ' . $b['id'] . ' — ' . $e->getMessage(), 'error');
         }
