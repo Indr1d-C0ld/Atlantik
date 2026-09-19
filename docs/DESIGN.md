@@ -732,7 +732,7 @@ Stessa impalcatura collaudata su SubSpazio (Core riusabile, non riscritto):
   storage/logs, storage/uploads
 ```
 
-Segreti e configurazione in un file **fuori dal DocumentRoot** (`/etc/atlantik/config.php`, oppure il percorso indicato dalla variabile d'ambiente `ATLANTIK_CONFIG`),
+Segreti e configurazione in un file **fuori dal DocumentRoot** (`ATLANTIK_CONFIG`, oppure `/etc/atlantik/config.php`),
 DB **`atl_atlantik`**, mail via **Brevo SMTP** riusando il mittente verificato del forum, con
 destinatario delle notifiche indicato nella configurazione.
 

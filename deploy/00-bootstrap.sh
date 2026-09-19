@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Parametri d'ambiente (tutti facoltativi, con default ragionevoli):
+# Parametri d'ambiente (facoltativi, con default ragionevoli):
 #
 #   OWNER_USER   utente che possiede la cartella del sito (default: chi invoca sudo)
-#   SITE_DIR     cartella servita dal web server
-#   CONFIG_DIR   cartella dei segreti, FUORI dal DocumentRoot
+#   SITE_DIR     cartella servita dal web server (default: quella che contiene questo script)
+#   CONFIG_DIR   cartella dei segreti, FUORI dal DocumentRoot (default: /etc/atlantik)
 #   PUBLIC_URL   indirizzo pubblico del gioco
 #   ADMIN_EMAIL  destinatario delle notifiche di amministrazione
 #
@@ -25,7 +25,7 @@
 #
 set -euo pipefail
 
-OWNER_USER="${OWNER_USER:-$(logname 2>/dev/null || echo "$SUDO_USER")}"
+OWNER_USER="${OWNER_USER:-$(logname 2>/dev/null || echo "${SUDO_USER:-root}")}"
 OWNER_GROUP="www-data"
 PROJECT_DIR="${SITE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/atlantik}"
