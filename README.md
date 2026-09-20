@@ -15,298 +15,374 @@ nessun build step. Interfaccia in italiano.
 
 ---
 
+## Che cos'è, in concreto
+
+Ti viene assegnato un battello e un equipaggio di quarantotto uomini con nome e
+cognome. Esci da Lorient, attraversi il Golfo di Biscaglia — dove il pericolo
+non sono i convogli ma gli aerei — e vai a cercare qualcosa in mezzo
+all'Atlantico. Non c'è una mappa che ti dice dove sono i nemici: c'è un
+idrofono, quattro vedette in torretta, e un Obersteuermann che ti dà un punto
+nave con un errore che cresce di ora in ora finché il cielo non si apre
+abbastanza da prendere le stelle.
+
+Quando senti qualcosa, il tempo cambia marcia: la crociera corre veloce, la
+caccia va al secondo. Ti avvicini in superficie di notte, ti immergi quando ti
+vedono, calcoli la soluzione di tiro con i dati che hai — angolo sulla prua,
+velocità stimata, distanza — e lanci sapendo che se hai sbagliato di due nodi a
+duemila metri il siluro passa dietro.
+
+Poi arrivano le scorte, e la partita cambia di nuovo: silenzio, quota, strato
+termico, e la pazienza di non muoversi mentre le cariche scendono.
+
+Se non torni, non torni. Il comandante muore, il suo fascicolo si chiude e
+finisce nell'albo d'oro; l'account resta e ne arruola un altro, che eredita una
+quota del prestigio del predecessore e ricomincia.
+
+---
+
+## L'ambientazione
+
+**Un eterno 1942.** Il calendario gira dentro l'anno di massima densità
+operativa e non invecchia mai: restano vere le stagioni, le fasi lunari, le
+durate del giorno — e la guerra non finisce. È una decisione di progetto, non
+una scorciatoia, e ha una conseguenza dichiarata: l'arsenale del 1939-45 c'è
+tutto, ma si sblocca **per merito**, non per data. Ogni apparato porta scritto
+l'anno in cui comparve davvero, e il gioco lo dice in chiaro.
+
+La difficoltà non scala col calendario: scala con **lo spazio e con la
+reazione del nemico**.
+
+- Il **Mid-Atlantic Gap** a sud della Groenlandia è dove i Liberator non
+  arrivano: è la caccia grossa.
+- Il **Golfo di Biscaglia** è il corridoio del transito, e si paga in aerei.
+- Ogni settore ha un **calore** (0-100) che sale con gli affondamenti, con le
+  trasmissioni radio intercettate e con gli avvistamenti, e scende da solo col
+  tempo. Calore alto significa più scorte, meglio addestrate, copertura aerea
+  più estesa e convogli deviati. È quello che faceva l'Ammiragliato per
+  davvero, e produce la stessa curva di difficoltà senza barare col calendario.
+
+La posizione si dice in **Marinequadrat**, la griglia della Kriegsmarine: BF
+1911, AK 4732. È quella che si trasmette al BdU, ed è quella con cui gli altri
+comandanti ti dicono dove hanno visto qualcosa.
+
+**Nove basi** con le loro flottiglie storiche — Lorient (2. und 10.), Saint-
+Nazaire (6. und 7.), Brest (1. und 9.), La Pallice, Bordeaux, Kiel,
+Wilhelmshaven, Bergen, Trondheim — e ventitré fra porti e ancoraggi nel
+teatro.
+
+---
+
+## Il tempo, che è la cosa più insolita
+
+Due motori, due velocità.
+
+**In crociera** il mondo corre a **1:30**: un minuto reale vale mezz'ora di
+gioco. Una traversata dell'Atlantico dura giorni di gioco e ore vere. Il mondo
+va avanti anche quando non guardi — un battito da cron ogni minuto muove tutti
+i battelli in mare, fa salpare e arrivare i convogli, cambia il tempo, manda
+gli aerei in pattuglia.
+
+**In contatto** il tempo rallenta fino a **1:1**: durante un attacco il secondo
+di gioco è un secondo vero, e le decisioni si prendono adesso.
+
+L'avanzamento è **pigro e deterministico**: il battello sta fermo nel database
+finché qualcuno non apre una pagina, e a quel punto la simulazione recupera il
+tempo passato a sotto-passi di cinque minuti. Il caso è seminato sul battello e
+sull'istante, mai sull'orologio di chi si collega — il che significa che
+
+> due comandanti identici, uno che ricarica ogni trenta secondi e uno che torna
+> una volta al giorno, dopo dodici ore di gioco si trovano nello stesso punto,
+> con la stessa nafta e **lo stesso identico giornale di bordo**.
+
+Non è un'aspirazione: è una prova automatica che gira a ogni esecuzione della
+suite, e ci sono volute tre tornate di audit per renderla vera.
+
+---
+
+## Il battello
+
+**Otto tipi giocabili**, dal piccolo II D costiero al IX D2 oceanico, passando
+per il VII B e il VII C che sono la spina dorsale, fino al XXI — che in
+immersione va più forte che in superficie. Ogni scheda riporta dislocamento,
+velocità, autonomia alle andature di riferimento, quota di prova, tubi e
+siluri, ed è confrontata una per una con le fonti.
+
+**Diciannove sistemi** che si guastano davvero: diesel, motori elettrici,
+timoni orizzontali, casse di zavorra, pompe, compressori, periscopi, idrofono,
+radio, cannone, flak, batterie, scafo. Si rompono per usura — e l'usura cresce
+col regime, col mare grosso e con la stanchezza di chi sta alle macchine — e
+per i colpi incassati. La squadra ripara a mare quello che si può riparare a
+mare: un periscopio piegato, no.
+
+**Otto compartimenti** che imbarcano acqua. L'acqua pesa: abbassa la quota di
+sicurezza e rallenta. Una paratia si può sigillare, e se dentro c'è ancora
+qualcuno, quel qualcuno resta dentro. La centrale non si sigilla.
+
+**La quota di collasso è vera.** Ogni scafo ha il suo punto di cedimento, fisso
+e sconosciuto al comandante, dentro l'intervallo dichiarato dal cantiere — per
+un VII B, fra 220 e 250 metri. La pressione oltre la quota di prova lascia due
+segni: uno elastico che si riassorbe, e uno permanente che non torna indietro e
+abbassa quell'intervallo per sempre. Scendere è una scelta con un prezzo.
+
+**Sei tipi di siluro**: il G7a a vapore con le sue tre regolazioni (44 nodi per
+5.500 metri, 40 per 7.500, 30 per 12.500) e la scia che ti tradisce, i G7e
+elettrici silenziosi e più corti, il FAT e il LUT che corrono a serpentina
+dentro un convoglio, e il T5 acustico che insegue l'elica. Con i loro difetti
+storici: cilecca, scoppio prematuro, quota sbagliata — la crisi dei siluri è
+nel modello, non nelle note.
+
+I tubi **si ricaricano**: venti minuti buoni per tubo, quattro uomini che
+manovrano una tonnellata e mezza d'acciaio in un corridoio largo un metro. E i
+siluri del contenitore stagno di coperta si tirano dentro solo in superficie,
+col mare non oltre forza 3, in un'ora, col battello che nel frattempo non può
+immergersi in fretta.
+
+**Dieci apparati** da comprare col prestigio, ognuno con la sua data storica in
+scheda: Metox e Naxos (rivelatori radar), l'idrofono a schiera Balkon, le
+batterie maggiorate, le sospensioni elastiche, lo scafo rinforzato, la
+mitragliera quadrinata, i siluri collaudati, il lanciatore multiplo per le
+cartucce Bold, lo Schnorchel.
+
+---
+
+## L'equipaggio
+
+Quarantotto uomini, ciascuno con nome, grado, ruolo e anzianità. Non sono una
+statistica: sono un ruolino.
+
+Gli ufficiali sono quelli storici — il **I.WO** all'attacco silurico, il
+**II.WO** all'artiglieria, il **LI** che comanda l'immersione e l'assetto ed è
+quello che ti salva, l'**Obersteuermann** che tiene il punto. Poi il Funkmaat
+alla radio e all'idrofono, i macchinisti ai diesel e agli elettrici, i
+siluristi, le vedette, e lo Smutje — il cuoco, che conta sul serio per il
+morale.
+
+Ognuno ha **competenza** nella sua specialità, **fatica** e **morale**. I tre
+si muovono per conto loro secondo la vita di bordo: i quarti di guardia che
+ruotano, il mare grosso che non fa dormire, l'aria che si fa pesante,
+l'allarme, i giorni di missione che si accumulano, le avarie, i viveri che
+finiscono. E la resa dell'equipaggio entra dappertutto: nelle avarie, nella
+velocità delle riparazioni, nella qualità dell'ascolto, nell'errore al lancio.
+
+Fra una missione e l'altra si mandano gli uomini ai corsi. Si feriscono, si
+muore, e i migliori vengono trasferiti a formare nuovi equipaggi — che è una
+delle ragioni per cui la qualità media crollò nel 1943.
+
+---
+
+## Il rilevamento, che è il cuore vero
+
+Tutto il gioco è un problema di informazione asimmetrica: **chi vede per primo,
+vive**. Il modello è simmetrico: le stesse formule con cui tu trovi loro li
+governano quando cercano te.
+
+**L'idrofono** non dà la distanza, dà un rilevamento. Un convoglio grosso si
+sente a trenta-quaranta miglia con mare moderato; una nave isolata a dieci o
+quindici; col mare grosso quasi niente. Una stima di distanza si azzarda solo
+quando il rumore è forte — e resta grossolana. La distanza vera si ricava
+pedinando, che è il mestiere del Fuehlungshalter e costa ore.
+
+**Lo strato termico** taglia il contatto in due: sotto, l'ASDIC fatica a
+trovarti e tu fatichi a sentire. D'inverno lo strato quasi non c'è, e una
+burrasca lo rimescola.
+
+**La vista** dipende dalla sagoma, dalla luce e dal mare. Un U-Boot in
+superficie, di notte e senza luna, lo si vede a un miglio e mezzo; con la luna
+piena, a cinque — e vale in tutte e due le direzioni, perché è la stessa
+formula. Il **fumo all'orizzonte** è un canale a sé — si vede prima degli alberi
+— ed è il primo indizio di un convoglio. Presentare la prua riduce moltissimo
+la propria sagoma; correre lascia una baffa che a sei nodi sul mare liscio
+triplica quello che si vede di te.
+
+**Il radar alleato** non guarda la luce: di notte non ti serve a niente essere
+scuro. Il Metox canta quando qualcuno ti illumina, e mezzo minuto di anticipo è
+la differenza fra immergersi e prendersi quattro bombe sul ponte.
+
+**Gli aerei** pattugliano per zona e reagiscono al calore del settore. In
+Biscaglia sono il motivo per cui si transita di notte e in immersione.
+
+I contatti sono **soggettivi**: quello che hai in mano non è la verità, è
+quello che il tuo equipaggio crede. Classe stimata, rotta stimata, velocità
+stimata, con una certezza che cresce tenendo il contatto — e una nave civetta
+resta un innocuo piroscafo finché non calano i pannelli.
+
+---
+
+## Il combattimento
+
+L'incontro tattico materializza il convoglio in formazione vera — colonne a
+mille iarde, navi a seicento, che è il motivo per cui ci si infila dentro — e
+scorre a passi di dieci secondi.
+
+**Il lancio** è un problema di trigonometria con dati incerti: rilevamento,
+angolo sulla prua, velocità e distanza stimate, più l'errore del periscopio o
+la stima del I.WO se non sei tu a guardare. Si sceglie il tubo, la spoletta
+(a contatto o magnetica), la quota di corsa e l'apertura del ventaglio.
+L'errore si propaga: a duemila metri, due nodi sbagliati sono un siluro perso.
+
+**Le scorte** cercano con l'ASDIC — che ha un cono, un angolo cieco sotto di
+sé, e perde il contatto nell'ultimo tratto dell'accosto, che è esattamente il
+momento in cui lanciano le cariche — e con l'idrofono, che sente il tuo rumore
+proprio: lì la marcia silenziosa paga. Le cariche scendono con una quota
+stimata. Il Bold, la cartuccia che produce una nube di bolle, compra secondi.
+
+Il **cannone di coperta** affonda un piroscafo isolato senza spendere un
+siluro, ma ti tiene in superficie a poche centinaia di metri — ed è la
+situazione in cui la nave civetta faceva cadere i pannelli.
+
+Una nave colpita e non affondata **non guarisce**: esce dall'incontro, rallenta,
+perde il convoglio e diventa una ritardataria — la preda preferita — e magari
+affonda ore dopo, e il BdU te la accredita comunque.
+
+---
+
+## Il mondo che gira da solo
+
+Seicento-settecento navi in mare in ogni momento — seicentotrenta adesso, in
+quattordici convogli — su **undici rotte storiche**
+e **otto serie di convogli** — HX e SC verso est, ON e ONS verso ovest, OG e HG
+per Gibilterra, SL da Freetown, TM le petroliere — più il naviglio isolato, le
+rotte dei Caraibi, del Capo e dell'Islanda.
+
+**Ventidue classi di naviglio**: mercantili, petroliere, trasporti truppe,
+ausiliarie, sei classi di scorta (dalle corvette Flower ai cacciatorpediniere
+Town e V&W, alle fregate River) e cinque tipi di aereo. Ognuna con velocità,
+stazza, rumore, eliche, e — dove serve — ASDIC, radar, HF/DF.
+
+Il **meteo** è un campo continuo deterministico: vento, stato del mare,
+visibilità, nebbia, nuvolosità, pressione. È funzione pura del seme, del punto
+e dell'istante — non è una tabella, e non cambia se ricarichi. Sole e luna sono
+calcolati per davvero: l'altezza del sole decide la luce, la fase della luna
+decide se la notte è nera o se ti vedono a cinque miglia.
+
+---
+
+## Multigiocatore
+
+Il mondo è **uno solo e condiviso**. I convogli che affondi non ci sono più per
+gli altri; il calore che lasci in un settore lo trovano loro.
+
+**Il BdU** assegna aree operative, emette comunicati di situazione, forma i
+gruppi e — quando segnali un convoglio — ti chiede di **pedinarlo**: restare
+attaccato per ore senza attaccare, e continuare a trasmettere, perché gli altri
+possano arrivare. È il mestiere più ingrato dell'Atlantico e il gioco lo paga
+più di un'area operativa, perché altrimenti non lo farebbe nessuno.
+
+**I branchi** sono asincroni: si entra, si segnala, i compagni ricevono il
+punto e convergono. Chi segnala prende il premio del Fuehlungshalter.
+
+**La radio ha un prezzo.** Ogni trasmissione è un'emissione che l'**HF/DF**
+alleato può agganciare: la probabilità cresce con i secondi di antenna, e con
+due o più rilevamenti esce un punto — il tuo — con un errore che si stringe.
+Da lì in poi il settore si scalda. I Kurzsignale esistono apposta per stare in
+aria il meno possibile.
+
+**Il rifornimento in mare** dal Tipo XIV — la "mucca" — con appuntamento in un
+quadrato e in una finestra, e il rischio che l'appuntamento sia compromesso.
+
+E una regola che è costata un audit per scoprirla: **una nave, un
+affondamento**. Due battelli sullo stesso convoglio aprono due incontri
+distinti — è la tattica del branco — ma lo stesso piroscafo va a fondo una
+volta sola e il merito è di chi ce l'ha mandato.
+
+---
+
+## La carriera
+
+**Tredici livelli di anzianità**, dai gradi storici: si comincia Oberleutnant
+zur See e si arriva, con trentamila punti di prestigio, a Fregattenkapitän.
+
+Tre valute distinte: il **prestigio** che misura la carriera, i **punti di
+assegnazione** che comprano apparati e corsi, i **Reichsmark**.
+
+**Nove decorazioni** con i criteri veri e la motivazione generata in tedesco
+burocratico: Croce di Ferro di seconda e prima classe, Distintivo di guerra dei
+sommergibili, Fregio di fronte, Croce Tedesca in oro, e la catena della Croce
+di Cavaliere fino a fronde di quercia, spade e brillanti. Più **ventitré
+trofei** che premiano il mestiere invece del tonnellaggio: la notte perfetta,
+il cacciatore cacciato, l'orecchio fino, la disciplina del silenzio, sotto le
+cariche, il Leitender Ingenieur.
+
+**Permadeath, con catena di sopravvivenza.** Quando lo scafo cede, la
+probabilità di uscirne dipende dalla quota — sotto i cento metri il portello
+non si apre nemmeno — e chi esce finisce prigioniero o disperso. Il fascicolo
+si chiude e resta nell'albo d'oro, pubblico e permanente. L'account ne arruola
+un altro, che eredita una quota del prestigio.
+
+E c'è la **seconda uscita**, quella che i giochi dimenticano: il **congedo**. Si
+lascia il comando in banchina, da vivi, e si chiude la carriera con onore — che
+è come finirono parecchi di quelli diventati un nome.
+
+---
+
+## Che cosa lo rende diverso
+
+- **Il mondo non dipende da quanto spesso ricarichi la pagina.** È la proprietà
+  più difficile da ottenere in un gioco persistente a tempo compresso, ed è
+  verificata da una prova che confronta quattro ritmi di collegamento diversi e
+  pretende lo stesso giornale di bordo, riga per riga.
+- **Niente è comprabile con soldi veri, e non c'è nessun vantaggio a giocare di
+  più** se non l'esperienza: il tempo del mondo scorre uguale per tutti.
+- **Onestà storica dichiarata.** Ogni dato porta il suo grado di confidenza
+  (alta, media, bassa) e la sua fonte; ogni ricostruzione è etichettata come
+  tale. Le sagome del naviglio dicono in pagina se sono documentate o
+  ricostruite.
+- **Zero dipendenze.** Niente Composer, niente npm, niente CDN, nessun build
+  step. La politica dei contenuti non ammette JavaScript in linea.
+- **Si gioca col dito.** La carta nautica si trascina e si ingrandisce con la
+  pinza; l'applicazione si installa sul telefono.
+
+---
+
 ## Stato
 
-**F0 — Fondamenta: fatta** (17/09/2026). Account con conferma dell'indirizzo via Brevo,
-accesso, base di flottiglia, console CLI, migrazioni, prova end-to-end verde.
+**Il gioco è completo: da F0 a F7.** Fondamenta, mondo e navigazione, battello
+ed equipaggio, contatti, combattimento, carriera, multigiocatore, rifinitura.
+Quello che resta è bilanciamento sul campo e beta.
 
-**F1 — Mondo e navigazione: fatta** (17/09/2026). Griglia Marinequadrat, orologio di
-crociera 1:30, sole e luna con livello di luce, meteo atlantico come campo continuo
-deterministico, correnti, moto con navigazione stimata e punto astronomico, consumi
-calibrati sui dati storici, plancia con quadranti, carta nautica su tela, giornale di
-guerra, tick da cron.
+Sotto c'è un mondo in esercizio dal 17 settembre 2026: seicentotrenta navi in
+mare in questo momento, in quattordici convogli, per tre milioni e mezzo di
+tonnellate di stazza. Il battito del minuto ha girato 3.561 volte e ha fallito
+otto volte — ogni fallimento con la sua riga nel diario e la sua causa nota,
+che è il motivo per cui si contano.
 
-**F2 — Battello ed equipaggio: fatta** (17/09/2026). Compartimenti e diciannove sistemi che
-si guastano davvero, avarie d'uso e da pressione, squadre di riparazione, equipaggio nominativo
-con gradi, specialita', tre guardie, competenza, stanchezza e morale; cantiere e allestimento
-con vincoli di stiva.
+### Le sette revisioni tecniche
 
-**F3 — Contatti: fatta** (18/09/2026). Traffico alleato persistente sulle rotte storiche
-(convogli HX/SC/ON/ONS/OG/HG/SL/TM e navi isolate, 600-700 navi in mare), idrofono con modello
-acustico completo, avvistamento visivo bidirezionale, fumo all'orizzonte, radar alleato,
-pattugliamento aereo per zona, calore di settore, contatti soggettivi con rosa dei rilevamenti.
+Il gioco è stato sottoposto a sette audit successivi, ognuno con un metodo
+diverso dal precedente, perché un metodo ripetuto smette di trovare. Il
+registro completo — con le misure, i numeri e le prove che lo dimostrano — sta
+in `docs/AUDIT.md` nel deployment; qui il sunto.
 
-**F4 — Combattimento: fatta** (18/09/2026). Sei tipi di siluro storici con difetti e spolette,
-calcolatore di lancio con propagazione dell'errore, incontro tattico a passi di dieci secondi con
-il convoglio materializzato in formazione, scorte che cercano con ASDIC (cono e angolo cieco),
-cariche di profondita' con quota stimata, cannone di coperta, Bold, evasione, albo degli
-affondamenti.
+| # | Metodo | Il rilievo che conta |
+|---|--------|----------------------|
+| 1 | Infrastruttura ed esercizio | Nessun versionamento e nessuna copia di sicurezza |
+| 2 | Il gioco in esercizio | **L'incontro tattico non avanzava mai**: in tutta la storia di quel mondo non era affondato niente |
+| 3 | Famiglie di guasto già viste | Il quadro dei compartimenti era inerte: quattro colonne che nessuno scriveva |
+| 4 | *Chi chiama che cosa* | **`Torpedo::ricarica()` non la chiamava nessuno**: lanciati i cinque siluri dei tubi, il battello restava disarmato per tutta la crociera |
+| 5 | *Gira dove serve?* | Due battelli sullo stesso convoglio affondavano la stessa nave e **la pagavano tutti e due** |
+| 6 | Scala, durata, browser vero | Ogni incontro chiuso teneva in vita le venticinque navi del convoglio **e impediva di potarle** |
+| 7 | Caricamenti, accessibilità, fonti | Gli `.htaccess` che proteggevano i caricamenti **non venivano letti da nessuno** |
 
-**F5 — Carriera: fatta** (18/09/2026). Creazione del comandante, tredici livelli di anzianita' con
-i gradi storici, nove decorazioni con criteri e motivazioni generate, prestigio/punti di
-assegnazione/Reichsmark, dieci apparati acquistabili che agiscono davvero sul motore (Metox, Naxos,
-Balkon, batterie, sospensioni elastiche, scafo rinforzato, siluri collaudati, Schnorchel), corsi
-per l'equipaggio, rapporto di missione al BdU, **permadeath con catena di sopravvivenza** e albo
-d'oro pubblico.
+Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
+nessuno di questi difetti si vede leggendo il codice. Quel codice era giusto.
+Non girava, o girava nel posto sbagliato.
 
-**F6 — Multigiocatore: fatta** (18/09/2026). BdU che assegna aree operative, emette comunicati di
-situazione e forma i gruppi; Rudeltaktik con segnalazione di contatto condivisa e premio al
-Fuehlungshalter; radio con Kurzsignale e **HF/DF** (probabilita' di intercettazione per durata
-d'emissione, punto con errore per numero di rilevamenti, calore del settore); rifornimento in mare
-dal Tipo XIV con rischio di appuntamento compromesso; bacheca di flottiglia; statistiche di
-campagna pubbliche col rapporto di scambio.
+### I numeri
 
-**F7 — Rifinitura: fatta** (18/09/2026). Ventitre trofei distinti dalle decorazioni storiche,
-esportazione del giornale di guerra in testo, applicazione installabile (manifesto, service worker
-del solo guscio, pagina di cortesia senza rete), suoni di bordo sintetizzati e avvisi del browser
-(entrambi spenti per difetto), pannello di amministrazione con diagnostica del battito, modifica a
-caldo delle chiavi di bilanciamento e registro delle azioni, comando `balance:report` che confronta
-i modelli con le bande storiche.
+| | |
+|---|---|
+| Righe di codice | ~36.000, 283 file |
+| Rotte HTTP | 91 |
+| Tabelle / migrazioni | 45 / 38 |
+| Prove automatiche | **32 file, 903 controlli, tutti verdi** |
+| Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
+| Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
-**Pannello di amministrazione avanzato** (18/09/2026). Cinque sezioni oltre alla diagnostica:
-elenco utenti con ricerca e filtro di stato, scheda di un account (comandanti, battelli, missioni,
-accessi, posta, nota interna), accessi e origine aggregati per indirizzo con segnalazione degli
-indirizzi che accumulano fallimenti, comunicazioni su due canali (posta accodata che rispetta il
-tetto giornaliero, oppure bacheca di flottiglia), classifica completa. Gli indirizzi non vengono
-geolocalizzati: manderebbe il dato di un giocatore a un servizio di terzi.
-
-**Seconda revisione tecnica** (18/09/2026, sera). Audit del gioco in esercizio: undici
-rilievi trovati e chiusi, fra cui il piu' grave dell'intero progetto — **l'incontro tattico
-non avanzava mai**, quindi in tutta la storia di questo mondo non era mai affondato niente.
-Dettaglio, prove e osservazioni aperte nell'audit tecnico, che resta nel deployment perche'
-parla di quella macchina e non del gioco.
-Le verifiche automatiche salgono a **529**.
-
-**Il danno che resta, e quello che si vede** (18/09/2026, sera). Una nave colpita e non
-affondata non torna piu' intera nel traffico: rallenta, perde il convoglio e diventa una
-**ritardataria** — la preda preferita degli U-Boot — e puo' affondare ore dopo, con la
-conferma del BdU a chi l'aveva colpita. I convogli ridotti all'osso si **disperdono**, come
-il PQ17. E la stazione d'attacco non mostra piu' la verita' nuda: il quadro tattico e' il
-tavolo di plottaggio della Zentrale, dove finisce solo cio' che si e' visto o sentito, con
-l'errore di chi l'ha visto o sentito. Si vede, si riconosce e si legge il nome a tre
-distanze diverse, e tutti i numeri sono stime — e' per questo che il Vorhaltrechner esiste.
-
-**Fascicoli, volti, emblemi, e il telefono** (18/09/2026, sera). Il fascicolo di ogni
-comandante e' leggibile dagli altri in servizio: ritratto, emblema di torretta, battello e
-tipo, decorazioni e trofei, uscite e missione piu' lunga, rendimento (GRT per siluro, per
-missione, per mille miglia) e gli affondamenti divisi fra **naviglio militare e civile** e
-per **bandiera**, coi neutrali segnati a parte. Alla creazione si puo' scegliere un
-**ritratto storico** fra 33 fotografie di comandanti veri scaricate da Wikimedia Commons con
-la loro licenza — che il gioco mostra sotto il ritratto — oppure caricarne una propria; e si
-puo' prendere anche il nome del comandante ritratto, dichiarandolo come omaggio. Il
-repertorio degli **emblemi di torretta** passa da nove a trentanove, tutti disegnati qui.
-Un volto, un nome, un emblema e un numero di U-Boot per ciascuno, imposti dal database.
-L'amministratore puo' intervenire sui fascicoli altrui, e ogni intervento resta nel registro.
-Tutta l'interfaccia e' stata resa utilizzabile su **tablet e telefono** senza toccare una
-riga di come si vede su un monitor.
-
-**516 volti, e l'unicita' che vale fra i vivi** (18/09/2026, sera). Il repertorio dei
-ritratti passa da 33 a **516**: una raccolta di comandanti di U-Boot realmente esistiti,
-messa insieme a mano dal proprietario del gioco. Di quei file non si conosce la provenienza
-singola e il gioco lo dice apertamente, invece di attribuire una licenza che nessuno ha
-verificato; le voci scaricate da Commons continuano a portare la loro. I nomi sono ricavati
-dai nomi dei file e la scheda lo dichiara. Con cinquecento volti serviva una casella di
-ricerca, e c'e'.
-
-Soprattutto: **l'unicita' vale fra i vivi, e solo dove ha senso**. Restano unici il nome del
-comandante, il ritratto preso dalla galleria e il numero dell'U-Boot, finche' quel comandante
-e' in servizio e quel battello galleggia; quando cade, tornano disponibili, e il caduto
-conserva volto e nome nell'albo d'oro. L'**emblema di torretta no**: molti erano di
-flottiglia — il toro di Prien divento' il segno di tutta la 7. U-Flottille — e renderlo
-esclusivo sarebbe stato storicamente sbagliato. Una fotografia caricata da casa viene portata
-alla misura della galleria e, **a scelta**, invecchiata: monocromatica e neutra come
-sono davvero le fotografie storiche, contrasto morbido, grana e angoli scuri; l'effetto si
-vede subito, accendendo e spegnendo la casella.
-
-**Le date, e a che ora si riferiscono** (19/09/2026). Ovunque compaia una data ora si legge
-all'italiana, GG/MM/AAAA — con una sola eccezione, voluta: **l'ora di bordo**. Li' i punti
-alla tedesca (`07.02.1942 07:29`) restano, perche' sono quello che leggerebbe l'ufficiale che
-tiene il Kriegstagebuch: valgono per l'orologio in testata di ogni pagina di bordo, per il
-giornale di guerra — la pagina, le ultime righe in centrale, il file esportato — e per tutta
-la stazione d'attacco, cronaca compresa — verificata forzando un incontro vero, con un
-siluro in acqua, e poi rimettendo tutto com'era. Fuori di li' non escono, e c'e' una prova
-che lo controlla. Ogni posto col punto ha due facce, quella disegnata dal server e quella che il
-JavaScript riscrive da vivo: la prova le tiene appaiate, perche' basta che una sola resti
-indietro e la data cambia forma da sola al primo aggiornamento. Cinque punti del pannello
-di amministrazione stampavano la colonna del database cosi' com'era — iscrizione, conferma,
-ultimo accesso, registro degli accessi, freni antiabuso — e si leggeva `2026-09-19 03:35:58`. La data di
-nascita del comandante si scrive e si rilegge all'italiana e resta una data vera nel
-database. In fondo a ogni pagina c'era scritto «Ora di bordo» sopra l'orologio del server:
-l'ora di bordo e' quella di gioco e si legge in plancia, quella in fondo e' l'ora di Roma, e
-adesso lo dice. Ogni orario reale e' l'ora di Roma — verificato che il fuso applicativo,
-quello di PHP e quello del database coincidano, perche' un database in UTC sfaserebbe ogni
-data di due ore senza avvisare.
-
-**L'emblema tondo, e la lente** (19/09/2026). Sul fascicolo l'emblema di torretta compariva
-dentro un quadrato col fondo bianco, mentre in testata lo stesso file era tondo: la cornice
-c'era in un posto e non nell'altro. Adesso un emblema si presenta tondo dovunque compaia —
-fascicolo, testata, cantiere — e il fondo agli angoli non si vede piu', qualunque cosa ci sia
-nel file. Al passaggio del mouse (o col fuoco da tastiera, o con un tocco su schermo che si
-tocca) si apre una **lente** che lo mostra in grande col nome e il motto.
-
-**La mensa e' quella della tua flottiglia** (19/09/2026). La bacheca si chiamava «di
-flottiglia» e mostrava a tutti i messaggi di tutti: la colonna c'era e non filtrava niente.
-Adesso si legge la mensa della propria flottiglia — la 11. mangia a Bergen, la 2./10. a
-Lorient, e quello che si dice la' qui non si sente — mentre i comunicati del comando
-arrivano dappertutto, perche' il BdU non parla a una mensa sola. Un messaggio si puo'
-togliere: chi l'ha scritto si riprende la sua frase, l'amministratore modera qualunque
-cosa e la moderazione resta nel registro.
-
-Nel farlo e' saltato fuori che **la base scelta alla creazione del comandante veniva
-ignorata**: il battello lo si assegnava sempre a Lorient, cosi' il fascicolo dichiarava una
-flottiglia e il battello ne portava un'altra. Con tutti nella stessa flottiglia il filtro
-non avrebbe filtrato niente.
-
-**La stanza dei bottoni** (19/09/2026). Il pannello di amministrazione guadagna due
-stanze. La prima, `/admin/mondo`, e' fatta di monitor e di manopole: il censimento del
-naviglio in mare per classe, bandiera, ruolo e rotta; gli incontri aperti; le quarantuno
-chiavi del motore divise per area e con scritto a che servono (le descrizioni c'erano in
-tabella da sempre e non le leggeva nessuno: la colonna delle note era vuota per un campo
-che la query non chiedeva); la **composizione del traffico** — quanti piroscafi, quante
-petroliere, quali scorte — che prima era scritta nel codice e adesso si regola, con i pesi
-storici come punto di ritorno; e le **forzature del meteo**.
-
-Il tempo, in questo gioco, e' una funzione pura del seme e dell'istante: uguale per tutti e
-ricalcolabile all'indietro. Una forzatura non tocca quella funzione, le si siede sopra — in
-un cerchio, per una finestra, dicendo solo i campi che si vogliono imporre. Si puo' calare
-la nebbia su un convoglio senza inventarsi la pressione, e quando scade il mondo torna
-quello che sarebbe stato senza che nessuno debba disfare niente.
-
-La seconda, `/admin/carta`, e' la **carta ammiraglia**: tutto quello che galleggia, tutto
-insieme. Traffico isolato, convogli con la loro consistenza e la loro scorta, battelli dei
-giocatori, coste, porti, e a richiesta il vento e lo stato del mare stesi su una maglia. Un
-clic apre la scheda di quello che c'e' li' sotto, o il bollettino del tempo in quel punto.
-E' una vista che in gioco non esiste e non deve esistere.
-
-**Il registro che non si vedeva, e la carta che si naviga** (19/09/2026). Audit::log
-scriveva diciotto azioni diverse — manopole girate, provvedimenti sugli account, forzature
-del tempo, moderazione della bacheca — e le due pagine che dicevano «registro» ne mostravano
-cinque: filtravano su `auth.%`, ed erano un diario degli accessi. Tredici azioni su
-diciotto, cioe' tutto quello che fa l'amministrazione, erano scritte e invisibili. Adesso
-c'e' `/admin/registro`: tutte, in italiano, con il dettaglio raccontato invece che stampato
-in JSON, filtrabili per area e cercabili. L'originale resta nel suggerimento del mouse.
-
-La **carta ammiraglia** si naviga: rotellina per ingrandire dove sta il cursore (fino a
-ventiquattro volte), trascinamento, doppio clic, frecce da tastiera, un elenco «vai a» per
-inquadrare un battello o un convoglio, e un pulsante per tornare a tutto il teatro. La
-proiezione resta equirettangolare a ogni ingrandimento: i quadrati Marinequadrat restano
-rettangoli, e un rilevamento letto qui somiglia a uno letto in plancia.
-
-**Quarta revisione tecnica: quello che era scritto e non girava** (19/09/2026). Audit
-completo con un metodo nuovo — non «questo codice e' giusto» ma «questo codice gira?».
-Diciassette rilievi, tutti chiusi. Il piu' grave e' anche il piu' semplice da raccontare:
-`Torpedo::ricarica()` esisteva, era scritta bene, e **non la chiamava nessuno**. Un VII
-parte con quattordici siluri, cinque nei tubi; lanciati quelli, il battello restava
-disarmato per tutto il resto della crociera, con nove siluri a bordo e nessun modo di
-usarli. Il secondo attacco allo stesso convoglio — il cuore della tattica del branco — non
-poteva esistere.
-
-Nella stessa tornata: la **quota di collasso** adesso esiste davvero (ogni scafo ha il suo
-punto di cedimento, fisso e sconosciuto, dentro l'intervallo del cantiere, e si abbassa con
-le deformazioni permanenti); la simulazione **si ferma** quando il battello e' perduto,
-invece di far navigare il relitto; l'**aria** che finisce fa emergere come le batterie
-scariche; il **recupero della password** con invalidazione di tutte le sessioni aperte; il
-**congedo dal servizio attivo**, perche' il mestiere aveva due uscite e il gioco ne offriva
-una sola; l'**ordine di pedinamento** del BdU, che e' la meta' mancante della Rudeltaktik;
-e tre modi in cui il mondo dipendeva ancora da quanto spesso si ricarica la pagina.
-
-Le verifiche automatiche salgono a **818**, con sei suite nuove — e la suite
-intera, eseguita di fila, adesso lascia l'account di un giocatore esattamente
-com'era: due prove scrivevano sul primo battello che trovavano, che a suite
-pulita e' quello vero.
-
-**Quinta revisione tecnica: gira dove serve?** (19/09/2026, sera). Quattro
-angolazioni che nessuna revisione aveva toccato — il gioco a due, la matrice dei
-permessi provata invece che letta, gli ordini assurdi a ogni postazione, una
-crociera di trenta giorni — e quattro rilievi.
-
-Il piu' grave riguarda proprio il multigiocatore: due battelli che attaccano lo
-stesso convoglio aprono due incontri distinti, e **la stessa nave andava a fondo
-in tutti e due e veniva accreditata a tutti e due i comandanti**. In un gioco
-dove il punteggio e' il tonnellaggio, due giocatori d'accordo raddoppiavano
-tutto navigando insieme. Adesso la nave va a fondo una volta e il merito e' di
-chi ce l'ha mandata.
-
-Il piu' istruttivo: due apparati del cantiere da centodieci punti di
-assegnazione l'uno avevano la chiave d'effetto regolarmente letta dal codice —
-un grep li dava per buoni — ma letta nel posto sbagliato. Le batterie
-maggiorate non valevano durante l'attacco, cioe' nell'unico momento in cui la
-riserva di corrente decide se si torna a casa; le sospensioni elastiche non
-valevano sotto una scorta che ascolta, cioe' l'unico posto per cui si comprano.
-
-Restano pulite, e adesso sorvegliate, quattro aree intere: 151 rifiuti di
-accesso verificati con sei identita' diverse, 39 carichi di ordini storti senza
-un solo errore, trenta giorni di crociera senza una deriva numerica, e il
-doppio clic che non spende due volte. Le verifiche automatiche salgono a **863**.
-
-**Sesta revisione tecnica: il dito, la scala, i sei mesi** (19/09/2026, notte).
-Tre angolazioni mai toccate prima: il JavaScript di bordo provato con un browser
-vero, cinquanta battelli nello stesso mondo, e sei mesi di esercizio proiettati
-invece che aspettati.
-
-La scala non ha trovato niente da correggere, ed e' una buona notizia: quaranta
-millisecondi per battello, lineari, e un incontro tattico con venticinque navi
-ne costa settantacinque. Il battito ha un minuto per girare e a cinquanta
-battelli ne usa il tre e mezzo per cento — il tetto e' dell'ordine del migliaio
-di battelli in mare.
-
-La durata ha reso il rilievo piu' insidioso della tornata: ogni incontro chiuso
-lasciava in tabella le venticinque navi della formazione, e finche' quelle
-righe c'erano la potatura del traffico **non poteva togliere le navi che
-nominavano**. Due tabelle che crescono, e la prima che impedisce alla seconda di
-essere potata. Adesso la manutenzione se ne occupa, e la proiezione a cinquanta
-giocatori attivi da' centoquarantasei megabyte l'anno, in equilibrio.
-
-Il browser ha reso due difetti sulla pagina che per un comandante conta piu' di
-ogni altra. Il tavolo di carteggio non rispondeva al **dito**: su un telefono si
-trascinava la pagina e la carta restava ferma, mentre la carta ammiraglia —
-l'altra carta, quella dell'amministratore — col dito funzionava benissimo. E su
-uno schermo stretto al tavolo restavano **quaranta pixel** di carta, per via di
-una griglia a colonne fisse scritta dentro il tag, che nessun foglio di stile
-poteva correggere da fuori. Adesso la carta si trascina col dito, si ingrandisce
-con la pinza, e su un telefono e' larga trecentoventotto pixel invece di
-quaranta.
-
-Le verifiche automatiche salgono a **880**.
-
-**Settima revisione tecnica: i caricamenti e il lettore di schermo**
-(19/09/2026, notte fonda). Il punto piu' esposto di tutto il gioco e' l'unico in
-cui accetta un file binario da un estraneo: la fotografia del comandante e
-l'emblema di torretta.
-
-Nelle due cartelle dei caricamenti c'era un `.htaccess` che dichiarava, nero su
-bianco, di negare l'esecuzione. Provato: **un file .php messo li' dentro
-risponde 200 ed esegue**. Il motivo sta nel progetto stesso — la configurazione
-Apache che Atlantik spedisce imposta `AllowOverride None`, ed e' la scelta
-giusta, ma con quella opzione gli `.htaccess` non vengono letti nemmeno. Una
-difesa scritta, documentata, creduta e inerte. Adesso la regola sta nella
-configurazione del server, dove viene letta di sicuro.
-
-Secondo rilievo, dello stesso capitolo: il controllo sulle immagini guardava il
-lato e non l'area. Un PNG di 117 kilobyte da 6000x6000 pixel sono 144 megabyte
-di bitmap, e GD alloca fuori dal limite di memoria di PHP: un solo caricamento
-portava un processo Apache da 80 a 235 megabyte. Adesso il limite e' sedici
-milioni di pixel — la fotografia di un telefono passa, la bomba viene respinta
-in venti millisecondi senza essere aperta.
-
-E il gioco e' stato guardato per la prima volta con un lettore di schermo. La
-disciplina del markup e' risultata buona, ma le **quattro tele** — carta di
-bordo, rosa dei rilevamenti, plotta dell'attacco, carta ammiraglia — non
-avevano ne' ruolo ne' nome: per chi non vede non esistevano affatto. Adesso
-ognuna dice che cos'e' con i numeri veri del momento, e rimanda alle tabelle
-dove la stessa roba e' gia' scritta in parole.
-
-I dati storici, controllati uno per uno, reggono: nove tipi di U-Boot e sei
-siluri, fino alle tre regolazioni del G7a. E la copia di sicurezza e' stata
-ripristinata per davvero, non solo ispezionata: il dump caricato in un database
-temporaneo restituisce gli stessi numeri del mondo in esercizio, tabella per
-tabella. Era l'ultima cosa che restava creduta e non misurata.
-
-Le verifiche automatiche salgono a **903**, tutte verdi.
-
-**Il gioco e' completo: da F0 a F7.** Quello che resta e' bilanciamento sul campo e beta.
-La pagina d'ingresso dice lo stato vero — con i numeri del mondo in corso, presi dal database a
-ogni caricamento — e l'elenco di quello che e' arrivato dopo la chiusura della tabella di marcia.
+La suite copre la simulazione (griglia, astronomia, consumi calibrati sui dati
+storici, acustica, avvistamento, siluri), l'equità fra ritmi di collegamento
+diversi, i casi limite, la matrice dei permessi con sei identità, gli ordini
+malformati, i caricamenti ostili, la potatura, e il JavaScript di bordo guidato
+da un browser vero — compresa la carta su uno schermo da telefono.
 
 ## Uso
 
@@ -356,9 +432,12 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Venti file, che si aspettano un'installazione funzionante e un database
-raggiungibile. Le end-to-end creano e cancellano da sé i propri account di
-prova (`prova *`).
+Trentadue file — ventuno che girano in PHP e undici che interrogano il server
+attraverso Apache — per **903 controlli**. Si aspettano un'installazione
+funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
+sé i propri account di prova (`prova *`), e la suite intera lascia gli account
+veri esattamente com'erano: è verificato confrontando l'impronta del battello e
+del comandante prima e dopo.
 
 ```bash
 php tests/test_sim.php               # griglia, astronomia, consumi, orologio
@@ -424,15 +503,27 @@ e quali ricostruiti.
 ## Documentazione
 
 - [docs/DESIGN.md](docs/DESIGN.md) — la progettazione per intero: modello del
-  mondo, meccaniche, formule, scelte e perché.
+  mondo, meccaniche, formule, scelte e perché. Questo README ne è il sunto;
+  lì ci sono i conti.
 - [docs/FONTI.md](docs/FONTI.md) — il registro delle fonti storiche: da dove
   viene ogni numero, e quanto è affidabile.
+
+Il registro degli audit (`docs/AUDIT.md`) resta nell'installazione e non in
+questo repository: parla di quella macchina, dei suoi percorsi e dei suoi
+provvedimenti, e non del gioco.
 
 ## Stack
 
 PHP 8.4 senza framework · MariaDB 11 · Apache · JavaScript vanilla + Canvas
 (nessun build step) · simulazione autoritativa lato server, con tick da cron e
 avanzamento pigro deterministico.
+
+Un solo front controller, PSR-4 senza autoloader generato, migrazioni
+idempotenti, CSRF imposto nel router e non lasciato al singolo controller,
+password in Argon2id, gettoni conservati solo come impronta. Il mondo è una
+funzione pura del seme e dell'istante: meteo, astronomia e caso sono
+riproducibili, e le forzature dell'amministratore stanno in uno strato sopra il
+modello, non dentro.
 
 Nessuna dipendenza: niente Composer, niente npm, niente CDN. La politica dei
 contenuti non ammette JavaScript in linea.
