@@ -481,6 +481,74 @@ verifica "carta: due dita la ingrandiscono"                "si" "$(leggi4 pinza)
 
 fi
 
+# --------------------------------------------------------------------------
+# 5. La barra di plancia su uno schermo da telefono.
+#
+# Il 20/09/2026 la barra era una striscia che scorreva di lato. Nulla era
+# irraggiungibile in senso stretto, e infatti nessuna prova se ne lamentava:
+# la pagina non scorreva in orizzontale, niente sbordava, tutto "funzionava".
+# Misurata pero' a 375 px mostrava quattro voci su undici, e le altre sette
+# stavano dietro una strisciata che niente annunciava. Il difetto non era un
+# errore: era che meta' del gioco dipendeva da un gesto che nessuno suggeriva.
+#
+# Qui si contano le voci che stanno davvero dentro il riquadro della barra.
+# Una voce tagliata dal bordo, o finita sotto, non conta.
+# --------------------------------------------------------------------------
+
+NAV_HTML="${ROOT}/_prova_nav.html"
+NAV_JS="${ROOT}/_prova_nav.js"
+trap 'rm -f "${PAGINA}" "${GUIDA}" "${SORGENTE}" "${PAGINA2}" "${GUIDA2}" "${ENTRATA}" "${PAGINA3}" "${GUIDA3}" "${CARTA_HTML}" "${CARTA_JS}" "${NAV_HTML}" "${NAV_JS}"; rm -rf "${PROFILO}"; php "${ROOT}/bin/_cleanup_test_user.php" "${UTENTE}" >/dev/null 2>&1' EXIT
+
+cat > "${NAV_HTML}" <<'HTML'
+<!doctype html><meta charset="utf-8"><title>plancia su schermo stretto</title>
+<style>html,body{margin:0}</style>
+<iframe id="q" src="/atlantik/zentrale" style="width:375px;height:812px;border:0"></iframe>
+<div id="esito">in corso</div>
+<script src="/atlantik/_prova_nav.js"></script>
+HTML
+
+cat > "${NAV_JS}" <<'JS'
+window.onerror = function (m) { document.getElementById('esito').textContent = 'ERRORE ' + m; };
+document.getElementById('q').addEventListener('load', function () {
+  var d = this.contentDocument, n = [];
+  setTimeout(function () {
+    var nav = d.querySelector('nav.nav-plancia');
+    if (!nav) { document.getElementById('esito').textContent = 'ESITO barra=no'; return; }
+    var nr = nav.getBoundingClientRect();
+    var voci = [].slice.call(nav.querySelectorAll('a'));
+    // Dentro il riquadro vuol dire dentro davvero: non tagliata a destra e non
+    // finita sotto il bordo inferiore.
+    var dentro = voci.filter(function (a) {
+      var r = a.getBoundingClientRect();
+      return r.right <= nr.right + 1 && r.bottom <= nr.bottom + 1 && r.left >= nr.left - 1;
+    });
+    n.push('totali=' + voci.length);
+    n.push('dentro=' + dentro.length);
+    n.push('tutte=' + (dentro.length === voci.length ? 'si' : 'no'));
+    // Nessuna voce deve essere un francobollo: 40 px e' il minimo per un dito.
+    var minAltezza = Math.min.apply(null, voci.map(function (a) {
+      return Math.round(a.getBoundingClientRect().height);
+    }));
+    n.push('altezzamin=' + minAltezza);
+    n.push('dita=' + (minAltezza >= 40 ? 'si' : 'no'));
+    n.push('scorre=' + (d.documentElement.scrollWidth > 376 ? 'si' : 'no'));
+    document.getElementById('esito').textContent = 'ESITO ' + n.join(' ');
+  }, 900);
+});
+JS
+
+USCITA5="$(timeout 90 "${BROWSER}" --headless --disable-gpu --no-sandbox --disable-dev-shm-usage \
+  --user-data-dir="${PROFILO}" --window-size=420,900 --virtual-time-budget=12000 --dump-dom \
+  "${BASE}/_prova_nav.html" 2>/dev/null)"
+
+leggi5() { grep -o "$1=[a-z0-9]*" <<< "${USCITA5}" | head -1 | cut -d= -f2; }
+
+printf '  \033[0;90m%s\033[0m\n' "$(grep -o 'ESITO [^<]*' <<< "${USCITA5}" | head -1)"
+
+verifica "plancia: tutte le stazioni stanno nello schermo" "si" "$(leggi5 tutte)"
+verifica "plancia: i bersagli sono da dito, non da mouse"  "si" "$(leggi5 dita)"
+verifica "plancia: niente scorrimento orizzontale"         "no" "$(leggi5 scorre)"
+
 echo
 if [[ "${FALLITI}" -eq 0 ]]; then printf '\033[0;32mTutte le verifiche superate.\033[0m\n'
 else printf '\033[0;31m%d verifiche fallite.\033[0m\n' "${FALLITI}"; exit 1; fi

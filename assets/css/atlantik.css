@@ -758,13 +758,35 @@ footer {
 @media (max-width: 48rem) {
   .dati th, .dati td { padding: .3rem .45rem; }
 
-  /* 3. La barra di plancia diventa una striscia che scorre di lato. */
+  /* 3. La barra di plancia: tutte le stazioni sotto il pollice.
+     Fino al 20/09/2026 qui c'era una striscia che scorreva di lato. Funzionava,
+     nel senso che nulla era irraggiungibile, ma misurata a 375 px mostrava
+     quattro voci su undici — ZENTRALE, CARTEGGIO, RADIO e BDU — e le altre
+     sette (ASCOLTO, BATTELLO, EQUIPAGGIO, GIORNALE DI GUERRA, FLOTTIGLIA,
+     FASCICOLO, PROFILO) stavano dietro una strisciata che niente annunciava.
+     Meta' del gioco dipendeva dal fatto che uno provasse a spingere la barra.
+
+     Una griglia costa tre righe di altezza e non nasconde niente. La si paga
+     una volta per pagina, e la navigazione e' la spina dorsale del gioco.
+
+     La soglia sta a 5.4rem e non a 6.5: con 6.5 la griglia teneva tre colonne
+     a 375 px ma ricadeva a due a 360, che e' la larghezza che dichiara la gran
+     parte degli Android. Undici voci in due colonne fanno sei righe, cioe' 295
+     px di menu' su uno schermo da 740: il rimedio mangiava piu' schermo del
+     male. A 5.4rem le colonne restano tre fino a 320 px. */
   .nav-plancia {
-    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-    -webkit-overflow-scrolling: touch; padding-bottom: .8rem;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(5.4rem, 1fr));
+    gap: .35rem; padding-bottom: .8rem;
   }
-  .nav-plancia::-webkit-scrollbar { display: none; }
-  .nav-plancia a { flex: 0 0 auto; }
+  .nav-plancia a, .nav-plancia .spento {
+    padding: .35rem .4rem; font-size: .68rem; letter-spacing: .06em;
+    text-align: center; line-height: 1.15;
+  }
+  /* Lo "spento" deve avere la stessa statura degli altri, se no la griglia
+     balla: e' un tassello come gli altri, solo che non si accende. */
+  .nav-plancia .spento {
+    min-height: 2.6rem; display: inline-flex; align-items: center; justify-content: center;
+  }
 
   /* La barra in alto puo' andare a capo: su un telefono non ci sta in riga. */
   .nav-top { flex-wrap: wrap; gap: .6rem .9rem; justify-content: flex-end; }
@@ -816,3 +838,41 @@ footer {
 }
 .ritaglio:active { cursor: grabbing; }
 .ritaglio canvas { display: block; width: 100%; height: 100%; }
+
+/* ==========================================================================
+   Dita invece di puntatori
+   --------------------------------------------------------------------------
+   Questo blocco non guarda la larghezza della finestra ma il tipo di puntatore.
+   E' una distinzione che conta: una finestra stretta su un monitor si comanda
+   sempre col mouse, e ingrossarle i bersagli sarebbe un peggioramento. Qui
+   dentro finisce solo quello che serve a un dito, e nessuno schermo con un
+   mouse attaccato fa scattare la regola.
+
+   Soglia: 2.75rem, cioe' 44 px, che e' la misura che sia Apple sia Google
+   indicano come minimo toccabile. Misurato il 20/09/2026 a 375 px, prima di
+   questo blocco: le voci in alto (BASE, AUDIO, AVVISI) erano alte 20 px e i
+   collegamenti del piede 12. Si prendevano per fortuna, non per mira.
+   ========================================================================== */
+
+@media (hover: none) and (pointer: coarse) {
+  .nav-top a,
+  .footer-wrap a,
+  .dati a,
+  .elenco-lavori a {
+    min-height: 2.75rem;
+    display: inline-flex; align-items: center;
+  }
+
+  /* Il piede ha i collegamenti in fila: se si ingrossano devono poter andare
+     a capo, se no si stringono fra loro. */
+  .footer-wrap { row-gap: .2rem; align-items: center; }
+
+  /* Una strisciata orizzontale dentro una tabella larga non deve diventare una
+     navigazione indietro del browser. Succede sul serio: la tabella finisce, il
+     gesto prosegue, e il telefono torna alla pagina di prima perdendo il segno.
+     Le tabelle qui dentro scorrono davvero — l'equipaggio e' largo 806 px in
+     una finestra da 375 — quindi il caso non e' teorico. */
+  .pannello, .strumento, .nav-plancia {
+    overscroll-behavior-x: contain;
+  }
+}
