@@ -115,11 +115,20 @@ per i colpi incassati. La squadra ripara a mare quello che si può riparare a
 mare: un periscopio piegato, no.
 
 Quello lo rimette a posto il cantiere, in porto, e ci mette il suo tempo. Gli
-operai della base lavorano ora per ora mentre il battello sta in banchina —
-circa al doppio di quanto renda l'equipaggio in mare — e si occupano di tutto:
-i sistemi rotti, le paratie sigillate, le lamiere, e la revisione di quello che
-funziona ma è logoro. **Se si riparte prima che abbiano finito, si riparte con
-quello che c'è.** Il tempo passato in porto è una risorsa come la nafta.
+operai della base lavorano ora per ora mentre il battello sta in banchina, e si
+occupano di tutto: i sistemi rotti, le paratie sigillate, le lamiere, e la
+revisione di quello che funziona ma è logoro — che conta, perché un sistema
+consumato si guasta più spesso.
+
+Il bacino rende sempre uguale, perché ha tutte le maestranze; a bordo no, e lì
+sta la differenza vera. Per un diesel, dove l'equipaggio ha i suoi macchinisti,
+il cantiere è appena una volta e mezza più rapido. Per una stazione radio va
+nove volte più in fretta. Per un periscopio piegato il confronto non esiste
+affatto: a mare non si tocca.
+
+**Se si riparte prima che il cantiere abbia finito, si riparte con quello che
+c'è**, e la pagina della base lo dice prima di mollare gli ormeggi, elencando i
+lavori aperti. Il tempo passato in porto è una risorsa come la nafta.
 
 **Otto compartimenti** che imbarcano acqua. L'acqua pesa: abbassa la quota di
 sicurezza e rallenta. Una paratia si può sigillare, e se dentro c'è ancora
@@ -336,8 +345,13 @@ lascia il comando in banchina, da vivi, e si chiude la carriera con onore — ch
   ricostruite.
 - **Zero dipendenze.** Niente Composer, niente npm, niente CDN, nessun build
   step. La politica dei contenuti non ammette JavaScript in linea.
-- **Si gioca col dito.** La carta nautica si trascina e si ingrandisce con la
-  pinza; l'applicazione si installa sul telefono.
+- **Si gioca col dito.** Tutta l'interfaccia, non solo la carta: su uno schermo
+  da telefono le undici stazioni di plancia stanno tutte sotto il pollice, i
+  bersagli rispettano i quarantaquattro pixel e le tabelle larghe scorrono nel
+  loro riquadro invece di sfondare la pagina. La carta si trascina e si
+  ingrandisce con la pinza; l'applicazione si installa sul telefono. La resa su
+  monitor non è cambiata di un pixel, ed è verificata confrontando la stessa
+  pagina servita con i due fogli di stile.
 
 ---
 
@@ -347,11 +361,13 @@ lascia il comando in banchina, da vivi, e si chiude la carriera con onore — ch
 ed equipaggio, contatti, combattimento, carriera, multigiocatore, rifinitura.
 Quello che resta è bilanciamento sul campo e beta.
 
-Sotto c'è un mondo in esercizio dal 17 settembre 2026: seicentotrenta navi in
-mare in questo momento, in quattordici convogli, per tre milioni e mezzo di
-tonnellate di stazza. Il battito del minuto ha girato 3.561 volte e ha fallito
-otto volte — ogni fallimento con la sua riga nel diario e la sua causa nota,
-che è il motivo per cui si contano.
+Sotto c'è un mondo in esercizio dal 17 settembre 2026: in un istante qualunque
+fra le cinquecento e le settecento navi in mare, in una quindicina di convogli,
+per tre o quattro milioni di tonnellate di stazza — il numero respira, perché
+i convogli salpano e arrivano. Il battito del minuto ha girato più di
+settemila volte e ha fallito otto volte, tutte fra il 17 e il 19 settembre:
+ogni fallimento con la sua riga nel diario e la sua causa nota, che è il motivo
+per cui si contano.
 
 ### Le sette revisioni tecniche
 
@@ -374,13 +390,22 @@ Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
 nessuno di questi difetti si vede leggendo il codice. Quel codice era giusto.
 Non girava, o girava nel posto sbagliato.
 
+L'ottavo rilievo non è arrivato da un audit. È arrivato da chi giocava: *«non
+sembra che il mio battello venga riparato»*. Le riparazioni vivevano dentro
+l'avanzamento di un battello **in mare**, e in porto non le chiamava nessuno —
+la barra restava ferma e il pulsante della priorità salvava un valore che
+nessuno leggeva. Sette revisioni con sette metodi diversi non l'avevano vista,
+perché tutte provavano le riparazioni dove funzionavano. Adesso in banchina
+lavora il cantiere, ora per ora, e chi riparte prima che abbia finito riparte
+con quello che c'è.
+
 ### I numeri
 
 | | |
 |---|---|
-| Righe di codice | ~36.000, 283 file |
+| Righe di codice | ~47.000 in 286 file (PHP, JavaScript, CSS, SQL e i disegni SVG) |
 | Rotte HTTP | 91 |
-| Tabelle / migrazioni | 45 / 38 |
+| Tabelle / migrazioni | 45 / 40 |
 | Prove automatiche | **33 file, 938 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
@@ -468,6 +493,7 @@ php tests/test_pedinamento.php       # ordine di pedinamento del BdU, dalla radi
 php tests/test_due_battelli.php      # due giocatori sullo stesso convoglio: una nave, un affondamento
 php tests/test_apparati.php          # gli apparati del cantiere fanno quello che promettono
 php tests/test_potatura.php          # il mondo non cresce per sempre: incontri chiusi, contatti, naviglio
+php tests/test_cantiere.php          # il cantiere di base: riparazioni in porto, priorità, paratie
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse

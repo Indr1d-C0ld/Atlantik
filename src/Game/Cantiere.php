@@ -32,12 +32,22 @@ final class Cantiere
     /**
      * Ore-uomo che il cantiere produce per ogni ora di gioco.
      *
-     * A mare una squadra rende fra 0,25 e 2,5 ore-uomo l'ora secondo la
-     * specialita' di chi ci mette le mani (Damage::repairStep). Tre e' quindi
-     * un cantiere che va circa al doppio di un equipaggio bravo: i timoni
+     * Il numero e' fisso perche' il bacino ha tutte le maestranze: qualunque
+     * sia il lavoro, c'e' chi lo sa fare.
+     *
+     * A mare no, e la differenza non e' uniforme. Misurato il 22/09/2026 su un
+     * equipaggio vero, la resa di Damage::repairStep va da 0,25 a 2,50
+     * ore-uomo l'ora secondo la specialita' che il sistema richiede: i
+     * macchinisti del diesel rendono 2,35 e i marinai 2,50, quindi per quei
+     * sistemi il cantiere e' appena una volta e mezza piu' rapido. Ma la resa
+     * dei radiotelegrafisti e' 0,33, e per una stazione radio il bacino va
+     * nove volte piu' in fretta. Per i periscopi e lo scafo il
+     * confronto non esiste proprio: a mare non si toccano.
+     *
+     * Tre e' quindi un valore che non svilisce l'equipaggio dove e' bravo e
+     * che fa la differenza dove a bordo non c'e' nessuno di mestiere. I timoni
      * orizzontali, che sono quattro ore-uomo, se ne vanno in un'ora e venti di
-     * gioco. Sembra giusto per un bunker attrezzato, e resta abbastanza lento
-     * da rendere un rientro malconcio una cosa che si paga in tempo.
+     * gioco: abbastanza lento da far pagare in tempo un rientro malconcio.
      */
     private const RESA = 3.0;
 
