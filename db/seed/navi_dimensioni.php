@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Dimensioni documentate delle unita' che il motore disegna, e come si presentano di profilo.
  *
- * Da qui bin/disegna_scorte.php ricava le sagome. Il dato e' questo file: il
+ * Da qui bin/disegna_navi.php ricava le sagome. Il dato e' questo file: il
  * disegno e' una conseguenza, e si rifa' cambiando i numeri.
  *
  * COSA E' DOCUMENTATO E COSA NO — la distinzione conta:
