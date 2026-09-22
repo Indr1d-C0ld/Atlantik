@@ -38,7 +38,10 @@ final class PlanciaController
         $user = Auth::user();
         $boat = Fleet::ensureBoat((int) $user['id']);
 
-        if ((string) $boat['state'] === 'mare') {
+        // Si avanza anche in porto: la' non si naviga ma il cantiere ripara,
+        // e con questa guardia ferma a 'mare' un battello in base non veniva
+        // toccato da nessuno (segnalazione del 21/09/2026).
+        if (in_array((string) $boat['state'], ['mare', 'base'], true)) {
             BoatSim::advance((int) $boat['id']);
             $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
         }

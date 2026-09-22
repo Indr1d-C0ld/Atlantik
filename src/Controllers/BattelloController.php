@@ -30,7 +30,10 @@ final class BattelloController
         $user = Auth::user();
         $boat = Fleet::ensureBoat((int) $user['id']);
 
-        if ((string) $boat['state'] === 'mare') {
+        // Si avanza anche in porto: la' non si naviga ma il cantiere ripara,
+        // e con questa guardia ferma a 'mare' un battello in base non veniva
+        // toccato da nessuno (segnalazione del 21/09/2026).
+        if (in_array((string) $boat['state'], ['mare', 'base'], true)) {
             BoatSim::advance((int) $boat['id']);
             $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
         }
@@ -138,7 +141,11 @@ final class BattelloController
             Session::flash('error', 'Sistema sconosciuto.');
             return redirect('/battello');
         }
-        if ((int) $s['repairable_sea'] !== 1) {
+        // "Serve il cantiere" era una risposta giusta solo a mare: in banchina il
+        // cantiere c'e', ed e' proprio il posto dove quei sistemi si riparano.
+        // Detta stando in porto, era un rifiuto che mandava il comandante a
+        // cercare una cosa che aveva gia' sotto i piedi.
+        if ((int) $s['repairable_sea'] !== 1 && (string) $c['boat']['state'] !== 'base') {
             Session::flash('error', (string) $s['name'] . ': non si ripara a mare. Serve il cantiere.');
             return redirect('/battello');
         }

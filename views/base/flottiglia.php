@@ -57,6 +57,30 @@
     </div>
   </div>
 
+  <?php if ($inLavorazione !== [] || $compInLavorazione !== []): ?>
+  <div class="pannello" style="border-left:3px solid var(--ambra)">
+    <span class="targhetta">Il cantiere sta ancora lavorando</span>
+    <h2><?= count($inLavorazione) + count($compInLavorazione) ?>
+        <?= count($inLavorazione) + count($compInLavorazione) === 1 ? 'lavoro aperto' : 'lavori aperti' ?></h2>
+    <p class="sommario">
+      Mollando gli ormeggi adesso, questo esce in mare cosi' com'e'. Gli operai
+      della base lavorano da soli, ora per ora: basta aspettare.
+    </p>
+    <ul style="margin:0 0 .2rem 1.1rem">
+      <?php foreach ($inLavorazione as $l): ?>
+        <li><?= e($l['name']) ?> — <span style="color:var(--ambra)"><?= e($l['state']) ?></span></li>
+      <?php endforeach; ?>
+      <?php foreach ($compInLavorazione as $l): ?>
+        <li><?= e($l['name']) ?> — <span style="color:var(--ambra)">da revisionare</span></li>
+      <?php endforeach; ?>
+    </ul>
+    <p class="aiuto" style="margin-top:.7rem">
+      Il dettaglio, con l'avanzamento di ogni lavoro, sta in
+      <a href="<?= e(url('/battello')) ?>">scheda del battello</a>.
+    </p>
+  </div>
+  <?php endif; ?>
+
   <form method="post" action="<?= e(url('/uscita')) ?>">
     <?= csrf_field() ?>
     <div class="azioni">
@@ -68,7 +92,7 @@
     </div>
   </form>
   <p class="aiuto">
-    All'uscita il battello viene rifornito e armato secondo la dotazione del tipo. La rotta si traccia in mare, al tavolo di carteggio.
+    All'uscita il battello viene rifornito e armato secondo la dotazione del tipo. Le riparazioni no: quelle le fa il cantiere mentre si sta in porto, e quello che non ha finito parte cosi' com'e'. La rotta si traccia in mare, al tavolo di carteggio.
   </p>
 </div>
 

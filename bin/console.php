@@ -313,13 +313,27 @@ try {
 
         case 'sim:tick':
             $t0 = microtime(true);
-            $boats = Database::all("SELECT id, uboat_number FROM boats WHERE state = 'mare'");
+            // Anche i battelli in base: in porto non si naviga ma il cantiere
+            // ripara, e quel lavoro va avanti con lo stesso battito.
+            $boats = Database::all("SELECT id, uboat_number, state FROM boats WHERE state IN ('mare', 'base')");
             if ($boats === []) {
-                out('Nessun battello in mare.');
+                out('Nessun battello in mare ne\' in base.');
                 break;
             }
             foreach ($boats as $b) {
+                $rotti = (int) (Database::first(
+                    "SELECT COUNT(*) n FROM boat_systems WHERE boat_id = ? AND state <> 'ok'",
+                    [(int) $b['id']]
+                )['n'] ?? 0);
                 $r = BoatSim::advance((int) $b['id']);
+                if ((string) $b['state'] === 'base') {
+                    $ora = (int) (Database::first(
+                        "SELECT COUNT(*) n FROM boat_systems WHERE boat_id = ? AND state <> 'ok'",
+                        [(int) $b['id']]
+                    )['n'] ?? 0);
+                    out(sprintf('  %-8s in cantiere: %d avarie, %d riparate', $b['uboat_number'], $rotti, $rotti - $ora));
+                    continue;
+                }
                 out(sprintf('  %-8s %3d passi, %7.1f nm, %d eventi', $b['uboat_number'], $r['steps'], $r['dist_nm'], $r['events']));
             }
             out(sprintf('Fatto in %d ms.', (int) round((microtime(true) - $t0) * 1000)));

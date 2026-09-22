@@ -114,6 +114,13 @@ col regime, col mare grosso e con la stanchezza di chi sta alle macchine — e
 per i colpi incassati. La squadra ripara a mare quello che si può riparare a
 mare: un periscopio piegato, no.
 
+Quello lo rimette a posto il cantiere, in porto, e ci mette il suo tempo. Gli
+operai della base lavorano ora per ora mentre il battello sta in banchina —
+circa al doppio di quanto renda l'equipaggio in mare — e si occupano di tutto:
+i sistemi rotti, le paratie sigillate, le lamiere, e la revisione di quello che
+funziona ma è logoro. **Se si riparte prima che abbiano finito, si riparte con
+quello che c'è.** Il tempo passato in porto è una risorsa come la nafta.
+
 **Otto compartimenti** che imbarcano acqua. L'acqua pesa: abbassa la quota di
 sicurezza e rallenta. Una paratia si può sigillare, e se dentro c'è ancora
 qualcuno, quel qualcuno resta dentro. La centrale non si sigilla.
@@ -374,7 +381,7 @@ Non girava, o girava nel posto sbagliato.
 | Righe di codice | ~36.000, 283 file |
 | Rotte HTTP | 91 |
 | Tabelle / migrazioni | 45 / 38 |
-| Prove automatiche | **32 file, 906 controlli, tutti verdi** |
+| Prove automatiche | **33 file, 938 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -432,8 +439,8 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Trentadue file — ventuno che girano in PHP e undici che interrogano il server
-attraverso Apache — per **906 controlli**. Si aspettano un'installazione
+Trentatré file — ventidue che girano in PHP e undici che interrogano il server
+attraverso Apache — per **938 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e

@@ -7,6 +7,7 @@ namespace App\Sim;
 use App\Core\Database;
 use App\Core\Lock;
 use App\Core\GameConfig;
+use App\Game\Cantiere;
 use App\Game\Outfitting;
 
 /**
@@ -87,6 +88,24 @@ final class BoatSim
         }
 
         if ((string) $boat['state'] !== 'mare') {
+            // In porto non si naviga, ma si lavora: il cantiere ripara.
+            //
+            // Fino al 21/09/2026 qui si spostava solo l'orologio, e quindi un
+            // battello in base non veniva riparato mai — l'avaria si chiudeva
+            // di colpo alla partenza dopo. Il recupero si limita come a mare:
+            // un battello dimenticato in porto per settimane non deve rimettersi
+            // a nuovo in un colpo solo al primo che ricarica la pagina.
+            $max = World::maxCatchupSeconds();
+            if ($toGts - $from > $max) {
+                $toGts = $from + $max;
+            }
+            if ($toGts > $from && (string) $boat['state'] === 'base') {
+                Cantiere::lavora(
+                    $boatId,
+                    ($toGts - $from) / 3600.0,
+                    $boat['repair_focus'] !== null ? (string) $boat['repair_focus'] : null
+                );
+            }
             Database::run('UPDATE boats SET last_sim_gts = ? WHERE id = ?', [$toGts, $boatId]);
             return ['steps' => 0, 'from' => $from, 'to' => $toGts, 'dist_nm' => 0.0, 'events' => 0];
         }

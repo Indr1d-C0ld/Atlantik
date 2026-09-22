@@ -30,7 +30,8 @@ final class RadioController
     {
         $user = Auth::user();
         $boat = Fleet::ensureBoat((int) $user['id']);
-        if ((string) $boat['state'] === 'mare' && $boat['encounter_id'] === null) {
+        // Anche in base: li' non si naviga, ma il cantiere ripara.
+        if (in_array((string) $boat['state'], ['mare', 'base'], true) && $boat['encounter_id'] === null) {
             BoatSim::advance((int) $boat['id']);
             $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
         }
