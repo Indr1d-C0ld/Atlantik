@@ -41,7 +41,7 @@ declare(strict_types=1);
  *     attaccare quello di U-96 al battello di chiunque sarebbe una bugia
  *     gratuita. Il ritaglio si riaccende il giorno che ci sara' la scelta;
  *   - Corvetta Flower dalla tavola generata: sostituita da una sagoma costruita
- *     sulle misure documentate (bin/disegna_scorte.php). Una classe, una figura;
+ *     sulle misure documentate (bin/disegna_navi.php). Una classe, una figura;
  *   - Insegna da Oberstabsgefreiter: e' un grado che nell'equipaggio del
  *     gioco non esiste (i comuni sono Matrosengefreiter e
  *     Matrosenobergefreiter), e il disegno non e' nemmeno di foggia navale.

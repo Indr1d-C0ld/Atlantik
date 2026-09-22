@@ -369,9 +369,9 @@ settemila volte e ha fallito otto volte, tutte fra il 17 e il 19 settembre:
 ogni fallimento con la sua riga nel diario e la sua causa nota, che è il motivo
 per cui si contano.
 
-### Le sette revisioni tecniche
+### Le otto revisioni tecniche
 
-Il gioco è stato sottoposto a sette audit successivi, ognuno con un metodo
+Il gioco è stato sottoposto a otto audit successivi, ognuno con un metodo
 diverso dal precedente, perché un metodo ripetuto smette di trovare. Il
 registro completo — con le misure, i numeri e le prove che lo dimostrano — sta
 in `docs/AUDIT.md` nel deployment; qui il sunto.
@@ -385,19 +385,23 @@ in `docs/AUDIT.md` nel deployment; qui il sunto.
 | 5 | *Gira dove serve?* | Due battelli sullo stesso convoglio affondavano la stessa nave e **la pagavano tutti e due** |
 | 6 | Scala, durata, browser vero | Ogni incontro chiuso teneva in vita le venticinque navi del convoglio **e impediva di potarle** |
 | 7 | Caricamenti, accessibilità, fonti | Gli `.htaccess` che proteggevano i caricamenti **non venivano letti da nessuno** |
+| 8 | *La documentazione dice il vero?* | Uno strumento descritto in cinque punti — perfino con i suoi criteri di filtro — **non è mai stato scritto** |
 
 Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
 nessuno di questi difetti si vede leggendo il codice. Quel codice era giusto.
 Non girava, o girava nel posto sbagliato.
 
-L'ottavo rilievo non è arrivato da un audit. È arrivato da chi giocava: *«non
-sembra che il mio battello venga riparato»*. Le riparazioni vivevano dentro
-l'avanzamento di un battello **in mare**, e in porto non le chiamava nessuno —
-la barra restava ferma e il pulsante della priorità salvava un valore che
-nessuno leggeva. Sette revisioni con sette metodi diversi non l'avevano vista,
-perché tutte provavano le riparazioni dove funzionavano. Adesso in banchina
-lavora il cantiere, ora per ora, e chi riparte prima che abbia finito riparte
-con quello che c'è.
+Il rilievo più istruttivo, però, non sta in quella tabella, perché non è
+arrivato da un audit: è arrivato da chi giocava. *«Non sembra che il mio
+battello venga riparato.»* Le riparazioni vivevano dentro l'avanzamento di un
+battello **in mare**, e in porto non le chiamava nessuno — la barra restava
+ferma e il pulsante della priorità salvava un valore che nessuno leggeva. Sette
+revisioni con sette metodi diversi non l'avevano vista, perché tutte provavano
+le riparazioni dove funzionavano. Adesso in banchina lavora il cantiere, ora per
+ora, e chi riparte prima che abbia finito riparte con quello che c'è.
+
+È anche il motivo per cui l'ottava revisione ha smesso di interrogare il codice
+e ha cominciato a interrogare quello che il codice dice di sé.
 
 ### I numeri
 
@@ -406,7 +410,7 @@ con quello che c'è.
 | Righe di codice | ~47.000 in 286 file (PHP, JavaScript, CSS, SQL e i disegni SVG) |
 | Rotte HTTP | 91 |
 | Tabelle / migrazioni | 45 / 40 |
-| Prove automatiche | **34 file, 966 controlli, tutti verdi** |
+| Prove automatiche | **35 file, 981 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -466,8 +470,8 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Trentaquattro file — ventitré che girano in PHP e undici che interrogano il
-server attraverso Apache — per **966 controlli**. Si aspettano un'installazione
+Trentacinque file — ventiquattro che girano in PHP e undici che interrogano il
+server attraverso Apache — per **981 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e
@@ -497,6 +501,7 @@ php tests/test_apparati.php          # gli apparati del cantiere fanno quello ch
 php tests/test_potatura.php          # il mondo non cresce per sempre: incontri chiusi, contatti, naviglio
 php tests/test_cantiere.php          # il cantiere di base: riparazioni in porto, priorità, paratie
 php tests/test_ciclo.php             # il giro intero di una missione, dalle giunture fra un pezzo e l'altro
+php tests/test_combattimento.php     # Bold, rivelatore radar, sganciamento dalle scorte
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse
