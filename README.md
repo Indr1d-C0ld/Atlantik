@@ -406,15 +406,17 @@ con quello che c'è.
 | Righe di codice | ~47.000 in 286 file (PHP, JavaScript, CSS, SQL e i disegni SVG) |
 | Rotte HTTP | 91 |
 | Tabelle / migrazioni | 45 / 40 |
-| Prove automatiche | **33 file, 938 controlli, tutti verdi** |
+| Prove automatiche | **34 file, 966 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
 La suite copre la simulazione (griglia, astronomia, consumi calibrati sui dati
 storici, acustica, avvistamento, siluri), l'equità fra ritmi di collegamento
 diversi, i casi limite, la matrice dei permessi con sei identità, gli ordini
-malformati, i caricamenti ostili, la potatura, e il JavaScript di bordo guidato
-da un browser vero — compresa la carta su uno schermo da telefono.
+malformati, i caricamenti ostili, la potatura, il JavaScript di bordo guidato
+da un browser vero — compresa la carta su uno schermo da telefono — e il giro
+intero di una missione, che è quello che prende i difetti annidati nelle
+giunture fra un pezzo e l'altro, dove nessuna prova di dettaglio arriva.
 
 ## Uso
 
@@ -464,8 +466,8 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Trentatré file — ventidue che girano in PHP e undici che interrogano il server
-attraverso Apache — per **938 controlli**. Si aspettano un'installazione
+Trentaquattro file — ventitré che girano in PHP e undici che interrogano il
+server attraverso Apache — per **966 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e
@@ -494,6 +496,7 @@ php tests/test_due_battelli.php      # due giocatori sullo stesso convoglio: una
 php tests/test_apparati.php          # gli apparati del cantiere fanno quello che promettono
 php tests/test_potatura.php          # il mondo non cresce per sempre: incontri chiusi, contatti, naviglio
 php tests/test_cantiere.php          # il cantiere di base: riparazioni in porto, priorità, paratie
+php tests/test_ciclo.php             # il giro intero di una missione, dalle giunture fra un pezzo e l'altro
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse
