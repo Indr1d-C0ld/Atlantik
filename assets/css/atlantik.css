@@ -867,6 +867,19 @@ footer {
      a capo, se no si stringono fra loro. */
   .footer-wrap { row-gap: .2rem; align-items: center; }
 
+  /* I campi da compilare. Quelli dell'allestimento in cantiere portano il
+     riempimento in uno style scritto nel tag e restavano alti 31 px: si
+     centrano male col pollice, e sono proprio i campi dove si scrive quanti
+     siluri imbarcare. Il min-height non litiga con lo style in linea, che
+     fissa il riempimento e non l'altezza.
+
+     Restano fuori le caselle e i pallini: quelli hanno gia' la loro etichetta
+     da toccare, e ingrossarli sformerebbe la griglia dei ritratti. */
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+  select, textarea {
+    min-height: 2.75rem;
+  }
+
   /* Una strisciata orizzontale dentro una tabella larga non deve diventare una
      navigazione indietro del browser. Succede sul serio: la tabella finisce, il
      gesto prosegue, e il telefono torna alla pagina di prima perdendo il segno.

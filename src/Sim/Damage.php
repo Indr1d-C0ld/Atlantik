@@ -80,15 +80,25 @@ final class Damage
         );
     }
 
-    /** Rimette tutto a nuovo: cantiere di base fra una missione e l'altra. */
+    /**
+     * Quello che la partenza sistema da sola.
+     *
+     * Fino al 21/09/2026 questo metodo rimetteva a nuovo l'intero battello nel
+     * momento in cui si mollavano gli ormeggi: tutti i sistemi a posto, tutti
+     * i compartimenti revisionati, gratis e in un istante. Con quella rete
+     * tesa, il tempo passato in banchina non voleva dire niente — si poteva
+     * rientrare a pezzi e ripartire subito come nuovi.
+     *
+     * Adesso quel lavoro lo fa il cantiere (App\Game\Cantiere), ora per ora,
+     * mentre il battello sta in porto: se si riparte prima che abbia finito,
+     * si riparte con quello che c'e'.
+     *
+     * Qui resta solo cio' che non e' una riparazione: le deformazioni dello
+     * scafo, che il bacino raddrizza in parte e che nessun lavoro rimette mai
+     * del tutto a posto. E' giusto che il battello invecchi.
+     */
     public static function overhaul(int $boatId): void
     {
-        Database::run("UPDATE boat_systems SET condition_pct = 100, state = 'ok', repair_progress = 0 WHERE boat_id = ?", [$boatId]);
-        // Anche le paratie sigillate si riaprono in bacino: e' il solo posto
-        // dove si puo' fare, e chi e' rimasto dentro non torna comunque.
-        Compartimenti::revisiona($boatId);
-        // Le deformazioni dello scafo restano: quelle il cantiere le raddrizza
-        // solo in parte, ed e' giusto che il battello invecchi.
         Database::run('UPDATE boats SET hull_integrity = LEAST(100, hull_integrity + 6), hull_stress = GREATEST(0, hull_stress * 0.55) WHERE id = ?', [$boatId]);
     }
 

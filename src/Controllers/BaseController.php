@@ -35,6 +35,12 @@ final class BaseController
             return redirect('/zentrale');
         }
 
+        // In banchina il cantiere lavora, e questa e' la pagina dove si aspetta
+        // che finisca: senza questo avanzamento il lavoro andrebbe avanti solo
+        // col battito di sistema, e chi guarda la base vedrebbe numeri vecchi.
+        \App\Sim\BoatSim::advance((int) $boat['id']);
+        $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
+
         $type = World::type((string) $boat['type_key']);
         $base = World::port((string) $boat['home_port_key']);
 
@@ -53,8 +59,26 @@ final class BaseController
             [(int) $boat['id']]
         );
 
+        // Che cosa il cantiere non ha ancora finito. Dal 21/09/2026 la partenza
+        // non rimette piu' niente a posto da sola: quello che e' rotto adesso
+        // esce in mare insieme al battello, e il comandante deve saperlo prima
+        // di mollare, non dopo.
+        $inLavorazione = Database::all(
+            "SELECT name, state FROM boat_systems WHERE boat_id = ? AND state <> 'ok'
+              ORDER BY FIELD(category,'propulsione','governo','scoperta','scafo','armamento'), name",
+            [(int) $boat['id']]
+        );
+        $compInLavorazione = Database::all(
+            'SELECT name FROM boat_compartments
+              WHERE boat_id = ? AND (integrity < 100 OR flooding > 0 OR fire > 0 OR sealed = 1)
+              ORDER BY seq',
+            [(int) $boat['id']]
+        );
+
         return Response::html(view('base/flottiglia', [
             'title'     => 'Base di flottiglia',
+            'inLavorazione' => $inLavorazione,
+            'compInLavorazione' => $compInLavorazione,
             'user'      => $user,
             'boat'      => $boat,
             'type'      => $type,

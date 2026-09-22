@@ -11,14 +11,25 @@ $nomiCategoria = [
     'scoperta' => 'Scoperta e comunicazioni', 'scafo' => 'Scafo', 'armamento' => 'Armamento',
 ];
 $stressPct = (float) $boat['hull_stress'];
+// In banchina a lavorare non e' l'equipaggio: il battello entra nel bunker e
+// ci mettono le mani gli operai del cantiere. Cambia chi firma il rapporto, e
+// cambia il ritmo — il cantiere va circa al doppio.
+$inCantiere = (string) $boat['state'] === 'base';
 ?>
 <?= partial('nav_plancia', ['attiva' => 'battello']) ?>
 <?= partial('intestazione_battello', compact('boat', 'type', 'clock', 'now')) ?>
 
 <?php if ($guasti !== []): ?>
 <div class="pannello">
-  <span class="targhetta">Rapporto del Leitender Ingenieur</span>
+  <span class="targhetta"><?= $inCantiere ? 'Rapporto del cantiere' : 'Rapporto del Leitender Ingenieur' ?></span>
   <h2><?= count($guasti) ?> <?= count($guasti) === 1 ? 'avaria a bordo' : 'avarie a bordo' ?></h2>
+  <?php if ($inCantiere): ?>
+    <p class="sommario" style="margin-bottom:.9rem">
+      Il battello e' in bacino: ci lavorano gli operai della base, piu' in fretta
+      di quanto possa fare l'equipaggio a mare. Qui si rimettono a posto anche i
+      sistemi che a mare non si toccano.
+    </p>
+  <?php endif; ?>
   <table class="dati">
     <tr><th>Sistema</th><th>Dove</th><th>Stato</th><th>Riparazione</th><th></th></tr>
     <?php foreach ($guasti as $g):
@@ -32,11 +43,15 @@ $stressPct = (float) $boat['hull_stress'];
           <?php if ((int) $g['repairable_sea'] === 1): ?>
             <div class="misuratore" style="width:8rem"><i style="width:<?= e(number_format($pct, 0)) ?>%"></i></div>
           <?php else: ?>
-            <span style="color:var(--testo-3)">non a mare</span>
+            <?php if ($inCantiere): ?>
+              <div class="misuratore" style="width:8rem"><i style="width:<?= e(number_format($pct, 0)) ?>%"></i></div>
+            <?php else: ?>
+              <span style="color:var(--testo-3)">non a mare</span>
+            <?php endif; ?>
           <?php endif; ?>
         </td>
         <td>
-          <?php if ((int) $g['repairable_sea'] === 1): ?>
+          <?php if ((int) $g['repairable_sea'] === 1 || $inCantiere): ?>
           <form method="post" action="<?= e(url('/riparazione')) ?>" style="display:inline">
             <?= csrf_field() ?>
             <input type="hidden" name="skey" value="<?= e($g['skey']) ?>">

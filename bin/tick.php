@@ -92,7 +92,10 @@ try {
     $miglia = 0.0;
     $eventi = 0;
 
-    foreach (Database::all("SELECT id FROM boats WHERE state = 'mare'") as $b) {
+    // Anche i battelli in base: in porto il cantiere ripara, e senza questo
+    // l'avanzamento in banchina arriverebbe solo a chi apre una pagina
+    // (segnalazione del 21/09/2026: un battello in porto non veniva riparato).
+    foreach (Database::all("SELECT id FROM boats WHERE state IN ('mare', 'base')") as $b) {
         try {
             $r = BoatSim::advance((int) $b['id']);
             $fatti++;

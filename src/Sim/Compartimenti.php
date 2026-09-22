@@ -308,7 +308,14 @@ final class Compartimenti
         ];
     }
 
-    /** Tutto asciutto e tutto integro: si rimette in ordine in bacino. */
+    /**
+     * Rimette tutti i compartimenti a nuovo, in un colpo.
+     *
+     * Non e' piu' il cantiere: dal 21/09/2026 il lavoro di bacino lo fa
+     * App\Game\Cantiere ora per ora, compartimento per compartimento, mentre
+     * il battello sta in porto. Questo metodo resta come azzeramento secco —
+     * lo usano le prove per ripartire da una situazione pulita.
+     */
     public static function revisiona(int $boatId): void
     {
         Database::run(
