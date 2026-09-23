@@ -130,9 +130,18 @@ final class Geo
 
     private static function formatDeg(float $v, int $pad): string
     {
-        $deg = (int) floor($v);
-        $min = ($v - $deg) * 60.0;
+        // Si arrotonda ai decimi di primo PRIMA di separare gradi e primi.
+        //
+        // Fino al 23/09/2026 si separava prima e si arrotondava dopo, e da
+        // 52,9994° usciva «52°60,0'»: i primi erano 59,96, number_format li
+        // portava a 60,0 e il grado non scattava. Una coordinata che nessuna
+        // carta ammette, una posizione su milleduecento, e finiva nel giornale
+        // di guerra. Contando in decimi di primo il riporto lo fa l'aritmetica.
+        $decimi = (int) round($v * 600.0);
+        $deg = intdiv($decimi, 600);
+        $min = ($decimi % 600) / 10.0;
+        // I primi sempre su due cifre, come sulle carte: «45°06,0'» e non «45°6,0'».
         return str_pad((string) $deg, $pad, '0', STR_PAD_LEFT) . '°'
-            . str_replace('.', ',', number_format($min, 1, '.', '')) . "'";
+            . str_replace('.', ',', str_pad(number_format($min, 1, '.', ''), 4, '0', STR_PAD_LEFT)) . "'";
     }
 }

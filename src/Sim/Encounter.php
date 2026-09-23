@@ -253,6 +253,17 @@ final class Encounter
         }
         $ultimaReale = (int) $enc['last_step_real'];
 
+        // $fino e' uno strumento delle PROVE: nessun chiamante in produzione lo
+        // passa (il controllore e il battito chiamano step() senza), e le prove
+        // lo usano apposta per guidare l'incontro a istanti precisi.
+        //
+        // Non e' tagliato all'ora del mondo, al contrario di BoatSim::advance.
+        // L'audit del 23/09/2026 ci ha provato e ha dovuto tornare indietro: la
+        // guardia rompeva test_incontro, test_danni e test_due_battelli, che
+        // avanzano l'incontro di pochi secondi oltre l'apertura, e proteggeva da
+        // un rischio che fuori dalle prove non esiste. Chi aggiunge un chiamante
+        // in produzione con $fino deve passargli al massimo World::now().
+
         // Quanto tempo di gioco e' passato secondo l'orologio dell'incontro.
         $gameDaFare = $fino !== null
             ? max(0, $fino - (int) $enc['last_step_gts'])
@@ -635,9 +646,10 @@ final class Encounter
             }
 
             $esito = $affondate > 0
-                ? sprintf('%d affondate per %s GRT.', $affondate, number_format($grtAffondato, 0, ',', '.'))
+                ? sprintf('%s per %s GRT.', plurale($affondate, 'Una affondata', '%d affondate'), number_format($grtAffondato, 0, ',', '.'))
                 : ($strascico['danneggiate'] > 0
-                    ? sprintf('Nessun affondamento: %d danneggiate, e il contatto si e\' rotto.', $strascico['danneggiate'])
+                    ? sprintf('Nessun affondamento: %s, e il contatto si e\' rotto.',
+                        plurale((int) $strascico['danneggiate'], 'una danneggiata', '%d danneggiate'))
                     : 'Nessun risultato: il contatto si e\' allontanato.');
             self::chiudi($encId, $esito, $t, $affondate, $grtAffondato);
             $eventi[] = match (true) {
@@ -1041,10 +1053,20 @@ final class Encounter
         foreach (Torpedo::tubiPronti((int) $boat['id']) as $tp) {
             $tubiPronti[(int) $tp['tubo']] = $tp;
         }
-        $richiesti = array_values(array_filter(
+        // Un tubo, un siluro: i doppioni si tolgono QUI, non nel modulo.
+        //
+        // Fino al 23/09/2026 l'elenco passava cosi' com'era, e ogni ripetizione
+        // dello stesso tubo pescava la stessa riga di boat_torpedoes: una corsa
+        // nuova a ogni giro, e la stessa riga rimarcata «lanciato». Con
+        // tubi[]=1 ripetuto sei volte in un POST — un minuto con gli strumenti
+        // del browser — da un siluro solo ne uscivano sei, e il contatore della
+        // missione ne segnava sei. Trovato dall'audit per proprieta': la somma
+        // «siluri a bordo + corse registrate» non tornava piu' coi siluri
+        // imbarcati.
+        $richiesti = array_values(array_unique(array_filter(
             array_map('intval', $ordine['tubi'] ?? []),
             static fn (int $n): bool => isset($tubiPronti[$n])
-        ));
+        )));
         if ($richiesti === []) {
             return ['ok' => false, 'error' => 'Nessun tubo pronto fra quelli indicati.'];
         }
@@ -1143,9 +1165,10 @@ final class Encounter
         Database::run("UPDATE encounters SET stato = 'attacco' WHERE id = ? AND stato = 'avvicinamento'", [(int) $enc['id']]);
 
         $testo = sprintf(
-            'Lanciati %d siluri da %s su %s: rilevamento %03.0f, distanza stimata %.0f metri, '
+            '%s da %s su %s: rilevamento %03.0f, distanza stimata %.0f metri, '
             . 'angolo sulla prua %.0f gradi, velocita\' stimata %.0f nodi (stima del %s). Spoletta %s, quota %.0f metri.',
-            $lanciati,
+            // «Lanciati 1 siluri» si leggeva a ogni lancio singolo, cioe' quasi sempre.
+            $lanciati === 1 ? 'Lanciato un siluro' : sprintf('Lanciati %d siluri', $lanciati),
             count($richiesti) > 1 ? 'tubi ' . implode(', ', $richiesti) : 'tubo ' . $richiesti[0],
             (string) $bersaglio['name'], $rilevamento, (float) $stima['distanza'] * 1852,
             (float) $stima['aob'], (float) $stima['velocita'], (string) $stima['autore'], $spoletta, $quota
@@ -1249,8 +1272,8 @@ final class Encounter
         );
 
         $testo = sprintf(
-            'Cannone: %d colpi su %s a %.0f metri, %d a segno. %s',
-            $colpi, (string) $e['name'], $d * 1852, $centri,
+            'Cannone: %s su %s a %.0f metri, %d a segno. %s',
+            plurale($colpi, 'un colpo', '%d colpi'), (string) $e['name'], $d * 1852, $centri,
             $stato === 'affonda' ? 'Si inclina e comincia ad affondare.' : ($centri > 0 ? 'Fori sulla linea di galleggiamento.' : 'Colpi corti.')
         );
 
@@ -1342,7 +1365,8 @@ final class Encounter
         }
 
         $testo = $ingannate > 0
-            ? sprintf('Bold in mare. %d scorte si attaccano alla nuvola di bolle: adesso o mai piu\'.', $ingannate)
+            ? 'Bold in mare. ' . plurale($ingannate, 'Una scorta si attacca', '%d scorte si attaccano')
+                . ' alla nuvola di bolle: adesso o mai piu\'.'
             : 'Bold in mare, ma non ci cascano: continuano a seguirci.';
 
         if ($enc['patrol_id'] !== null) {

@@ -180,9 +180,9 @@ final class Rifornimento
         }
 
         return [sprintf(
-            'Rifornimento eseguito: %.0f tonnellate di nafta, %d siluri, viveri per due settimane. '
+            'Rifornimento eseguito: %.0f tonnellate di nafta, %s, viveri per due settimane. '
             . 'Ore di superficie immobile a fianco della cisterna, e nessuno che respirava.',
-            $nafta, $siluri
+            $nafta, plurale($siluri, 'un siluro', '%d siluri')
         )];
     }
 }

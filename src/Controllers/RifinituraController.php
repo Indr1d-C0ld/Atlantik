@@ -74,7 +74,7 @@ final class RifinituraController
         $r[] = 'Rientro:      ' . ($patrol['returned_gts'] !== null ? $clock->formatDiario((int) $patrol['returned_gts']) : 'in corso');
         $r[] = 'Percorse:     ' . number_format((float) $patrol['distance_nm'], 0, ',', '.') . ' miglia ('
             . number_format((float) $patrol['submerged_nm'], 0, ',', '.') . ' in immersione)';
-        $r[] = 'Affondate:    ' . $patrol['affondate'] . ' navi per '
+        $r[] = 'Affondate:    ' . plurale((int) $patrol['affondate'], '1 nave', '%d navi') . ' per '
             . number_format((float) $patrol['grt_affondato'], 0, ',', '.') . ' GRT';
         $r[] = str_repeat('=', 72);
         $r[] = '';

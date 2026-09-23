@@ -79,6 +79,27 @@ ok('differenza di rilevamento con segno', vicino(Geo::bearingDelta(350, 10), 20,
 ok('longitudine normalizzata', vicino(Geo::normLon(200), -160, 0.001) && vicino(Geo::normLon(-190), 170, 0.001));
 ok('formato nautico della latitudine', Geo::formatLat(47.75) === "47°45,0' N", Geo::formatLat(47.75));
 
+// Audit del 23/09/2026: da 52,9994° usciva «52°60,0'». Si separavano gradi e
+// primi e poi si arrotondavano i primi, e 59,96 diventava 60,0 senza far
+// scattare il grado — una posizione su milleduecento, e finiva nel giornale.
+ok('i primi non arrivano mai a 60: il grado scatta', Geo::formatLat(52.9994) === "53°00,0' N", Geo::formatLat(52.9994));
+ok('anche in longitudine ovest', Geo::formatLon(-19.99995) === "020°00,0' W", Geo::formatLon(-19.99995));
+// E i primi sempre su due cifre, come sulle carte: «45°06,0'», non «45°6,0'».
+ok('i primi hanno lo zero davanti', Geo::formatLat(45.1) === "45°06,0' N", Geo::formatLat(45.1));
+ok('l\'esempio del commento di Geo torna identico',
+    Geo::formatLat(52.2383) === "52°14,3' N" && Geo::formatLon(-19.7933) === "019°47,6' W",
+    Geo::formatLat(52.2383) . '  ' . Geo::formatLon(-19.7933));
+$sessanta = 0;
+// Il passo non deve essere un sottomultiplo del primo: con 80/20000 = 0,004°
+// i primi andavano a scatti di 0,24 e la finestra fra 59,95 e 60 non la
+// toccava mai — la verifica passava anche col difetto. Con un passo che non si
+// allinea, la finestra si attraversa una ventina di volte.
+for ($i = 0; $i < 20000; $i++) {
+    $v = $i * 0.0039871;
+    if (str_contains(Geo::formatLat($v), "60,0'")) { $sessanta++; }
+}
+ok('su ventimila latitudini, nessuna «60,0\'»', $sessanta === 0, "$sessanta trovate");
+
 // --- Marinequadrat -----------------------------------------------------------
 titolo('Griglia Marinequadrat');
 

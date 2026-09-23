@@ -149,9 +149,9 @@ $num = static fn (float|int $v, int $d = 0): string => number_format((float) $v,
         <i class="civile" style="width:<?= e($pct($civ['grt'])) ?>%"></i>
       </div>
       <div class="riga" style="margin-top:.5rem"><span class="etichetta" style="color:var(--rosso)">Militare</span>
-        <span class="valore piccolo"><?= e((string) $mil['navi']) ?> navi · <?= e($num($mil['grt'])) ?> GRT</span></div>
+        <span class="valore piccolo"><?= e(plurale((int) $mil['navi'], '1 nave', '%d navi')) ?> · <?= e($num($mil['grt'])) ?> GRT</span></div>
       <div class="riga"><span class="etichetta" style="color:var(--ottone)">Mercantile e civile</span>
-        <span class="valore piccolo"><?= e((string) $civ['navi']) ?> navi · <?= e($num($civ['grt'])) ?> GRT</span></div>
+        <span class="valore piccolo"><?= e(plurale((int) $civ['navi'], '1 nave', '%d navi')) ?> · <?= e($num($civ['grt'])) ?> GRT</span></div>
       <p class="aiuto">Militare è il naviglio che navigava armato per mestiere — scorte e ausiliarie.
         Il resto è naviglio civile requisito alla guerra: era il bersaglio della guerra al traffico.</p>
     <?php endif; ?>

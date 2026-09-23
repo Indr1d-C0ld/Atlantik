@@ -370,11 +370,14 @@ final class Bdu
         $caldi = Sectors::caldi($gts, 3);
 
         $testo = sprintf(
-            'Situazione: %d battelli in mare, %d perduti dall\'inizio delle operazioni. '
-            . 'Naviglio nemico affondato dall\'arma: %d unita\' per %s tonnellate. '
-            . 'In mare si contano %d convogli e %d navi isolate.',
-            $inMare, $persi, (int) ($aff['n'] ?? 0), number_format((float) ($aff['grt'] ?? 0), 0, ',', '.'),
-            $s['convogli'], $s['isolate']
+            'Situazione: %s in mare, %s dall\'inizio delle operazioni. '
+            . 'Naviglio nemico affondato dall\'arma: %s per %s tonnellate. '
+            . 'In mare si contano %s e %s.',
+            plurale($inMare, 'un battello', '%d battelli'), plurale($persi, 'uno perduto', '%d perduti'),
+            plurale((int) ($aff['n'] ?? 0), 'una unita\'', '%d unita\''),
+            number_format((float) ($aff['grt'] ?? 0), 0, ',', '.'),
+            plurale((int) $s['convogli'], 'un convoglio', '%d convogli'),
+            plurale((int) $s['isolate'], 'una nave isolata', '%d navi isolate')
         );
 
         if ($caldi !== []) {

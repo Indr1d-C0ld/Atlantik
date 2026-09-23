@@ -238,7 +238,8 @@ final class Scorte
                     $latMira, $lonMira, $rng->range(0, 360), abs($rng->gauss()) * $erroreM / 1852.0
                 );
 
-                $eventi[] = sprintf('%s passa sopra di noi: %d cariche in mare.', (string) $e['name'], $lanciate);
+                $eventi[] = sprintf('%s passa sopra di noi: %s.', (string) $e['name'],
+                    plurale($lanciate, 'una carica in mare', '%d cariche in mare'));
 
                 for ($k = 0; $k < $lanciate; $k++) {
                     // Lo schema di lancio copre un rettangolo di una quarantina

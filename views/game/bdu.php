@@ -82,7 +82,12 @@
             <td><?= e($b['nome']) ?></td>
             <td><?= e($b['quadrat']) ?></td>
             <td><?= e($b['membri']) ?></td>
-            <td><?= e(max(0, (int) round(((int) $b['chiude_gts'] - time()) / 3600))) ?> ore</td>
+            <?php
+              // chiude_gts, nonostante il nome, e' tempo REALE (vedi Branco::apri):
+              // qui si scrive «reali» perche' ogni altro orario della pagina e' di bordo.
+              $oreChiusura = (int) round(((int) $b['chiude_gts'] - time()) / 3600);
+            ?>
+            <td><?= e($oreChiusura < 1 ? 'meno di un\'ora reale' : plurale($oreChiusura, 'un\'ora reale', '%d ore reali')) ?></td>
             <td>
               <?php if ((string) $boat['state'] === 'mare'): ?>
                 <form method="post" action="<?= e(url('/bdu/branco/entra')) ?>" style="display:inline">

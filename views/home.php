@@ -37,7 +37,7 @@
       <div class="quadrante">
         <div class="etichetta">Mandata a fondo</div>
         <div class="valore" style="font-size:1.15rem"><?= e($num((int) ($stats['grt_affondato'] ?? 0))) ?></div>
-        <div class="etichetta">GRT in <?= e($num((int) ($stats['navi_affondate'] ?? 0))) ?> navi</div>
+        <div class="etichetta">GRT in <?= e(plurale((int) ($stats['navi_affondate'] ?? 0), 'una nave', $num((int) ($stats['navi_affondate'] ?? 0)) . ' navi')) ?></div>
       </div>
     <?php endif; ?>
     <div class="quadrante">

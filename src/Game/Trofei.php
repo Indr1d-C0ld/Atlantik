@@ -162,7 +162,7 @@ final class Trofei
                     'SELECT COUNT(*) n FROM radio_messages WHERE boat_id = ? AND gts >= ? AND gts <= ?',
                     [$boatId, (int) $patrol['departed_gts'], (int) ($patrol['returned_gts'] ?? World::now())]
                 )['n'] ?? 0);
-                return $radio === 0 ? sprintf('%d navi affondate, zero trasmissioni', $affondate) : false;
+                return $radio === 0 ? plurale($affondate, 'una nave affondata', '%d navi affondate') . ', zero trasmissioni' : false;
             });
         }
 
