@@ -302,8 +302,9 @@ final class Compartimenti
         return [
             'ok' => true,
             'evento' => $persi > 0
-                ? sprintf('Paratia di %s sigillata. Dentro restano %d uomini, e non si riaprira\'.',
-                    mb_strtolower((string) $c['name']), $persi)
+                ? sprintf('Paratia di %s sigillata. %s, e non si riaprira\'.',
+                    mb_strtolower((string) $c['name']),
+                    plurale($persi, 'Dentro resta un uomo', 'Dentro restano %d uomini'))
                 : sprintf('Paratia di %s sigillata: l\'acqua resta di la\'.', mb_strtolower((string) $c['name'])),
         ];
     }

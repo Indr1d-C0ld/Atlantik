@@ -369,9 +369,9 @@ settemila volte e ha fallito otto volte, tutte fra il 17 e il 19 settembre:
 ogni fallimento con la sua riga nel diario e la sua causa nota, che è il motivo
 per cui si contano.
 
-### Le otto revisioni tecniche
+### Le nove revisioni tecniche
 
-Il gioco è stato sottoposto a otto audit successivi, ognuno con un metodo
+Il gioco è stato sottoposto a nove audit successivi, ognuno con un metodo
 diverso dal precedente, perché un metodo ripetuto smette di trovare. Il
 registro completo — con le misure, i numeri e le prove che lo dimostrano — sta
 in `docs/AUDIT.md` nel deployment; qui il sunto.
@@ -386,6 +386,7 @@ in `docs/AUDIT.md` nel deployment; qui il sunto.
 | 6 | Scala, durata, browser vero | Ogni incontro chiuso teneva in vita le venticinque navi del convoglio **e impediva di potarle** |
 | 7 | Caricamenti, accessibilità, fonti | Gli `.htaccess` che proteggevano i caricamenti **non venivano letti da nessuno** |
 | 8 | *La documentazione dice il vero?* | Uno strumento descritto in cinque punti — perfino con i suoi criteri di filtro — **non è mai stato scritto** |
+| 9 | La matematica e i suoi confini | Una nave a quattro chilometri, di notte, **risultava riconosciuta al 97%**: oltre la portata la formula faceva `NAN`, e PHP lo trasformava nel massimo |
 
 Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
 nessuno di questi difetti si vede leggendo il codice. Quel codice era giusto.
@@ -410,7 +411,7 @@ e ha cominciato a interrogare quello che il codice dice di sé.
 | Righe di codice | ~47.000 in 286 file (PHP, JavaScript, CSS, SQL e i disegni SVG) |
 | Rotte HTTP | 91 |
 | Tabelle / migrazioni | 45 / 40 |
-| Prove automatiche | **35 file, 981 controlli, tutti verdi** |
+| Prove automatiche | **35 file, 996 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -471,7 +472,7 @@ php bin/console.php mail:smista                  # smista la coda di posta
 ### Le prove
 
 Trentacinque file — ventiquattro che girano in PHP e undici che interrogano il
-server attraverso Apache — per **981 controlli**. Si aspettano un'installazione
+server attraverso Apache — per **996 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e

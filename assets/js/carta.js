@@ -819,10 +819,13 @@
     if (bottoneSalva) { bottoneSalva.disabled = !modificata; }
   }
 
+  // In decimi di primo prima di separare: se no 52,9994° diventa «52°60,0'».
+  // Lo stesso difetto e la stessa correzione di Geo::formatDeg lato server.
   function gradi(v, assi) {
     var segno = v < 0 ? assi[1] : assi[0];
-    var a = Math.abs(v), g = Math.floor(a), m = (a - g) * 60;
-    return g + '°' + m.toFixed(1).replace('.', ',') + "' " + segno;
+    var decimi = Math.round(Math.abs(v) * 600);
+    var g = Math.floor(decimi / 600), m = (decimi % 600) / 10;
+    return g + '°' + (m < 10 ? '0' : '') + m.toFixed(1).replace('.', ',') + "' " + segno;
   }
 
   if (elenco) {

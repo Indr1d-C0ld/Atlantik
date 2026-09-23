@@ -78,9 +78,9 @@ Database::run(
 // inversa a quanto e' saldo il contatto.
 Database::run(
     'INSERT INTO encounters (boat_id, patrol_id, stato, allarme, started_gts, last_step_gts,
-                             finestra_fine, ratio)
-     VALUES (?, NULL, "evasione", 1, ?, ?, ?, 1)',
-    [$boatId, $gts, $gts, $gts + 4 * 3600]
+                             last_step_real, finestra_fine, ratio)
+     VALUES (?, NULL, "evasione", 1, ?, ?, ?, ?, 1)',
+    [$boatId, $gts, $gts, time(), $gts + 4 * 3600]
 );
 $encId = Database::lastInsertId();
 Database::run('UPDATE boats SET encounter_id = ? WHERE id = ?', [$encId, $boatId]);
@@ -171,6 +171,26 @@ verifica('e se scatta, l\'attacco aereo viene saltato', true,
 
 titolo('Sganciamento — la via d\'uscita che non passa dal fondo');
 
+// Far passare il tempo di un incontro senza chiedere il futuro: si arretrano
+// tutti e due gli orologi, quello di gioco e quello reale, e il passo recupera.
+//
+// Le prime versioni di questa prova chiamavano step($encId, $gts + 600). Due
+// guai, trovati dall'audit del 23/09/2026: l'incontro nasceva con
+// last_step_real a zero, e su un incontro cosi' il primo passo si limita ad
+// accendere l'orologio e restituisce zero passi — la verifica «col contatto
+// saldo non ci si sgancia» passava senza che succedesse niente. E quando
+// Encounter::step ha avuto la guardia che non lo lascia passare davanti al
+// mondo, i passi partivano o no secondo quanti decimi di secondo reali la
+// prova aveva impiegato ad arrivare fin li'.
+$passaTempo = static function (int $secondi) use ($encId): void {
+    Database::run(
+        'UPDATE encounters SET last_step_gts = last_step_gts - ?, last_step_real = last_step_real - ? WHERE id = ?',
+        [$secondi, $secondi, $encId]
+    );
+    Encounter::step($encId);
+};
+
+
 // Le scorte stanno a OTTO miglia in tutte e due le prove che seguono, e la
 // distanza non si tocca piu'. E' il punto della cosa: oltre le quattro miglia
 // che lo sganciamento richiede, ma sotto le quattordici oltre le quali
@@ -187,18 +207,64 @@ Database::run('UPDATE encounters SET allarme = 1, stato = "evasione" WHERE id = 
 
 // 1. Contatto ancora saldo: da li' non ci si sfila.
 Database::run('UPDATE encounter_entities SET contatto = 0.60, manovra = "caccia" WHERE encounter_id = ?', [$encId]);
-Encounter::step($encId, $gts + 600);
+$passaTempo(600);
 $e = Database::first('SELECT stato FROM encounters WHERE id = ?', [$encId]);
 verifica('col contatto saldo non ci si sgancia', true, (string) $e['stato'] !== 'concluso');
 
 // 2. Stessa distanza, contatto perso: adesso si'.
+//
+// Le scorte si rimettono a otto miglia: nel passo di prima, col contatto
+// saldo, hanno cacciato e si sono avvicinate — che e' proprio quello che
+// devono fare — e da sotto le quattro miglia sganciarsi non si puo'.
+Database::run('UPDATE encounter_entities SET lat = 48.155, lon = -20.0 WHERE encounter_id = ?', [$encId]);
+Database::run('UPDATE boats SET lat = 48.02, lon = -20.0 WHERE id = ?', [$boatId]);
 Database::run('UPDATE encounter_entities SET contatto = 0.01, manovra = "ricerca" WHERE encounter_id = ?', [$encId]);
 Database::run('UPDATE encounters SET allarme = 1 WHERE id = ?', [$encId]);
-Encounter::step($encId, $gts + 1200);
+$passaTempo(600);
 $e = Database::first('SELECT stato FROM encounters WHERE id = ?', [$encId]);
 $b = Database::first('SELECT encounter_id FROM boats WHERE id = ?', [$boatId]);
 verifica('perso il contatto, alla stessa distanza, ci si sgancia', 'concluso', (string) $e['stato']);
 verifica('e il battello torna libero', null, $b['encounter_id']);
+
+titolo('Un tubo, un siluro');
+
+// Audit del 23/09/2026. L'elenco dei tubi arrivava dal modulo senza togliere i
+// doppioni, e ogni ripetizione pescava la stessa riga: con tubi[]=1 scritto sei
+// volte in un POST, da UN siluro ne uscivano SEI, e il contatore della missione
+// ne segnava sei. Qui si pretende la conservazione: siluri a bordo + corse
+// registrate = siluri imbarcati, qualunque cosa contenga l'ordine.
+$g2 = World::now();
+Database::run('UPDATE boats SET mode = "periscopio", depth_m = 12, ordered_depth_m = 12, lat = 50.0, lon = -30.0 WHERE id = ?', [$boatId]);
+\App\Sim\Torpedo::imbarca($boatId, World::type((string) $boat['type_key']), \App\Sim\Torpedo::caricoStandard(World::type((string) $boat['type_key']), 0));
+Database::run(
+    'INSERT INTO encounters (boat_id, patrol_id, stato, allarme, started_gts, last_step_gts, last_step_real, finestra_fine, ratio)
+     VALUES (?, NULL, "attacco", 0, ?, ?, ?, ?, 1)',
+    [$boatId, $g2, $g2, time(), $g2 + 3600]
+);
+$enc2 = Database::lastInsertId();
+Database::run('UPDATE boats SET encounter_id = ? WHERE id = ?', [$enc2, $boatId]);
+Database::run(
+    'INSERT INTO encounter_entities (encounter_id, class_key, name, ruolo, lat, lon, heading, speed_kn, grt, integrita)
+     VALUES (?, "cargo_medio", "Bersaglio Prova", "mercantile", 50.009, -30.0, 90, 8, 5100, 100)',
+    [$enc2]
+);
+$bersaglio2 = Database::lastInsertId();
+$aBordo = static fn (): int => (int) (Database::first(
+    "SELECT COUNT(*) n FROM boat_torpedoes WHERE boat_id = ? AND stato <> 'lanciato'", [$boatId]
+)['n'] ?? 0);
+$corse = static fn (): int => (int) (Database::first('SELECT COUNT(*) n FROM torpedo_runs WHERE boat_id = ?', [$boatId])['n'] ?? 0);
+$imbarcati = $aBordo() + $corse();
+
+$r = Encounter::lancia(
+    Database::first('SELECT * FROM encounters WHERE id = ?', [$enc2]),
+    Database::first('SELECT * FROM boats WHERE id = ?', [$boatId]),
+    ['entity_id' => $bersaglio2, 'tubi' => [1, 1, 1, 1, 1, 1], 'spoletta' => 'contatto', 'quota' => 4, 'ventaglio' => 2],
+    $g2
+);
+verifica('lo stesso tubo sei volte: parte comunque', true, (bool) $r['ok']);
+verifica('ma parte UN siluro, non sei', 1, $corse());
+verifica('e i siluri si conservano', $imbarcati, $aBordo() + $corse());
+verifica('e il testo lo dice al singolare', true, str_starts_with((string) ($r['testo'] ?? ''), 'Lanciato un siluro'));
 
 echo "\n";
 if ($falliti === 0) { echo "\033[0;32mTutte le verifiche superate.\033[0m\n"; exit(0); }

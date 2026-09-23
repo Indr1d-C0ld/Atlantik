@@ -117,7 +117,7 @@ final class CarrieraController
 
         $res = Carriera::addestra($cmd, $boat, $request->str('specialita'));
         Session::flash($res['ok'] ? 'success' : 'error', $res['ok']
-            ? sprintf('Corso concluso: %d uomini piu\' preparati.', $res['uomini'])
+            ? 'Corso concluso: ' . plurale((int) $res['uomini'], 'un uomo piu\' preparato.', '%d uomini piu\' preparati.')
             : ($res['error'] ?? 'Corso non possibile.'));
         return redirect('/comandante');
     }

@@ -129,7 +129,7 @@ final class Carriera
         if ($neutrali > 0) {
             $malus = $neutrali * 220;
             $prestigio -= $malus;
-            $voci[] = ['voce' => $neutrali . ' navi neutrali affondate — inchiesta del comando', 'valore' => -$malus];
+            $voci[] = ['voce' => plurale($neutrali, 'Una nave neutrale affondata', '%d navi neutrali affondate') . ' — inchiesta del comando', 'valore' => -$malus];
         }
 
         // Perdite fra l'equipaggio.
@@ -140,7 +140,7 @@ final class Carriera
         if ($morti > 0) {
             $malus = $morti * 45;
             $prestigio -= $malus;
-            $voci[] = ['voce' => $morti . ' uomini perduti', 'valore' => -$malus];
+            $voci[] = ['voce' => plurale($morti, 'Un uomo perduto', '%d uomini perduti'), 'valore' => -$malus];
         }
 
         $giorni = ((int) ($patrol['returned_gts'] ?? World::now()) - (int) $patrol['departed_gts']) / 86400;
@@ -249,9 +249,11 @@ final class Carriera
             }
 
             $motivazione = sprintf(
-                'Per il comportamento tenuto in %d missioni di guerra, nel corso delle quali ha affondato '
-                . '%d navi nemiche per complessive %s tonnellate di stazza lorda.',
-                (int) $cmd['patrols'], (int) $cmd['affondate'],
+                'Per il comportamento tenuto in %s, nel corso %s ha affondato '
+                . '%s per complessive %s tonnellate di stazza lorda.',
+                plurale((int) $cmd['patrols'], 'una missione di guerra', '%d missioni di guerra'),
+                (int) $cmd['patrols'] === 1 ? 'della quale' : 'delle quali',
+                plurale((int) $cmd['affondate'], 'una nave nemica', '%d navi nemiche'),
                 number_format((int) $cmd['grt_affondato'], 0, ',', '.')
             );
 
@@ -284,7 +286,8 @@ final class Carriera
             number_format((float) $patrol['submerged_nm'], 0, ',', '.'),
             number_format((float) $patrol['fuel_used_t'], 1, ',', '.'));
         $righe[] = '';
-        $righe[] = sprintf('RISULTATO: %d navi affondate per %s tonnellate di stazza.', $affondate, number_format($grt, 0, ',', '.'));
+        $righe[] = sprintf('RISULTATO: %s per %s tonnellate di stazza.',
+            plurale($affondate, 'una nave affondata', '%d navi affondate'), number_format($grt, 0, ',', '.'));
         $righe[] = sprintf('Siluri lanciati: %d.', (int) ($patrol['siluri_lanciati'] ?? 0));
         if (!$rientrato) {
             $righe[] = 'Il battello non ha fatto ritorno.';

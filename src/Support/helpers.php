@@ -250,3 +250,21 @@ if (!function_exists('is_admin')) {
         return \App\Auth\Auth::isAdmin();
     }
 }
+
+if (!function_exists('plurale')) {
+    /**
+     * La frase giusta secondo il numero: plurale($n, 'una nave affondata', '%d navi affondate').
+     *
+     * Sceglie la FRASE, non solo il sostantivo, perche' in italiano con il numero
+     * si accordano anche verbo e participio: «una scorta si attacca», «due scorte
+     * si attaccano». Le due forme possono contenere %d oppure no.
+     *
+     * Nasce dall'audit del 23/09/2026: diciotto frasi costruivano un plurale
+     * fisso intorno a un numero, e il comunicato del BdU a tutti i giocatori
+     * diceva «1 perduti», l'esito di un incontro «1 affondate per 8.200 GRT».
+     */
+    function plurale(int $n, string $uno, string $molti): string
+    {
+        return sprintf($n === 1 ? $uno : $molti, $n);
+    }
+}

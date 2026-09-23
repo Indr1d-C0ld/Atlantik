@@ -210,9 +210,12 @@ final class Comandante
 
         $testo = match ($esito) {
             'prigioniero' => sprintf(
-                '%s in quadrato %s. %d uomini riescono a uscire e vengono raccolti dal nemico: '
-                . 'per loro la guerra finisce in un campo di prigionia. Gli altri %d restano nel battello.',
-                ucfirst($causa), $quadrat ?? '—', $superstiti, $uomini - $superstiti
+                '%s in quadrato %s. %s: per %s la guerra finisce in un campo di prigionia. %s',
+                ucfirst($causa), $quadrat ?? '—',
+                plurale($superstiti, 'Un uomo riesce a uscire e viene raccolto dal nemico',
+                    '%d uomini riescono a uscire e vengono raccolti dal nemico'),
+                $superstiti === 1 ? 'lui' : 'loro',
+                plurale($uomini - $superstiti, 'L\'altro resta nel battello.', 'Gli altri %d restano nel battello.')
             ),
             default => sprintf(
                 '%s in quadrato %s. Nessun superstite: %d uomini scomparsi con il battello. '

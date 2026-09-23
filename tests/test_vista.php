@@ -51,6 +51,30 @@ function quadroCon(int $boatId, array $enc, string $modo, float $quota, bool $pe
     return Vista::quadro($b, $enc, Encounter::entita((int) $enc['id']), 1.0, 1.0, $som);
 }
 
+// --- la certezza, da sola ----------------------------------------------------
+// Senza database e senza scenario: una griglia di distanze e di luci. Qui un
+// NAN non puo' nascondersi dietro il mare di quel giorno.
+titolo('La certezza di cio\' che si guarda');
+$nan = 0; $fuori = 0; $nonMonotona = 0; $oltre = 0; $casi = 0;
+foreach ([0.0, 0.015, 0.1, 0.4, 0.85, 1.0] as $luce) {
+    foreach ([0.2, 1.0, 2.5, 8.0, 14.0] as $portata) {
+        $prima = 1.0;
+        for ($d = 0.0; $d <= $portata * 1.2; $d += $portata / 97.0) {
+            $c = Vista::certezza($d, $portata, $luce);
+            $casi++;
+            if (is_nan($c)) { $nan++; }
+            if ($c < 0.0 || $c > 0.97) { $fuori++; }
+            if ($c > $prima + 1e-12) { $nonMonotona++; }
+            if ($d > $portata * 0.55 && $c > 0.0) { $oltre++; }
+            $prima = $c;
+        }
+    }
+}
+ok('mai NAN', $nan === 0, "$nan su $casi");
+ok('sempre fra 0 e 0,97', $fuori === 0, "$fuori fuori su $casi");
+ok('piu\' lontano, mai piu\' certo', $nonMonotona === 0, "$nonMonotona risalite su $casi");
+ok('oltre la portata di riconoscimento non si riconosce niente', $oltre === 0, "$oltre casi");
+
 $utente = 'prova vista ' . time();
 $reg = \App\Auth\Auth::register($utente, 'vista_' . time() . '@esempio.invalid', 'kommandant42', '127.0.0.1');
 $userId = (int) ($reg['user_id'] ?? 0);
@@ -154,7 +178,19 @@ try {
         $base = (int) $enc['last_step_gts'];
         $scelto = $base;
         $migliore = null;
-        for ($h = 0; $h < 24; $h++) {
+        // Per l'ora di luce bastano le prossime ventiquattro ore. Per il buio no:
+        // a meta' giugno, a 58 gradi nord, la notte piu' scura ha ancora luce
+        // 0,17 col sole a meno otto — e riconoscere una nave a 200 metri costa
+        // quanto di giorno. Il modello ha ragione, e' la notte chiara che i
+        // sommergibilisti temevano d'estate. Aveva torto la prova, che passava o
+        // no secondo dov'era il convoglio piu' grosso quel giorno (audit del
+        // 23/09/2026). Per il buio si va avanti di giorno in giorno finche' non
+        // se ne trova uno vero: il cielo e' una funzione pura dell'istante.
+        $oreDaGuardare = $luminosa ? 24 : 24 * 200;
+        for ($h = 0; $h < $oreDaGuardare; $h++) {
+            if (!$luminosa && $migliore !== null && $migliore < 0.02) {
+                break;
+            }
             $t = $base + $h * 3600;
             $m = World::weather((float) $boat['lat'], (float) $boat['lon'], $t);
             $c = World::sky((float) $boat['lat'], (float) $boat['lon'], $t, (float) $m['cloud']);
@@ -211,6 +247,19 @@ try {
         $vBuio !== null && $uVicina !== null
             ? sprintf('certezza %.2f al buio contro %.2f con la luce', $vBuio['certezza'], $uVicina['certezza'])
             : '');
+    // Audit del 23/09/2026: la nave a 2,2 miglia, di notte, usciva riconosciuta
+    // al 97% — piu' della vicina a 220 metri. Oltre la portata di
+    // riconoscimento la formula faceva NAN, e min(0,97, NAN) nel namespace vale
+    // 0,97. Nessuna prova guardava la nave LONTANA: se ne e' accorta per caso
+    // quella sulla vicina, la notte che c'era nebbia.
+    $mBuio = $alBuio['media'];
+    ok('di notte, a quattro chilometri, una sagoma resta una sagoma',
+        $mBuio === null || $mBuio['osservazione'] !== 'vista' || !(bool) $mBuio['identificata'],
+        $mBuio !== null ? sprintf('%s, certezza %.2f', (string) $mBuio['osservazione'], (float) $mBuio['certezza']) : 'non vista');
+    ok('e la lontana non e\' piu\' certa della vicina',
+        $mBuio === null || $vBuio === null || (float) $mBuio['certezza'] <= (float) $vBuio['certezza'],
+        $mBuio !== null && $vBuio !== null ? sprintf('%.2f contro %.2f', $mBuio['certezza'], $vBuio['certezza']) : '');
+
     ok('il nome si legge solo se la sagoma e\' riconosciuta',
         $vBuio === null || (bool) $vBuio['nome_noto'] === (bool) $vBuio['identificata']
             || !(bool) $vBuio['nome_noto']);
@@ -280,14 +329,23 @@ try {
 
     // Tabella e tavolo devono raccontare la stessa geometria: la rotta segnata
     // dev'essere quella che discende dal rilevamento e dall'angolo riferiti.
+    //
+    // Fino all'audit del 23/09/2026 questo ciclo girava su $su, una variabile
+    // che nel file non esiste — c'erano solo $su2 e $giu. foreach su null non fa
+    // nemmeno un giro, $incoerenti restava zero, e la verifica qui sotto passava
+    // da sempre senza guardare niente. PHP lo diceva con un avviso, ma la suite
+    // contava soltanto le righe KO. Adesso si guardano tutti e due i quadri, e
+    // si pretende che ci siano unita' da guardare.
     $incoerenti = 0;
-    foreach ($su as $u) {
+    $guardate = 0;
+    foreach (array_merge($giu, $su2) as $u) {
+        $guardate++;
         $firmato = $u['aob_lato'] === 'sinistra' ? -$u['aob'] : $u['aob'];
         $attesa = Geo::normBearing($u['rilevamento'] + 180.0 + $firmato);
         if (abs(Geo::bearingDelta($attesa, $u['rotta'])) > 1.5) { $incoerenti++; }
     }
     ok('la rotta segnata discende dal rilevamento e dall\'angolo riferiti',
-        $incoerenti === 0, $incoerenti . ' unita\' incoerenti');
+        $guardate > 0 && $incoerenti === 0, sprintf('%d incoerenti su %d', $incoerenti, $guardate));
 
     // Il tavolo e la tabella devono raccontare la stessa cosa: la posizione
     // segnata deve stare sul rilevamento stimato, alla distanza stimata.

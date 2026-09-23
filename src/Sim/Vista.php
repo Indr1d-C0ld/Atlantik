@@ -60,6 +60,37 @@ final class Vista
     private const NOME_NOTTE_NM  = 0.18;   // al buio si legge solo addosso
 
     /**
+     * Quanto si e' sicuri di cosa si sta guardando: 0 = una sagoma, 0,97 = tetto.
+     *
+     * Riconoscere costa distanza e luce. Di notte una sagoma resta una sagoma
+     * anche a mille metri: la portata di riconoscimento e' una frazione di quella
+     * visiva, e di notte una frazione piccola.
+     *
+     * Fino al 23/09/2026 il calcolo stava dentro quadro() ed era
+     * «(1 − d / portataRic) ^ 0,65» senza tagliare la base. Oltre la portata di
+     * riconoscimento la base diventa negativa, un negativo alla 0,65 fa NAN, e
+     * dentro il namespace PHP 8.4 fa min(0,97, NAN) = 0,97. Risultato: ogni nave
+     * che si vedeva ma era troppo lontana per riconoscerla risultava riconosciuta
+     * al massimo — di giorno per tutta l'ultima meta' della portata visiva, di
+     * notte per quasi tutta. Una nave a quattro chilometri al buio usciva al 97%,
+     * una a duecento metri al 77%. Il meccanismo era rovesciato proprio dove
+     * conta. (Qualificato con \min() lo stesso codice da' NAN invece di 0,97: le
+     * due implementazioni di PHP trattano il NAN al contrario, ed e' il motivo
+     * per cui una prova scritta a mano, fuori dal namespace, non lo vedeva.)
+     *
+     * Detection::probabilitaVista fa la stessa cosa e l'ha sempre fatta giusta:
+     * controlla la distanza prima di elevare.
+     */
+    public static function certezza(float $distanzaNm, float $portataNm, float $luce): float
+    {
+        $portataRic = $portataNm * self::QUOTA_RICONOSCIMENTO * (0.30 + 0.70 * max(0.0, min(1.0, $luce)));
+        if ($portataRic <= 0.0 || $distanzaNm >= $portataRic) {
+            return 0.0;
+        }
+        return min(0.97, (1.0 - $distanzaNm / $portataRic) ** 0.65);
+    }
+
+    /**
      * Il quadro come lo vede la Zentrale.
      *
      * @param list<array<string,mixed>> $entita
@@ -136,12 +167,7 @@ final class Vista
                 $vista = $portata > 0.0 && $d <= $portata;
 
                 if ($vista) {
-                    // Riconoscere costa distanza e luce. Di notte una sagoma
-                    // resta una sagoma anche a mille metri.
-                    $portataRic = $portata * self::QUOTA_RICONOSCIMENTO * (0.30 + 0.70 * $luce);
-                    $certezza = $portataRic > 0.0
-                        ? max(0.0, min(0.97, (1.0 - $d / $portataRic) ** 0.65))
-                        : 0.0;
+                    $certezza = self::certezza($d, $portata, $luce);
                 }
             }
 

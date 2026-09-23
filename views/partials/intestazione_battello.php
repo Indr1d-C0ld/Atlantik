@@ -13,6 +13,10 @@ $emblema = \App\Game\Emblema::di($boat);
      un lettore di schermo, un h1 e' il punto da cui si comincia. Era uno span,
      e le pagine di gioco non avevano nessun titolo di primo livello. */ ?>
   <h1 class="numero"><?= e($boat['uboat_number']) ?></h1>
-  <span class="tipo"><?= e($type['name']) ?><?= $boat['soprannome'] ?? '' ?> · <?= e($boat['flotilla']) ?></span>
+  <?php /* Il soprannome e' del TIPO, non del battello: fino al 23/09/2026 qui si
+     leggeva $boat['soprannome'], colonna che boats non ha, e il «cavallo da tiro»
+     del VII C o la «Milchkuh» del XIV non comparivano mai. In piu' usciva senza
+     escape. Adesso come nella base di flottiglia e nel cantiere. */ ?>
+  <span class="tipo"><?= e($type['name']) ?><?= !empty($type['soprannome']) ? ' — ' . e($type['soprannome']) : '' ?> · <?= e($boat['flotilla']) ?></span>
   <span class="ora" data-campo="ora"><?= e($clock->formatDiario($now)) ?></span>
 </div>

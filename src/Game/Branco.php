@@ -81,6 +81,14 @@ final class Branco
             $nome .= ' II';
         }
 
+        // ATTENZIONE: chiude_gts, nonostante il suffisso, contiene tempo REALE
+        // (time()), mentre aperto_gts nella stessa riga e' tempo di gioco. E'
+        // voluto — la chiave branco.durata_ore e' dichiarata «in ore reali» dalla
+        // migrazione 0010, perche' in un gioco asincrono i giocatori devono avere
+        // tempo vero per collegarsi e unirsi — e tutti i confronti su questa
+        // colonna usano time(). Chi la confrontasse con World::now() vedrebbe
+        // tutti i gruppi scaduti da cinquant'anni. Annotato dall'audit del
+        // 23/09/2026, che ci e' cascato per primo.
         $ore = max(6, GameConfig::int('branco.durata_ore', 72));
         Database::run(
             'INSERT INTO wolfpacks (nome, quadrat, lat, lon, aperto_gts, chiude_gts, stato)

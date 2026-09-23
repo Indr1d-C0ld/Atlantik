@@ -215,7 +215,12 @@ final class Astro
         $p = deg2rad($lat);
         $d = deg2rad($dec);
         $h = deg2rad($ha);
-        return rad2deg(asin(sin($p) * sin($d) + cos($p) * cos($d) * cos($h)));
+        // Allo zenit l'argomento puo' uscire di 2e-16 sopra 1 per arrotondamento,
+        // e asin() da' NAN: la luce diventerebbe NAN e con lei tutta la
+        // visibilita'. Serve il sole a un milionesimo di grado dallo zenit —
+        // dentro il teatro, a Freetown, e' geometricamente possibile — quindi si
+        // taglia. (Audit del 23/09/2026.)
+        return rad2deg(asin(max(-1.0, min(1.0, sin($p) * sin($d) + cos($p) * cos($d) * cos($h)))));
     }
 
     private static function azimuth(float $lat, float $dec, float $ha): float
