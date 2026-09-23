@@ -12,9 +12,13 @@ use App\Sim\World;
  *
  * Due strade, e sono diverse sul serio.
  *
- *   REPERTORIO. Trentatre' fotografie di comandanti di U-Boot vere, del tempo
- *   di guerra, scaricate da Wikimedia Commons con la loro licenza dichiarata
- *   (vedi bin/scarica_ritratti.php per il come e il perche' non da uboat.net).
+ *   REPERTORIO. Cinquecentotto fotografie di comandanti di U-Boot veri, dalla
+ *   raccolta messa insieme a mano dal proprietario del gioco. La provenienza
+ *   del singolo file non e' verificata, e sotto ogni ritratto il gioco lo dice.
+ *   (Fino al 18/09/2026 erano trentatre' volti da Wikimedia Commons con la loro
+ *   licenza, scaricati da bin/scarica_ritratti.php, poi tolto: vedi
+ *   docs/FONTI.md per il come, il perche' non da uboat.net, e il perche' della
+ *   rimozione.)
  *   Chi ne sceglie una puo' anche prendersi il nome del comandante che c'e'
  *   sopra: e' un omaggio, non un travestimento, e il gioco lo dice apertamente
  *   sulla pagina del profilo.

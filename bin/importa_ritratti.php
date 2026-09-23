@@ -12,9 +12,12 @@ declare(strict_types=1);
  *
  * DA DOVE VIENE QUESTA ROBA
  *
- * Da una raccolta messa insieme A MANO dal proprietario del gioco. Non e' stata
- * scaricata da qui: bin/scarica_ritratti.php, che prende da Wikimedia Commons,
- * resta l'altra strada ed e' quella che porta con se' le licenze verificate.
+ * Da una raccolta messa insieme A MANO dal proprietario del gioco. L'altra
+ * strada, quella che portava con se' le licenze verificate, era
+ * bin/scarica_ritratti.php da Wikimedia Commons: e' stata tolta di proposito il
+ * 18/09/2026 (commit 516538f), perche' ripercorrendola si riscriveva il seme
+ * con le sole voci di Commons e si perdeva la raccolta. Vedi docs/FONTI.md,
+ * «terzo tempo».
  *
  * Di questi file non si conosce la provenienza singola, e il gioco NON la
  * inventa: ogni voce importata da qui e' marcata `fonte: 'raccolta'` e la
@@ -293,10 +296,12 @@ $php = "<?php\n\ndeclare(strict_types=1);\n\n"
     . "/**\n * Ritratti storici dei comandanti di U-Boot.\n *\n"
     . " * GENERATO — non si modifica a mano.\n *\n"
     . " * Due provenienze, e la differenza conta:\n *\n"
-    . " *   'commons'  scaricato da Wikimedia Commons con bin/scarica_ritratti.php.\n"
-    . " *              Porta con se' licenza e stringa di attribuzione verificate,\n"
-    . " *              e il gioco le mostra sotto il ritratto perche' e' una\n"
-    . " *              condizione delle licenze CC.\n *\n"
+    . " *   'commons'  una voce presa da Wikimedia Commons, con licenza e stringa di\n"
+    . " *              attribuzione verificate che il gioco mostra sotto il ritratto,\n"
+    . " *              perche' e' una condizione delle licenze CC. Il formato e'\n"
+    . " *              ancora letto, ma oggi voci cosi' non ce ne sono: lo strumento\n"
+    . " *              che le scaricava, bin/scarica_ritratti.php, e' stato tolto il\n"
+    . " *              18/09/2026 (commit 516538f). Vedi docs/FONTI.md, «terzo tempo».\n *\n"
     . " *   'raccolta' importato da una raccolta messa insieme a mano, con\n"
     . " *              bin/importa_ritratti.php. La provenienza del singolo file\n"
     . " *              NON e' verificata, e il gioco lo dice invece di attribuire\n"

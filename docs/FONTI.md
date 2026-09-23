@@ -1037,6 +1037,14 @@ ripubblicazione a tutti gli effetti, e senza poter dire sotto quale licenza.
 
 ### Da dove vengono, allora
 
+> **Superato il 18 settembre 2026, sera.** Questa e' stata la prima strada, e
+> non e' piu' quella in uso: il repertorio oggi e' la raccolta del proprietario
+> (vedi «secondo tempo» e «terzo tempo» piu' sotto), e `bin/scarica_ritratti.php`
+> e' stato tolto di proposito. Resta scritta perche' il ragionamento dei tre
+> criteri vale ancora — e' il modo giusto di scegliere volti da Commons — e
+> perche' lo strumento si recupera dalla storia del progetto, commit `05354c4`,
+> se un giorno servisse.
+
 Da **Wikimedia Commons**, dove ogni file porta con se' la licenza dichiarata e la
 stringa di attribuzione richiesta. L'elenco delle persone non e' scritto a mano:
 viene da una interrogazione di **Wikidata** (persone della Kriegsmarine con un
@@ -1208,6 +1216,29 @@ Le regole, tutte nel codice:
 
 Funziona quasi sempre. Dove sbaglia, sbaglia in modo visibile e correggibile, e
 la scheda dichiara che quel nome e' ricavato.
+
+## Il repertorio dei ritratti, terzo tempo (18 settembre 2026, sera)
+
+Le otto voci di Commons che la raccolta non copriva, e che il paragrafo di
+sopra dice rimaste, non ci sono piu'. Sono state tolte la sera stessa, nel
+commit `516538f`, insieme a `bin/scarica_ritratti.php`, e il repertorio e'
+diventato **la sola raccolta: 508 ritratti**, una provenienza sola, una
+dichiarazione sola sotto ogni volto.
+
+Il motivo e' scritto nel messaggio di quel commit, ed e' pratico: lo strumento
+teneva viva una strada che, se qualcuno la ripercorreva, riscriveva il seme dei
+ritratti con le sole voci di Commons e cancellava la raccolta. Uno strumento che
+distrugge il repertorio al primo uso distratto e' peggio di nessuno strumento.
+
+Di 509 fotografie ne sono entrate 508: `capt14.jpg` resta fuori perche' il
+nome del file non e' un nome di persona, e l'importatore lo dice invece di
+inventarne uno. Gli originali — la raccolta intera, 509 file — stanno nel backup
+privato, in `sorgenti/ritratti-comandanti/`, dal 22 settembre.
+
+Questo paragrafo e' stato aggiunto il 23/09/2026: fino a quel giorno la
+documentazione continuava a descrivere lo strumento in cinque punti, come se ci
+fosse ancora. L'audit dell'8 revisione l'aveva scambiato per uno strumento mai
+scritto; la nona ha guardato la storia e ha trovato il commit che lo toglieva.
 
 ## L'unicita' vale fra i vivi (18 settembre 2026, sera)
 

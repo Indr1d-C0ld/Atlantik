@@ -385,7 +385,7 @@ in `docs/AUDIT.md` nel deployment; qui il sunto.
 | 5 | *Gira dove serve?* | Due battelli sullo stesso convoglio affondavano la stessa nave e **la pagavano tutti e due** |
 | 6 | Scala, durata, browser vero | Ogni incontro chiuso teneva in vita le venticinque navi del convoglio **e impediva di potarle** |
 | 7 | Caricamenti, accessibilità, fonti | Gli `.htaccess` che proteggevano i caricamenti **non venivano letti da nessuno** |
-| 8 | *La documentazione dice il vero?* | Uno strumento descritto in cinque punti — perfino con i suoi criteri di filtro — **non è mai stato scritto** |
+| 8 | *La documentazione dice il vero?* | Cinque punti della documentazione descrivevano **uno strumento tolto di proposito**, come se ci fosse ancora |
 | 9 | La matematica e i suoi confini | Una nave a quattro chilometri, di notte, **risultava riconosciuta al 97%**: oltre la portata la formula faceva `NAN`, e PHP lo trasformava nel massimo |
 
 Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
@@ -411,7 +411,7 @@ e ha cominciato a interrogare quello che il codice dice di sé.
 | Righe di codice | ~47.000 in 286 file (PHP, JavaScript, CSS, SQL e i disegni SVG) |
 | Rotte HTTP | 91 |
 | Tabelle / migrazioni | 45 / 40 |
-| Prove automatiche | **35 file, 996 controlli, tutti verdi** |
+| Prove automatiche | **36 file, 1.000 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -471,8 +471,8 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Trentacinque file — ventiquattro che girano in PHP e undici che interrogano il
-server attraverso Apache — per **996 controlli**. Si aspettano un'installazione
+Trentasei file — venticinque che girano in PHP e undici che interrogano il
+server attraverso Apache — per **1.000 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e
@@ -503,6 +503,8 @@ php tests/test_potatura.php          # il mondo non cresce per sempre: incontri 
 php tests/test_cantiere.php          # il cantiere di base: riparazioni in porto, priorità, paratie
 php tests/test_ciclo.php             # il giro intero di una missione, dalle giunture fra un pezzo e l'altro
 php tests/test_combattimento.php     # Bold, rivelatore radar, sganciamento dalle scorte
+php tests/test_invarianti.php        # ordini a caso e tempo a salti: le regole che devono valere sempre
+                                     # (ATLANTIK_LUNGO=1 per la versione lunga, una decina di minuti)
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse
