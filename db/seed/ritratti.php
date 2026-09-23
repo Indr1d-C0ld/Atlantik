@@ -9,10 +9,12 @@ declare(strict_types=1);
  *
  * Due provenienze, e la differenza conta:
  *
- *   'commons'  scaricato da Wikimedia Commons con bin/scarica_ritratti.php.
- *              Porta con se' licenza e stringa di attribuzione verificate,
- *              e il gioco le mostra sotto il ritratto perche' e' una
- *              condizione delle licenze CC.
+ *   'commons'  una voce presa da Wikimedia Commons, con licenza e stringa di
+ *              attribuzione verificate che il gioco mostra sotto il ritratto,
+ *              perche' e' una condizione delle licenze CC. Il formato e'
+ *              ancora letto, ma oggi voci cosi' non ce ne sono: lo strumento
+ *              che le scaricava, bin/scarica_ritratti.php, e' stato tolto il
+ *              18/09/2026 (commit 516538f). Vedi docs/FONTI.md, «terzo tempo».
  *
  *   'raccolta' importato da una raccolta messa insieme a mano, con
  *              bin/importa_ritratti.php. La provenienza del singolo file
