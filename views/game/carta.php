@@ -20,6 +20,42 @@ foreach (Grid::table() as $sigla => $q) {
     $quadrati[] = ['sigla' => $sigla, 'row' => (int) $q['row'], 'col' => (int) $q['col']];
 }
 
+// Gli ordini del BdU che hanno un posto sulla carta: l'area di pattuglia,
+// l'appuntamento con la cisterna, il convoglio da pedinare, la base del
+// rientro. Il riquadro e' quello del quadrato trasmesso, con la sua ampiezza:
+// «AL 02» e' un'area di centocinquanta miglia, «AL 0278» un punto di sei.
+$nomiOrdine = [
+    'area' => 'Area di pattuglia', 'pedinamento' => 'Pedinamento', 'rifornimento' => 'Appuntamento',
+    'rientro' => 'Rientro', 'meteo' => 'Rapporto meteo', 'generale' => 'Ordine',
+];
+$missioni = [];
+foreach (\App\Game\Bdu::ordini((int) $boat['id'], true) as $o) {
+    if ($o['quadrat'] === null || (int) $o['boat_id'] !== (int) $boat['id']) {
+        continue;
+    }
+    $q = Grid::fromQuadrat((string) $o['quadrat']);
+    $lat = $o['lat'] !== null ? (float) $o['lat'] : ($q['lat'] ?? null);
+    $lon = $o['lon'] !== null ? (float) $o['lon'] : ($q['lon'] ?? null);
+    if ($lat === null || $lon === null) {
+        continue;
+    }
+    $missioni[] = [
+        'tipo'     => (string) $o['tipo'],
+        'nome'     => $nomiOrdine[(string) $o['tipo']] ?? 'Ordine',
+        'quadrat'  => (string) $o['quadrat'],
+        'stato'    => (string) $o['stato'],
+        'lat'      => $lat,
+        'lon'      => $lon,
+        // Il riquadro del quadrato; se il quadrato non e' in tabella resta il punto.
+        'nord'     => $q !== null ? $q['lat'] + $q['lat_span'] / 2 : null,
+        'sud'      => $q !== null ? $q['lat'] - $q['lat_span'] / 2 : null,
+        'ovest'    => $q !== null ? $q['lon'] - $q['lon_span'] / 2 : null,
+        'est'      => $q !== null ? $q['lon'] + $q['lon_span'] / 2 : null,
+        'rotta'    => Geo::bearing((float) $boat['est_lat'], (float) $boat['est_lon'], $lat, $lon),
+        'distanza' => Geo::distanceNm((float) $boat['est_lat'], (float) $boat['est_lon'], $lat, $lon),
+    ];
+}
+
 $datiCarta = [
     'lat'       => (float) $boat['est_lat'],
     'lon'       => (float) $boat['est_lon'],
@@ -30,6 +66,7 @@ $datiCarta = [
     'quadrati'  => $quadrati,
     'stile'     => (string) ($stile ?? 'piena'),
     'porti'     => $porti,
+    'missioni'  => $missioni,
     'rotta'     => array_map(static fn (array $w): array => [
         'lat' => (float) $w['lat'], 'lon' => (float) $w['lon'],
     ], $rotta),
@@ -67,8 +104,11 @@ $datiCarta = [
     <p class="carta-aiuto">
       Trascina per spostare la carta, rotella per la scala. Un clic aggiunge un punto di rotta.
       Il cerchio tratteggiato è l'incertezza sulla posizione: dentro quel cerchio, il battello può essere ovunque.
-      Le sigle in rosso sono i grandi quadrati Marinequadrat: sono quelle che si trasmettono al BdU.
+      Le sigle in rosso sono i quadrati Marinequadrat, quelli che si trasmettono al BdU: ingrandendo,
+      ogni quadrato si divide in nove e la sigla prende una cifra in più, fino ai quadratini di sei miglia.
+      Il riquadro color ambra è la destinazione ordinata dal BdU.
     </p>
+    <p class="carta-cursore" id="carta-cursore" aria-live="off">&nbsp;</p>
   </div>
 
   <div>
@@ -101,6 +141,29 @@ $datiCarta = [
         Cambia il tratto, non la geometria: le coste stanno nello stesso posto in tutti e due i casi.
         <span id="fonte-coste" class="fonte-coste"></span>
       </p>
+    </div>
+
+    <div class="strumento" style="margin-top:1rem">
+      <h3>Ordini del BdU</h3>
+      <?php if ($missioni === []): ?>
+        <p class="aiuto">Nessun ordine con una destinazione. Il BdU assegna l'area di pattuglia dalla sua pagina.</p>
+      <?php else: ?>
+        <ul class="elenco-missioni">
+          <?php foreach ($missioni as $i => $m): ?>
+            <li>
+              <button type="button" class="vai-missione" data-i="<?= (int) $i ?>"
+                      title="Porta la carta sul quadrato">
+                <b><?= e($m['nome']) ?></b> <span class="quadrat"><?= e($m['quadrat']) ?></span>
+              </button>
+              <span class="piccolo">
+                <?= e(sprintf('%03d', (int) round($m['rotta']) % 360)) ?>° ·
+                <?= e(number_format($m['distanza'], 0, ',', '.')) ?> nm<?= $m['stato'] === 'aperto' ? ' · da accettare' : '' ?>
+              </span>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+        <p class="aiuto">Rotta e distanza sono dal punto stimato, non da quello vero: più l'incertezza cresce, meno valgono.</p>
+      <?php endif; ?>
     </div>
 
     <div class="strumento" style="margin-top:1rem">

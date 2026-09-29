@@ -64,7 +64,7 @@
     scrivi('ore_immersione', numero(b.ore_immersione, 1) + ' h');
     scrivi('aria', numero(b.aria) + '%');
     scrivi('co2', numero(b.co2, 2) + '%');
-    scrivi('viveri', numero(b.viveri, 1) + ' g');
+    scrivi('viveri', b.viveri_testo || (numero(b.viveri, 1) + ' g'));
 
     barra('nafta', b.nafta_pct);
     barra('batteria', b.batteria);

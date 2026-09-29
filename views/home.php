@@ -106,11 +106,23 @@
       nel registro di controllo.</li>
     <li class="fatto"><b>Tablet e telefono.</b> Tutta l'interfaccia è utilizzabile su schermo
       stretto, senza toccare una riga di come si vede su un monitor.</li>
+    <li class="fatto"><b>I viveri che contano.</b> Si imbarcano in cantiere e rubano stiva; due
+      settimane di fresco, poi conserve; finiti, il BdU ordina il rientro e dal terzo giorno di
+      digiuno gli uomini si ammalano.</li>
+    <li class="fatto"><b>Il periscopio, anche in crociera.</b> Una postazione sua: fuori si vede e
+      si lascia una sagoma piccola, dentro si è ciechi e invisibili. Il giro d'orizzonte mostra
+      quello che c'è in vista, con la prua al centro.</li>
+    <li class="fatto"><b>La stazione d'attacco in cinque passi.</b> Avvicinamento, osservazione,
+      soluzione, lancio, evasione, con il tempo reale che resta in cima; il calcolatore segue il
+      bersaglio scelto, dalla tavola o dal quadro.</li>
+    <li class="fatto"><b>La carta a ogni scala.</b> Le sigle Marinequadrat seguono lo zoom fino ai
+      quadratini di sei miglia, e la destinazione ordinata dal BdU ha il suo riquadro, con rotta e
+      distanza.</li>
   </ul>
   <p class="aiuto" style="margin-top:1rem">
     <?php // Non si scrive il numero esatto: cresce a ogni tornata di lavoro e
           // resterebbe indietro da solo, diventando una piccola bugia. ?>
-    Il gioco è collaudato da <b>oltre cinquecento verifiche automatiche</b>, e i modelli storici — autonomia,
+    Il gioco è collaudato da <b>oltre mille verifiche automatiche</b>, e i modelli storici — autonomia,
     portata dell'idrofono, avvistamento, letalità dei siluri per stazza, meteo, radiogoniometria —
     sono tenuti dentro le bande documentate da un rapporto di bilanciamento che gira su richiesta.
   </p>

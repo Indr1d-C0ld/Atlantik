@@ -215,8 +215,70 @@ final class Crew
      * questo che impedisce derive assurde in su o in giu' e che rende il
      * logoramento di una patrol lunga una cosa lenta e inevitabile.
      *
-     * @param array{aria:float,viveri:float,mare:int,giorni:int,avarie:int,superficie:bool,allarme:bool} $cond
+     * @param array{aria:float,viveri:float,mare:int,giorni:int,avarie:int,superficie:bool,allarme:bool,digiuno?:float} $cond
      */
+    /** Giorni di cibo fresco dall'uscita: dopo, solo conserve. */
+    public const FRESCO_GIORNI = 14;
+
+    /** Dopo quanti giorni di digiuno gli uomini cominciano ad ammalarsi, e poi ad aggravarsi. */
+    public const DIGIUNO_MALATI  = 3;
+    public const DIGIUNO_GRAVI   = 10;
+
+    /**
+     * Il digiuno si paga in salute.
+     *
+     * Fino al 29/09/2026 i viveri finiti toglievano soltanto morale, e si poteva
+     * restare in mare a oltranza. Adesso, dopo tre giorni senza mangiare, gli
+     * uomini sani cominciano ad ammalarsi — l'8% al giorno — e dopo dieci
+     * giorni i malati si aggravano, il 5% al giorno. Un malato lavora a meno
+     * della meta' (Crew::aggregate), quindi le riparazioni rallentano e la
+     * squadra rende meno. Nessuno muore di fame: prima succede che il
+     * comandante torni, ed e' quello che il BdU gli ordina.
+     *
+     * Il generatore arriva da BoatSim, legato al sotto-passo: lo stesso mondo
+     * per chi si collega spesso e per chi si collega di rado.
+     */
+    public static function salute(int $boatId, float $ore, float $giorniDigiuno, Rng $rng): void
+    {
+        if ($ore <= 0 || $giorniDigiuno < self::DIGIUNO_MALATI) {
+            return;
+        }
+        $pAmmala = 1.0 - (1.0 - 0.08) ** ($ore / 24.0);
+        $pAggrava = 1.0 - (1.0 - 0.05) ** ($ore / 24.0);
+        foreach (Database::all(
+            "SELECT id, health FROM crew_members WHERE boat_id = ? AND health IN ('ok', 'ferito') ORDER BY id",
+            [$boatId]
+        ) as $m) {
+            if ((string) $m['health'] === 'ok' && $rng->chance($pAmmala)) {
+                Database::run("UPDATE crew_members SET health = 'ferito' WHERE id = ?", [(int) $m['id']]);
+            } elseif ((string) $m['health'] === 'ferito' && $giorniDigiuno >= self::DIGIUNO_GRAVI && $rng->chance($pAggrava)) {
+                Database::run("UPDATE crew_members SET health = 'grave' WHERE id = ?", [(int) $m['id']]);
+            }
+        }
+    }
+
+    /**
+     * Lo stato dei viveri in una riga, per la centrale: quanti giorni restano,
+     * per quanto c'e' ancora il fresco, o da quanto si digiuna. La usano sia la
+     * pagina sia l'aggiornamento in diretta, cosi' non possono dire cose diverse.
+     */
+    public static function descriviViveri(float $giorni, ?int $partenzaGts, ?int $digiunoDal, int $gts): string
+    {
+        if ($giorni <= 0.0) {
+            $d = $digiunoDal !== null ? (int) floor(max(0, $gts - $digiunoDal) / 86400) : 0;
+            $testo = $d < 1 ? 'finiti' : 'finiti da ' . plurale($d, 'un giorno', '%d giorni');
+            return $d >= self::DIGIUNO_MALATI ? $testo . ' · gli uomini si ammalano' : $testo;
+        }
+        $testo = number_format($giorni, 1, ',', '') . ' g';
+        if ($partenzaGts !== null) {
+            $fresco = self::FRESCO_GIORNI - (int) floor(max(0, $gts - $partenzaGts) / 86400);
+            if ($fresco > 0) {
+                $testo .= ' · fresco per ' . plurale($fresco, 'un altro giorno', 'altri %d giorni');
+            }
+        }
+        return $testo;
+    }
+
     public static function step(int $boatId, float $ore, int $gts, array $cond): void
     {
         if ($ore <= 0) {
@@ -239,6 +301,11 @@ final class Crew
         if ($cond['aria'] < 45) {
             $recupero *= 0.7;
         }
+        // A pancia vuota si lavora peggio e si recupera meno.
+        if ($cond['viveri'] <= 0) {
+            $suGuardia += 1.2;
+            $recupero *= 0.6;
+        }
 
         $oreQuarto = max(1, GameConfig::int('crew.watch_hours', 4));
         if ($ore <= $oreQuarto) {
@@ -256,6 +323,12 @@ final class Crew
         $equilibrio -= 0.75 * max(0, $cond['giorni'] - 10);          // le settimane pesano
         $equilibrio -= 3.5 * min(6, $cond['avarie']);                // il battello che si sfascia
         $equilibrio -= $cond['viveri'] <= 0 ? 22.0 : ($cond['viveri'] < 5 ? 7.0 : 0.0);
+        // Le prime due settimane si mangia pane fresco, verdura, frutta appesa
+        // fra i tubi: e' la parte buona della missione, e si sente. Poi
+        // conserve, e il fresco diventa un ricordo.
+        if ($cond['viveri'] > 0 && $cond['giorni'] <= self::FRESCO_GIORNI) {
+            $equilibrio += 5.0;
+        }
         $equilibrio -= $cond['aria'] < 30 ? 18.0 : ($cond['aria'] < 55 ? 7.0 : 0.0);
         $equilibrio -= $cond['mare'] >= 7 ? 9.0 : 0.0;
         $equilibrio -= $cond['allarme'] ? 25.0 : 0.0;

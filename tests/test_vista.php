@@ -164,6 +164,16 @@ try {
         array_filter($giu, static fn (array $u): bool => $u['grt'] > 0) === []);
     ok('quella fuori portata non compare affatto',
         !isset($perId[(int) $lontana['id']]), 'a quaranta miglia');
+    // Il quadro finisce intero nel JSON della pagina: quello che non si deve
+    // sapere non deve esserci nemmeno come campo nascosto.
+    $chiavi = [];
+    foreach ($giu as $u) { $chiavi += array_flip(array_keys($u)); }
+    ok('nel quadro non viaggiano stazza vera ne\' integrita\' dello scafo',
+        $giu !== [] && !isset($chiavi['grt_vero']) && !isset($chiavi['integrita']),
+        implode(', ', array_keys($chiavi)));
+    $numeri = array_column($giu, 'numero');
+    ok('ogni unita\' ha il suo numero di plottaggio, e nessuno si ripete',
+        $giu !== [] && count($numeri) === count($giu) && count(array_unique($numeri)) === count($numeri));
 
     // --- in superficie -------------------------------------------------------
     titolo('Con un occhio fuori si vede, e da vicino si riconosce');

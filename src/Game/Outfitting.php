@@ -31,7 +31,7 @@ final class Outfitting
         return [
             'viveri' => [
                 'nome' => 'Viveri e acqua', 'unita' => 'giorni', 'spazio' => 4.0, 'max' => 120,
-                'note' => 'I primi giorni pane fresco e verdura; poi conserve. Finiti i viveri, la missione e\' finita comunque.',
+                'note' => 'Le prime due settimane pane fresco e verdura, e il morale ne gode; poi conserve. Finiti i viveri il BdU ordina il rientro, e dopo tre giorni di digiuno gli uomini cominciano ad ammalarsi.',
             ],
             'ricambi' => [
                 'nome' => 'Ricambi e utensili', 'unita' => 'casse', 'spazio' => 2.0, 'max' => 40,

@@ -97,7 +97,7 @@
    * qualunque ingrandimento e su qualunque schermo.
    */
   function passo() {
-    var candidati = [0.25, 0.5, 1, 2, 5, 10, 20], i;
+    var candidati = [5 / 60, 10 / 60, 0.25, 0.5, 1, 2, 5, 10, 20], i;
     for (i = 0; i < candidati.length; i++) {
       if (candidati[i] * vista.scala >= 54) { return candidati[i]; }
     }
@@ -303,20 +303,27 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Suddivisione interna in 3x3, ma solo quando c'e' spazio per vederla.
-    if (vista.scala > 3.2) {
-      ctx.globalAlpha = 0.45; ctx.lineWidth = 0.8;
+    // Suddivisioni interne: ogni quadrato si divide in nove, per quattro
+    // livelli, e ogni livello si traccia quando le sue caselle sono abbastanza
+    // larghe da vedersi. Le linee si contano per indice, non sommando il passo:
+    // sommando 8/27 per trenta volte, l'ultima linea cade di traverso.
+    var livello;
+    for (livello = 1; livello <= 4; livello++) {
+      var dLo = 12 / Math.pow(3, livello), dLa = 8 / Math.pow(3, livello), k;
+      if (dLo * vista.scala < 14) { break; }
+      ctx.globalAlpha = livello === 1 ? 0.45 : 0.3;
+      ctx.lineWidth = livello === 1 ? 0.8 : 0.6;
       ctx.beginPath();
-      for (lo = dati.lon_west + Math.floor((r.lonW - dati.lon_west) / 12) * 12; lo <= r.lonE + 12; lo += 4) {
-        var q2 = xy(0, lo); ctx.moveTo(q2.x, 0); ctx.lineTo(q2.x, H);
+      for (k = Math.floor((r.lonW - dati.lon_west) / dLo); dati.lon_west + k * dLo <= r.lonE; k++) {
+        var q2 = xy(0, dati.lon_west + k * dLo); ctx.moveTo(q2.x, 0); ctx.lineTo(q2.x, H);
       }
-      for (la = dati.lat_top; la >= -60; la -= 8 / 3) {
-        if (la < r.latS - 3 || la > r.latN + 3) { continue; }
-        var s2 = xy(la, 0); ctx.moveTo(0, s2.y); ctx.lineTo(W, s2.y);
+      for (k = Math.max(0, Math.floor((dati.lat_top - r.latN) / dLa)); dati.lat_top - k * dLa >= r.latS; k++) {
+        var s2 = xy(dati.lat_top - k * dLa, 0); ctx.moveTo(0, s2.y); ctx.lineTo(W, s2.y);
       }
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
+    sottoSigle(r);
 
     // Sigle dei grandi quadrati. Stanno al centro del quadrato, ma se il
     // quadrato sborda dallo schermo la sigla si sposta per restare leggibile:
@@ -345,6 +352,126 @@
     ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
   }
 
+  /** Sigla del grande quadrato per riga e colonna, come Grid::$byCell. */
+  var sigleCella = {};
+  (dati.quadrati || []).forEach(function (qd) { sigleCella[qd.row + ':' + qd.col] = qd.sigla; });
+
+  /**
+   * Da coordinate a quadrato, con il numero di cifre voluto: la stessa
+   * aritmetica di Grid::toQuadrat, cifra per cifra, cosi' la carta e la
+   * centrale non possono dare due sigle diverse per lo stesso punto.
+   */
+  function codice(lat, lon, cifre) {
+    var row = Math.floor((dati.lat_top - lat) / 8), col = Math.floor((lon - dati.lon_west) / 12);
+    var sigla = sigleCella[row + ':' + col];
+    if (!sigla) { return null; }
+    var fy = (dati.lat_top - row * 8 - lat) / 8, fx = (lon - dati.lon_west - col * 12) / 12;
+    var out = sigla + (cifre > 0 ? ' ' : ''), i;
+    for (i = 0; i < cifre; i++) {
+      var rr = Math.min(2, Math.max(0, Math.floor(fy * 3))), cc = Math.min(2, Math.max(0, Math.floor(fx * 3)));
+      out += String(rr * 3 + cc + 1);
+      fy = fy * 3 - rr; fx = fx * 3 - cc;
+    }
+    return out;
+  }
+
+  /**
+   * Sigle delle sottocaselle. Si scrivono al livello piu' fine in cui ci
+   * stanno, per intero («BE 52», non soltanto «2»): e' la sigla da leggere al
+   * BdU, e il comandante non deve ricostruirla contando le caselle. Sopra quel
+   * livello restano le sigle dei grandi quadrati, al centro.
+   */
+  function sottoSigle(r) {
+    var l, scelto = 0, altezza = 0;
+    var yCentro = merc(vista.lat);
+    for (l = 1; l <= 4; l++) {
+      var w = 12 / Math.pow(3, l) * vista.scala;
+      var dLat = 8 / Math.pow(3, l);
+      var h = (merc(vista.lat + dLat / 2) - merc(vista.lat - dLat / 2)) * vista.scala;
+      if (w >= 46 && h >= 20) { scelto = l; altezza = h; } else { break; }
+    }
+    if (!scelto || isNaN(yCentro)) { return; }
+    var dLo = 12 / Math.pow(3, scelto), dLa = 8 / Math.pow(3, scelto);
+    var k0 = Math.floor((r.lonW - dati.lon_west) / dLo), k1 = Math.ceil((r.lonE - dati.lon_west) / dLo);
+    var j0 = Math.max(0, Math.floor((dati.lat_top - r.latN) / dLa)), j1 = Math.ceil((dati.lat_top - r.latS) / dLa);
+    if ((k1 - k0) * (j1 - j0) > 700) { return; }
+    var dim = altezza >= 30 ? 10 : 9;
+    ctx.save();
+    ctx.font = '700 ' + dim + 'px ' + MONO;
+    ctx.fillStyle = stile('--carta-quadrat', 'rgba(120,20,20,.45)');
+    ctx.globalAlpha = 0.75;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    var k, j;
+    for (j = j0; j < j1; j++) {
+      var nord = dati.lat_top - j * dLa;
+      for (k = k0; k < k1; k++) {
+        var ovest = dati.lon_west + k * dLo;
+        var sigla = codice(nord - dLa / 2, ovest + dLo / 2, scelto);
+        if (!sigla) { continue; }
+        var a = xy(nord, ovest);
+        ctx.fillText(sigla, a.x + 3, a.y + 2);
+      }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * La destinazione ordinata dal BdU: il riquadro del quadrato trasmesso,
+   * una linea dal punto stimato e, in chiaro, rotta e distanza. Se il
+   * quadrato e' fuori vista l'etichetta si ferma sul bordo, lungo la linea:
+   * da che parte andare si deve capire comunque.
+   */
+  function missioni() {
+    var lista = dati.missioni || [];
+    if (!lista.length) { return; }
+    var col = stile('--carta-missione', '#a8327a');
+    var b0 = xy(dati.lat, dati.lon);
+    var m = CORNICE + 8;
+    lista.forEach(function (mi) {
+      var c = xy(mi.lat, mi.lon);
+      ctx.save();
+      ctx.strokeStyle = col; ctx.fillStyle = col;
+      if (mi.nord !== null) {
+        var a = xy(mi.nord, mi.ovest), b = xy(mi.sud, mi.est);
+        var w = Math.max(6, b.x - a.x), h = Math.max(6, b.y - a.y);
+        var x0 = Math.min(a.x, c.x - 3), y0 = Math.min(a.y, c.y - 3);
+        ctx.globalAlpha = 0.14; ctx.fillRect(x0, y0, w, h);
+        ctx.globalAlpha = 0.9; ctx.lineWidth = 2.2; ctx.strokeRect(x0, y0, w, h);
+      } else {
+        ctx.globalAlpha = 0.9; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.arc(c.x, c.y, 7, 0, 6.3); ctx.stroke();
+      }
+      ctx.globalAlpha = 0.7; ctx.lineWidth = 1.4; ctx.setLineDash([2, 5]);
+      ctx.beginPath(); ctx.moveTo(b0.x, b0.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+      // Dove scrivere: sul quadrato se si vede, altrimenti l'ultimo punto
+      // della linea ancora dentro la carta.
+      var dentro = function (x, y) { return x > m && x < W - m && y > m && y < H - m; };
+      var px = c.x, py = c.y;
+      if (!dentro(px, py)) {
+        if (!dentro(b0.x, b0.y)) { ctx.restore(); return; }
+        var lo = 0, hi = 1, i;
+        for (i = 0; i < 24; i++) {
+          var t = (lo + hi) / 2;
+          if (dentro(b0.x + (c.x - b0.x) * t, b0.y + (c.y - b0.y) * t)) { lo = t; } else { hi = t; }
+        }
+        px = b0.x + (c.x - b0.x) * lo; py = b0.y + (c.y - b0.y) * lo;
+      }
+      var testo = mi.nome + ' ' + mi.quadrat + ' · ' + ('00' + (Math.round(mi.rotta) % 360)).slice(-3) + '° · '
+        + String(Math.round(mi.distanza)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' nm';
+      ctx.font = '700 10px ' + SANS;
+      var tw = ctx.measureText(testo).width + 10;
+      var tx = Math.min(Math.max(px - tw / 2, m), W - m - tw), ty = Math.min(Math.max(py - 26, m), H - m - 16);
+      ctx.fillStyle = stile('--carta-pergamena', '#dec7a6'); ctx.globalAlpha = 0.92;
+      ctx.fillRect(tx, ty, tw, 16);
+      ctx.globalAlpha = 1; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.strokeRect(tx + 0.5, ty + 0.5, tw - 1, 15);
+      ctx.fillStyle = col; ctx.textBaseline = 'middle';
+      ctx.fillText(testo, tx + 5, ty + 8.5);
+      ctx.restore();
+    });
+  }
+
   // --- cornice, cartiglio, strumenti ----------------------------------------
 
   function etichettaGrado(v, assi) {
@@ -353,8 +480,10 @@
       while (v < -180) { v += 360; }
     }
     var segno = v < 0 ? assi[1] : assi[0];
-    var a = Math.abs(v);
-    return (a % 1 === 0 ? a : a.toFixed(1)) + '°' + (a === 0 ? '' : segno);
+    // In gradi e primi, come sulla cornice di una carta vera: «18°15'», non
+    // «18.3°», che oltretutto arrotondava 18°15' e 18°20' allo stesso numero.
+    var primi = Math.round(Math.abs(v) * 60), g = Math.floor(primi / 60), m = primi % 60;
+    return g + '°' + (m ? (m < 10 ? '0' : '') + m + "'" : '') + (primi === 0 ? '' : segno);
   }
 
   function cornice() {
@@ -487,7 +616,7 @@
   function scalaGrafica() {
     var nmPerGrado = 60 * Math.cos(vista.lat * Math.PI / 180);
     var pxPerNm = vista.scala / nmPerGrado;
-    var passi = [10, 20, 50, 100, 200, 500, 1000], scelta = 100, i;
+    var passi = [2, 5, 10, 20, 50, 100, 200, 500, 1000], scelta = 100, i;
     for (i = 0; i < passi.length; i++) {
       if (passi[i] * pxPerNm >= 44) { scelta = passi[i]; break; }
       scelta = passi[i];
@@ -515,7 +644,7 @@
 
   function legenda() {
     if (W < 620 || H < 420) { return; }
-    var w = 128, h = 76, x = W - CORNICE - w - 8, y = CORNICE + 8;
+    var w = 128, h = 88, x = W - CORNICE - w - 8, y = CORNICE + 8;
     var inch = stile('--carta-inchiostro', '#16120b');
     riquadroCarta(x, y, w, h);
 
@@ -527,7 +656,8 @@
       ['battello', 'il nostro battello'],
       ['convoglio', 'convoglio'],
       ['nave', 'nave isolata'],
-      ['aereo', 'aereo']
+      ['aereo', 'aereo'],
+      ['missione', 'ordine del BdU']
     ];
     voci.forEach(function (v, i) {
       var cy = y + 29 + i * 12, cx = x + 14;
@@ -536,6 +666,9 @@
         ctx.fillStyle = inch;
         ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx + 2.5, cy + 3);
         ctx.lineTo(cx, cy + 1.5); ctx.lineTo(cx - 2.5, cy + 3); ctx.closePath(); ctx.fill();
+      } else if (v[0] === 'missione') {
+        ctx.strokeStyle = stile('--carta-missione', '#a8327a'); ctx.lineWidth = 1.6;
+        ctx.strokeRect(cx - 5, cy - 4, 10, 8);
       } else {
         ctx.strokeStyle = v[0] === 'aereo' ? stile('--rosso', '#d4564b') : verde();
         ctx.lineWidth = 1.4; ctx.beginPath();
@@ -575,6 +708,7 @@
     terre(elenco);
     graticola();
     quadrati();
+    missioni();
 
     // Isole e riferimenti minori. Se il segno cade fuori dal neatline si tace:
     // meglio niente che un nome mozzato contro la cornice.
@@ -715,10 +849,18 @@
     };
   }
 
+  /**
+   * Fino a 360 pixel per grado: abbastanza perche' i quadratini di sei miglia
+   * (quattro cifre, «BE 5287») siano caselle larghe una cinquantina di pixel e
+   * portino la loro sigla. Prima ci si fermava a 40, e la sigla piu' fine che
+   * si potesse leggere sulla carta aveva due cifre.
+   */
+  var SCALA_MAX = 360;
+
   /** Ingrandisce tenendo ferma la posizione geografica sotto il punto dato. */
   function ingrandisci(fattore, x, y) {
     var prima = latlon(x, y);
-    vista.scala = Math.max(scalaMinima(), Math.min(40, vista.scala * fattore));
+    vista.scala = Math.max(scalaMinima(), Math.min(SCALA_MAX, vista.scala * fattore));
     var dopo = latlon(x, y);
     vista.lon += prima.lon - dopo.lon;
     vista.lat = mercInv(merc(vista.lat) + (merc(prima.lat) - merc(dopo.lat)));
@@ -799,6 +941,34 @@
     var p = puntoTela(e);
     ingrandisci(e.deltaY < 0 ? 1.15 : 0.87, p.x, p.y);
   }, { passive: false });
+
+  // Il quadrato sotto il cursore, a quattro cifre: per sapere che cosa
+  // trasmettere senza contare le caselle, e per trovare quello di un ordine.
+  var cursore = document.getElementById('carta-cursore');
+  if (cursore) {
+    tela.addEventListener('pointermove', function (e) {
+      var p = puntoTela(e);
+      if (!dentroCarta(p.x, p.y)) { cursore.textContent = '\u00a0'; return; }
+      var g = latlon(p.x, p.y);
+      cursore.textContent = 'Sotto il cursore: ' + (codice(g.lat, g.lon, 4) || 'fuori dal reticolo')
+        + ' · ' + gradi(g.lat, 'NS') + ' ' + gradi(g.lon, 'EW');
+    });
+    tela.addEventListener('pointerleave', function () { cursore.textContent = '\u00a0'; });
+  }
+
+  // Un clic sul nome di un ordine porta la carta sul suo quadrato, alla
+  // scala a cui il quadrato riempie piu' o meno meta' della carta.
+  document.querySelectorAll('.vai-missione').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var mi = (dati.missioni || [])[parseInt(b.getAttribute('data-i'), 10)];
+      if (!mi) { return; }
+      vista.lat = mi.lat; vista.lon = mi.lon;
+      var largo = mi.est !== null ? mi.est - mi.ovest : 1;
+      vista.scala = Math.max(scalaMinima(), Math.min(SCALA_MAX, 0.5 * (W - 2 * CORNICE) / largo));
+      limita(); disegna();
+      tela.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  });
 
   // --- elenco dei punti di rotta --------------------------------------------
   var elenco = document.getElementById('elenco-rotta');

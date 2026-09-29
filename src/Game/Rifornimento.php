@@ -151,9 +151,13 @@ final class Rifornimento
         $type = World::type((string) $boat['type_key']);
         $nafta = min((float) $rdv['nafta_t'], (float) $type['fuel_t'] - (float) $boat['fuel_t']);
         Database::run(
-            'UPDATE boats SET fuel_t = LEAST(?, fuel_t + ?), provisions_days = LEAST(?, provisions_days + 14) WHERE id = ?',
+            'UPDATE boats SET fuel_t = LEAST(?, fuel_t + ?), provisions_days = LEAST(?, provisions_days + 14),
+                    senza_viveri_gts = NULL WHERE id = ?',
             [(float) $type['fuel_t'], $nafta, (float) $type['provisions_days'], (int) $boat['id']]
         );
+        // Con due settimane di viveri a bordo l'ordine di rientro per fame non
+        // ha piu' ragione d'essere.
+        Bdu::rientroAssolto((int) $boat['id']);
 
         // Siluri: si passano quelli di riserva, e non e' un lavoro da poco.
         $siluri = (int) $rdv['siluri'];

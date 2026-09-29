@@ -121,6 +121,59 @@ final class Bdu
     }
 
     /**
+     * Ordine di rientro alla base.
+     *
+     * Il tipo «rientro» e' nel database dalla migrazione 0010 e fino al
+     * 29/09/2026 non lo emetteva nessuno. Adesso lo emette la dispensa vuota.
+     * Nasce gia' accettato: non e' una proposta da valutare, e' la realta' di
+     * bordo. Si assolve attraccando (Patrol::dock), o se un rifornimento in
+     * mare rimette i viveri a bordo (Rifornimento).
+     *
+     * Restituisce il testo se l'ordine e' nuovo, null se ce n'era gia' uno
+     * aperto: chi lo chiama a ogni sotto-passo non ne genera cento.
+     */
+    public static function ordinaRientro(array $boat, int $gts, string $motivo): ?string
+    {
+        $aperto = Database::first(
+            "SELECT id FROM bdu_orders WHERE boat_id = ? AND tipo = 'rientro' AND stato IN ('aperto','accettato')",
+            [(int) $boat['id']]
+        );
+        if ($aperto !== null) {
+            return null;
+        }
+        $base = World::port((string) $boat['home_port_key']);
+        $nomeBase = (string) ($base['name'] ?? 'base');
+        $testo = match ($motivo) {
+            'viveri' => sprintf(
+                'Viveri esauriti. Rientrare a %s con la rotta piu\' breve. Dopo tre giorni di digiuno '
+                . 'gli uomini cominciano ad ammalarsi: ogni giorno in piu\' in mare si paga in equipaggio.',
+                $nomeBase
+            ),
+            default => sprintf('Rientrare a %s.', $nomeBase),
+        };
+        Database::run(
+            'INSERT INTO bdu_orders (boat_id, commander_id, tipo, quadrat, lat, lon, testo, emesso_gts, scade_gts,
+                                     stato, prestigio, punti)
+             VALUES (?, ?, "rientro", ?, ?, ?, ?, ?, NULL, "accettato", 0, 0)',
+            [
+                (int) $boat['id'], $boat['commander_id'] !== null ? (int) $boat['commander_id'] : null,
+                $base !== null ? Grid::toQuadrat((float) $base['lat'], (float) $base['lon'], 2) : null,
+                $base['lat'] ?? null, $base['lon'] ?? null, $testo, $gts,
+            ]
+        );
+        return 'Dal BdU: ' . $testo;
+    }
+
+    /** Il rientro e' fatto: si chiudono gli ordini di rientro ancora aperti. */
+    public static function rientroAssolto(int $boatId): void
+    {
+        Database::run(
+            "UPDATE bdu_orders SET stato = 'assolto' WHERE boat_id = ? AND tipo = 'rientro' AND stato IN ('aperto','accettato')",
+            [$boatId]
+        );
+    }
+
+    /**
      * Ordine di pedinamento: tieni il contatto e continua a segnalare.
      *
      * E' il mestiere del Fuehlungshalter, ed e' il piu' ingrato che ci fosse:

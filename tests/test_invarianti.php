@@ -284,7 +284,7 @@ for ($n = 0; $n < $nIncontri; $n++) {
     Database::run(
         'INSERT INTO encounters (boat_id, patrol_id, stato, allarme, started_gts, last_step_gts, last_step_real, finestra_fine, ratio)
          VALUES (?, ?, "avvicinamento", 0, ?, ?, ?, ?, 1)',
-        [$bid, (int) $pat['id'], $gts, $gts, time(), $gts + 6 * 3600]
+        [$bid, (int) $pat['id'], $gts, $gts, time(), time() + 6 * 3600]
     );
     $encId = Database::lastInsertId();
     Database::run('UPDATE boats SET encounter_id = ?, battle_stations = 1 WHERE id = ?', [$encId, $bid]);

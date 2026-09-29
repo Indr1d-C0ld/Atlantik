@@ -180,7 +180,15 @@ final class Encounter
             );
         }
 
-        Database::run('UPDATE boats SET encounter_id = ?, battle_stations = 1 WHERE id = ?', [$encId, (int) $boat['id']]);
+        // Se si arriva col periscopio d'osservazione fuori, da qui in avanti e'
+        // il periscopio dell'attacco, e per lui vale la regola dei cinque
+        // minuti: l'orologio parte adesso. Senza, un periscopio alzato in
+        // crociera (periscopio_gts vuoto) sarebbe rimasto fuori per sempre.
+        Database::run(
+            'UPDATE boats SET encounter_id = ?, battle_stations = 1,
+                    periscopio_gts = IF(periscopio_alzato = 1, ?, NULL) WHERE id = ?',
+            [$encId, $gts, (int) $boat['id']]
+        );
 
         return ['ok' => true, 'encounter_id' => $encId];
     }
@@ -1521,8 +1529,11 @@ final class Encounter
             }
         }
         Database::run(
+            // Finito l'incontro, a quota periscopica si torna alla guardia di
+            // crociera: il periscopio d'osservazione fuori, come quando ci si
+            // arriva. Altrove resta dentro.
             'UPDATE boats SET encounter_id = NULL, battle_stations = 0,
-                    periscopio_alzato = 0, periscopio_gts = NULL, last_sim_gts = ? WHERE id = ?',
+                    periscopio_alzato = (mode = \'periscopio\'), periscopio_gts = NULL, last_sim_gts = ? WHERE id = ?',
             [$gts, (int) $enc['boat_id']]
         );
     }

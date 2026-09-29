@@ -9,6 +9,7 @@ use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Core\GameConfig;
 use App\Game\Fleet;
 use App\Game\Outfitting;
 use App\Sim\Encounter;
@@ -80,6 +81,13 @@ final class CombattimentoController
         $c['clock']   = World::clock();
         $c['now']     = (int) $c['enc']['last_step_gts'];
         $c['finestra_s'] = max(0, (int) $c['enc']['finestra_fine'] - time());
+        // La finestra intera, per disegnarne la barra: e' quella dell'apertura.
+        $c['finestra_tot_s'] = max(300, GameConfig::int('combat.finestra_min', 25) * 60);
+        // Quanto resta al periscopio d'attacco prima che il I.WO lo faccia
+        // rientrare (la regola dei cinque minuti di Encounter::step).
+        $c['peri_restano'] = (bool) $c['boat']['periscopio_alzato'] && $c['boat']['periscopio_gts'] !== null
+            ? max(0, 300 - ($c['now'] - (int) $c['boat']['periscopio_gts']))
+            : null;
         $c['cronaca'] = $c['enc']['patrol_id'] !== null
             ? Database::all(
                 "SELECT * FROM patrol_events WHERE patrol_id = ? AND kind IN ('combattimento','lancio','cannone','bold','avaria','iwo')

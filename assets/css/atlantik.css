@@ -399,6 +399,7 @@ footer {
   --carta-pergamena:  #dec7a6;   /* cornice graduata */
   --carta-pergamena-2:#c9ae89;
   --carta-quadrat:    rgba(120,20,20,.45);
+  --carta-missione:   #a8327a;   /* destinazione ordinata dal BdU, il magenta delle sovrastampe */
   --carta-testo-mare: rgba(15,35,55,.55);
   --carta-testo-terra:rgba(60,52,30,.62);
 }
@@ -415,6 +416,7 @@ footer {
   --carta-pergamena:  #3a1a1c;
   --carta-pergamena-2:#4a2124;
   --carta-quadrat:    rgba(240,120,110,.35);
+  --carta-missione:   #ffc98e;
   --carta-testo-mare: rgba(240,170,160,.45);
   --carta-testo-terra:rgba(240,175,165,.42);
 }
@@ -509,6 +511,14 @@ footer {
 #plotta { display: block; max-width: 100%; }
 .tavolo { max-width: 100%; }
 .carta-aiuto { font-size: .75rem; color: var(--testo-3); margin: .5rem 0 0; }
+.carta-cursore { font: .75rem var(--mono); color: var(--testo-2); margin: .3rem 0 0; min-height: 1.2em; }
+.elenco-missioni { list-style: none; margin: 0 0 .4rem; padding: 0; }
+.elenco-missioni li { display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline;
+                      padding: .35rem 0; border-bottom: 1px solid var(--acciaio-2); }
+.elenco-missioni .vai-missione { background: none; border: 0; padding: 0; color: var(--testo); cursor: pointer;
+                                 font: inherit; text-align: left; }
+.elenco-missioni .vai-missione:hover b, .elenco-missioni .vai-missione:focus-visible b { text-decoration: underline; }
+.elenco-missioni .quadrat { font-family: var(--mono); color: var(--accento); }
 .fonte-coste { display: block; margin-top: .35rem; color: var(--testo-3); font: .7rem var(--mono); }
 
 #elenco-rotta { list-style: none; margin: 0; padding: 0; font: .82rem/1.5 var(--mono); }
@@ -706,10 +716,108 @@ footer {
 /* La stazione d'attacco: quadro tattico a sinistra, strumenti a destra.
    Era uno stile in linea; sta qui perche' su schermo stretto deve poter
    diventare una colonna sola, e una regola in linea non si puo' scavalcare. */
+/* Postazione del periscopio: il giro d'orizzonte in una striscia, prua al
+   centro, poppa ai bordi. Cielo sopra, mare sotto, la linea in mezzo. */
+.orizzonte {
+  position: relative; height: 6.5rem; margin: .4rem 0 .2rem; overflow: hidden;
+  border: 1px solid var(--bordo); border-radius: var(--raggio);
+  background: linear-gradient(180deg, var(--acciaio-2) 0%, var(--acciaio-1) 54%, var(--acciaio-0) 55%, var(--acciaio-0) 100%);
+}
+.orizzonte::after { content: ''; position: absolute; left: 0; right: 0; top: 55%; border-top: 1px solid var(--acciaio-4); }
+.orizzonte-tacca {
+  position: absolute; top: .25rem; transform: translateX(-50%);
+  font: .62rem var(--mono); color: var(--testo-3); text-transform: uppercase; letter-spacing: .05em;
+}
+.orizzonte-tacca::after { content: ''; display: block; width: 1px; height: 4.8rem; margin: .15rem auto 0; background: var(--acciaio-3); }
+.orizzonte-segno {
+  position: absolute; top: calc(55% - 1.4rem); transform: translateX(-50%); z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: .15rem;
+  font: .68rem var(--mono); color: var(--verde-fosf);
+}
+.orizzonte-segno i { display: block; width: .9rem; height: .55rem; margin-top: .85rem; background: var(--verde-fosf); clip-path: polygon(0 100%, 12% 30%, 45% 30%, 50% 0, 58% 30%, 100% 30%, 90% 100%); }
+.orizzonte-segno--fumo { color: var(--testo-3); }
+.orizzonte-segno--fumo i { background: var(--testo-3); opacity: .6; clip-path: ellipse(50% 40% at 50% 50%); }
+.orizzonte-segno b { font-weight: 400; }
+.oculare--buio .sommario { color: var(--testo-3); }
+
 .griglia-attacco {
   display: grid; grid-template-columns: minmax(0,1fr) minmax(0,21rem);
   gap: 1rem; align-items: start;
 }
+
+/* Stazione d'attacco a passi (29/09/2026). In cima la finestra di tempo
+   reale, grande, con la riga «Adesso»; poi i cinque passi, e di lato il
+   battello e la cronaca, che restano in vista scorrendo. */
+.finestra-attacco {
+  margin: 0 0 .8rem; padding: .7rem .9rem; border: 1px solid var(--bordo); border-radius: var(--raggio);
+  background: var(--acciaio-1);
+}
+.finestra-riga { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .7rem; }
+.finestra-riga > span:first-child { font: .72rem var(--sans, inherit); text-transform: uppercase; letter-spacing: .08em; color: var(--testo-2); }
+.finestra-riga b { font: 700 1.5rem var(--mono); color: var(--verde-fosf); }
+.finestra-attacco--poca .finestra-riga b { color: var(--rosso); }
+.finestra-nota { font-size: .78rem; color: var(--testo-3); }
+.guida { margin: .6rem 0 0; font-size: .9rem; color: var(--testo); }
+.guida b { color: var(--accento); text-transform: uppercase; font-size: .72rem; letter-spacing: .08em; margin-right: .3rem; }
+.guida--allarme { color: var(--rosso); }
+.guida--attenzione { color: var(--ambra); }
+
+.passi-attacco { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 1rem; }
+.passi-attacco a {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem; text-decoration: none;
+  border: 1px solid var(--bordo); border-radius: var(--raggio); color: var(--testo-2); font-size: .8rem;
+}
+.passi-attacco a:hover, .passi-attacco a:focus-visible { color: var(--testo); border-color: var(--accento); }
+.passi-attacco i, .passo h2 i {
+  font-style: normal; font-family: var(--mono); display: inline-grid; place-items: center;
+  width: 1.4em; height: 1.4em; border-radius: 50%; background: var(--acciaio-3); color: var(--testo);
+}
+.passi-attacco a.urgente { border-color: var(--rosso); color: var(--rosso); }
+.passo { scroll-margin-top: 1rem; }
+.passo + .passo { margin-top: 1rem; }
+.passo h2 { display: flex; align-items: center; gap: .5rem; }
+.passo--urgente { border-color: var(--rosso); box-shadow: 0 0 0 1px var(--rosso) inset; }
+.passo-scopo { margin: 0 0 .8rem; color: var(--testo-2); font-size: .88rem; max-width: 60rem; }
+.passo .tavolo { margin-bottom: .8rem; }
+.sottotitolo { margin: 1rem 0 .4rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--testo-2); }
+
+.manovra { display: flex; flex-wrap: wrap; gap: .5rem .8rem; align-items: flex-end; }
+.manovra label { display: flex; flex-direction: column; gap: .2rem; font-size: .7rem; }
+.manovra input { width: 5.5rem; padding: .35rem; }
+.periscopio-attacco { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-bottom: .8rem; }
+
+.tavola-scorre { overflow-x: auto; max-width: 100%; }
+.bersagli td[data-c]:not([data-c="aob"]), .bersagli .numero-plot { white-space: nowrap; }
+.bersagli td[data-c="aob"] { min-width: 4.5rem; }
+.bersagli td:nth-child(3) { min-width: 10rem; }
+.bersagli .come { display: block; font-size: .72rem; color: var(--testo-2); }
+.bersagli .come--ascolto { color: var(--testo-3); }
+.bersagli .sagoma-plot { width: 5.5rem; }
+.bersagli .sagoma-plot img, .bersagli .sagoma-plot svg { max-width: 5.5rem; height: auto; }
+.bersagli tr[data-unita] { cursor: pointer; }
+.bersagli tr.scorta td { color: var(--testo-3); }
+.bersagli tr.scelta td { background: var(--acciaio-2); }
+.bersagli tr.lampo td { background: var(--acciaio-3); transition: background .2s; }
+.bersagli .numero-plot { font-family: var(--mono); color: var(--testo-2); }
+.soluzione-per { font: .85rem var(--mono); color: var(--accento); margin: 0 0 .5rem; }
+.calcolatore { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .8rem 1rem; }
+.calcolatore .campo { margin: 0; }
+.calcolatore .aiuto { display: block; margin: .2rem 0 0; font-size: .7rem; }
+.calcolatore select {
+  width: 100%; padding: .55rem; background: var(--acciaio-0); color: var(--testo);
+  border: 1px solid var(--bordo); font: 1rem var(--mono);
+}
+.tubi { border: 0; padding: 0; margin: 0; display: flex; gap: .8rem; flex-wrap: wrap; }
+.tubi legend { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--testo-2); margin-bottom: .3rem; }
+.tubi label { display: flex; align-items: center; gap: .35rem; font: .85rem var(--mono); color: var(--testo-2); text-transform: none; letter-spacing: 0; }
+.cannone { display: flex; gap: .8rem; flex-wrap: wrap; align-items: flex-end; }
+.cannone .campo { margin: 0; }
+.cannone select { padding: .55rem; background: var(--acciaio-0); color: var(--testo); border: 1px solid var(--bordo); }
+.cannone input { max-width: 5rem; }
+
+.attacco-lato { position: sticky; top: .8rem; display: flex; flex-direction: column; gap: 1rem; }
+.cronaca-lato .ktb { max-height: 26rem; overflow-y: auto; margin: 0; }
+.cronaca-lato .vuoto { color: var(--testo-3); }
 
 /* ==========================================================================
    Schermi stretti — tablet e telefono
@@ -741,7 +849,9 @@ footer {
    ========================================================================== */
 
 @media (max-width: 56rem) {
-  .griglia-attacco { grid-template-columns: 1fr; }
+  .griglia-attacco { grid-template-columns: minmax(0, 1fr); }
+  .attacco-lato { position: static; }
+  .cronaca-lato .ktb { max-height: 16rem; }
 }
 
 /* Fino al formato tablet le tabelle larghe scorrono dentro il loro pannello

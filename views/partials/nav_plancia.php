@@ -24,6 +24,13 @@ $soloInMare = static function (string $rotta, string $nome, string $chiave) use 
   <?php endif; ?>
   <a href="<?= e(url('/radio')) ?>" class="<?= $attiva === 'radio' ? 'attivo' : '' ?>">Radio</a>
   <a href="<?= e(url('/bdu')) ?>" class="<?= $attiva === 'bdu' ? 'attivo' : '' ?>">BdU</a>
+  <?php if (!empty($GLOBALS['__incontro']) && $inMare): ?>
+    <?php /* Sotto il convoglio il periscopio e' quello d'attacco, e sta nella
+       stazione d'attacco: il collegamento porta li', al passo giusto. */ ?>
+    <a href="<?= e(url('/attacco#osservazione')) ?>" class="<?= $attiva === 'periscopio' ? 'attivo' : '' ?>">Periscopio</a>
+  <?php else: ?>
+    <?= $soloInMare('/periscopio', 'Periscopio', 'periscopio') ?>
+  <?php endif; ?>
   <?= $soloInMare('/contatti', 'Ascolto', 'contatti') ?>
   <a href="<?= e(url('/battello')) ?>" class="<?= $attiva === 'battello' ? 'attivo' : '' ?>">Battello</a>
   <a href="<?= e(url('/equipaggio')) ?>" class="<?= $attiva === 'equipaggio' ? 'attivo' : '' ?>">Equipaggio</a>

@@ -86,17 +86,31 @@ final class Patrol
             Database::run('UPDATE patrols SET area_quadrat = ? WHERE id = ?', [(string) $area['quadrat'], $patrolId]);
         }
 
+        // I viveri sono quelli scelti in cantiere. Fino al 29/09/2026 qui si
+        // scriveva il pieno del tipo, e la scelta fatta nell'allestimento
+        // spariva al momento di mollare gli ormeggi — con in piu' una scappatoia:
+        // si riducevano i viveri per fare spazio a munizioni e ricambi, e si
+        // partiva lo stesso con la dispensa piena. Chi non ha mai allestito
+        // parte col carico standard, cioe' col pieno.
+        $scelta = Database::first(
+            "SELECT qty_max FROM boat_stores WHERE boat_id = ? AND item_key = 'viveri'",
+            [(int) $boat['id']]
+        );
+        $viveri = $scelta !== null
+            ? max(0.0, min((float) $type['provisions_days'], (float) $scelta['qty_max']))
+            : (float) $type['provisions_days'];
+
         // Battello pronto: casse piene, batterie cariche, aria buona.
         Database::run(
             'UPDATE boats SET state = "mare", lat = ?, lon = ?, est_lat = ?, est_lon = ?, est_error_nm = 0,
                     heading = ?, speed_kn = 0, ordered_speed_kn = 0, depth_m = 0, ordered_depth_m = 0,
                     mode = "superficie", silent = 0, periscopio_alzato = 0, periscopio_gts = NULL,
                     fuel_t = ?, battery_pct = 100, air_pct = 100, co2_pct = 0,
-                    provisions_days = ?, last_fix_gts = ?, submerged_since = NULL, last_sim_gts = ?, version = version + 1
+                    provisions_days = ?, senza_viveri_gts = NULL, last_fix_gts = ?, submerged_since = NULL, last_sim_gts = ?, version = version + 1
              WHERE id = ?',
             [
                 (float) $base['lat'], (float) $base['lon'], (float) $base['lat'], (float) $base['lon'],
-                0.0, (float) $type['fuel_t'], (float) $type['provisions_days'], $now, $now, (int) $boat['id'],
+                0.0, (float) $type['fuel_t'], $viveri, $now, $now, (int) $boat['id'],
             ]
         );
 
@@ -311,6 +325,8 @@ final class Patrol
             ]
         );
         Database::run('DELETE FROM boat_waypoints WHERE boat_id = ?', [(int) $boat['id']]);
+        Database::run('UPDATE boats SET senza_viveri_gts = NULL WHERE id = ?', [(int) $boat['id']]);
+        Bdu::rientroAssolto((int) $boat['id']);
 
         // Fine missione: conto del prestigio, promozione, decorazioni, rapporto.
         $rapporto = null;

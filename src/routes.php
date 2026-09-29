@@ -67,6 +67,8 @@ $router->post('/uscita', [PlanciaController::class, 'uscita'], ['active', 'throt
 $router->get('/zentrale', [PlanciaController::class, 'zentrale'], ['active']);
 $router->get('/carta', [PlanciaController::class, 'carta'], ['active']);
 $router->get('/contatti', [PlanciaController::class, 'contatti'], ['active']);
+$router->get('/periscopio', [PlanciaController::class, 'periscopio'], ['active']);
+$router->post('/periscopio', [PlanciaController::class, 'periscopioComando'], ['active', 'throttle']);
 $router->get('/ktb', [PlanciaController::class, 'ktb'], ['active']);
 
 // Ordini

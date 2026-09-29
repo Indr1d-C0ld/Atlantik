@@ -67,7 +67,12 @@ $classe = static fn (float $p): string => $p <= 12 ? 'allarme' : ($p <= 30 ? 'at
     <div class="riga"><span class="etichetta">Aria</span><span class="valore piccolo" data-campo="aria"><?= e(number_format((float) $boat['air_pct'], 0, ',', '')) ?>%</span></div>
     <div class="misuratore <?= $classe((float) $boat['air_pct']) ?>"><i data-barra="aria" style="width: <?= e(number_format((float) $boat['air_pct'], 1, '.', '')) ?>%"></i></div>
     <div class="riga"><span class="etichetta">Anidride carbonica</span><span class="valore piccolo" data-campo="co2"><?= e(number_format((float) $boat['co2_pct'], 2, ',', '')) ?>%</span></div>
-    <div class="riga"><span class="etichetta">Viveri</span><span class="valore piccolo" data-campo="viveri"><?= e(number_format((float) $boat['provisions_days'], 1, ',', '')) ?> g</span></div>
+    <div class="riga"><span class="etichetta">Viveri</span><span class="valore piccolo" data-campo="viveri"><?= e(\App\Sim\Crew::descriviViveri(
+        (float) $boat['provisions_days'],
+        ($patrol ?? null) !== null ? (int) $patrol['departed_gts'] : null,
+        ($boat['senza_viveri_gts'] ?? null) !== null ? (int) $boat['senza_viveri_gts'] : null,
+        $now
+    )) ?></span></div>
   </div>
 
   <div class="strumento">

@@ -141,9 +141,12 @@ final class Narrator
 
     public static function viveri(float $giorni): string
     {
-        return $giorni <= 0
-            ? 'Viveri esauriti. Razioni di emergenza: gallette e conserve contate.'
-            : sprintf('Viveri per altri %.0f giorni.', $giorni);
+        return match (true) {
+            $giorni <= 0 => 'Viveri esauriti. Razioni di emergenza: gallette e conserve contate.',
+            $giorni <= 3 => sprintf('Viveri per altri %s. Il cuoco raziona: bisogna pensare al rientro.',
+                plurale((int) ceil($giorni), 'un giorno', '%d giorni')),
+            default      => sprintf('Viveri per altri %s.', plurale((int) ceil($giorni), 'un giorno', '%d giorni')),
+        };
     }
 
     // --- Materiale ed equipaggio ---------------------------------------------

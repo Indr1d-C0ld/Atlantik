@@ -80,7 +80,7 @@ Database::run(
     'INSERT INTO encounters (boat_id, patrol_id, stato, allarme, started_gts, last_step_gts,
                              last_step_real, finestra_fine, ratio)
      VALUES (?, NULL, "evasione", 1, ?, ?, ?, ?, 1)',
-    [$boatId, $gts, $gts, time(), $gts + 4 * 3600]
+    [$boatId, $gts, $gts, time(), time() + 4 * 3600]
 );
 $encId = Database::lastInsertId();
 Database::run('UPDATE boats SET encounter_id = ? WHERE id = ?', [$encId, $boatId]);
@@ -216,8 +216,16 @@ verifica('col contatto saldo non ci si sgancia', true, (string) $e['stato'] !== 
 // Le scorte si rimettono a otto miglia: nel passo di prima, col contatto
 // saldo, hanno cacciato e si sono avvicinate — che e' proprio quello che
 // devono fare — e da sotto le quattro miglia sganciarsi non si puo'.
+//
+// E il battello resta dov'e': a sessanta metri, lento e zitto. Fino al
+// 29/09/2026 questa prova lo metteva a sessanta metri senza ordinargli la
+// quota, e in dieci minuti risaliva verso lo zero ordinato: a volte le scorte
+// lo ritrovavano, e lo sganciamento non arrivava. Passava lo stesso, perche'
+// la finestra di condotta dell'incontro era scritta in ora di gioco invece che
+// in tempo reale — scaduta da decenni — e a chiudere era il Primo Ufficiale.
 Database::run('UPDATE encounter_entities SET lat = 48.155, lon = -20.0 WHERE encounter_id = ?', [$encId]);
-Database::run('UPDATE boats SET lat = 48.02, lon = -20.0 WHERE id = ?', [$boatId]);
+Database::run('UPDATE boats SET lat = 48.02, lon = -20.0, mode = "immersione", depth_m = 60, ordered_depth_m = 60,
+               speed_kn = 2, ordered_speed_kn = 2, silent = 1 WHERE id = ?', [$boatId]);
 Database::run('UPDATE encounter_entities SET contatto = 0.01, manovra = "ricerca" WHERE encounter_id = ?', [$encId]);
 Database::run('UPDATE encounters SET allarme = 1 WHERE id = ?', [$encId]);
 $passaTempo(600);
@@ -239,7 +247,7 @@ Database::run('UPDATE boats SET mode = "periscopio", depth_m = 12, ordered_depth
 Database::run(
     'INSERT INTO encounters (boat_id, patrol_id, stato, allarme, started_gts, last_step_gts, last_step_real, finestra_fine, ratio)
      VALUES (?, NULL, "attacco", 0, ?, ?, ?, ?, 1)',
-    [$boatId, $g2, $g2, time(), $g2 + 3600]
+    [$boatId, $g2, $g2, time(), time() + 3600]
 );
 $enc2 = Database::lastInsertId();
 Database::run('UPDATE boats SET encounter_id = ? WHERE id = ?', [$enc2, $boatId]);

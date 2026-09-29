@@ -85,8 +85,13 @@ fetch('/atlantik/_prova_browser.png').then(function (r) { return r.blob(); }).th
   var inp = document.getElementById('file');
   inp.files = dt.files;
   inp.dispatchEvent(new Event('change'));
-  setTimeout(function () {
+  // Si aspetta che il riquadro sia disegnato, fino a tre secondi, invece di
+  // un tempo fisso: la decodifica dell'immagine non segue il tempo virtuale
+  // del browser senza testa, e 800 ms fissi ogni tanto non bastavano (una
+  // volta su sette, il 29/09/2026). Nero dopo tre secondi resta un errore.
+  (function attendi(giri) {
     var c = document.querySelector('.ritaglio canvas');
+    if ((!c || vivi(c) <= 50) && giri < 30) { setTimeout(function () { attendi(giri + 1); }, 100); return; }
     if (!c) { document.getElementById('esito').textContent = 'NIENTE-RIQUADRO'; return; }
     var senza = vivi(c), f1 = firma(c);
     document.getElementById('vecchia').checked = true;
@@ -95,7 +100,7 @@ fetch('/atlantik/_prova_browser.png').then(function (r) { return r.blob(); }).th
       document.getElementById('esito').textContent =
         'ESITO vivi=' + senza + ' vivi2=' + vivi(c) + ' cambiata=' + (firma(c) !== f1 ? 'si' : 'no');
     }, 400);
-  }, 800);
+  })(0);
 });
 JS
 

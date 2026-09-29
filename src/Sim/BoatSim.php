@@ -216,11 +216,13 @@ final class BoatSim
             'depth'    => (float) $boat['depth_m'],
             'ord_depth'=> (float) $boat['ordered_depth_m'],
             'mode'     => (string) $boat['mode'],
+            'peri'     => (bool) ($boat['periscopio_alzato'] ?? 0),
             'silent'   => (bool) $boat['silent'],
             'fuel'     => (float) $boat['fuel_t'],
             'battery'  => (float) $boat['battery_pct'],
             'air'      => (float) $boat['air_pct'],
             'prov'     => (float) $boat['provisions_days'],
+            'digiuno_dal' => ($boat['senza_viveri_gts'] ?? null) !== null ? (int) $boat['senza_viveri_gts'] : null,
             'last_fix' => $boat['last_fix_gts'] !== null ? (int) $boat['last_fix_gts'] : null,
             'sub_since'=> $boat['submerged_since'] !== null ? (int) $boat['submerged_since'] : null,
             'stress'   => (float) $boat['hull_stress'],
@@ -287,6 +289,20 @@ final class BoatSim
             $modePrima  = $s['mode'];
             $s['mode']  = Movement::modeForDepth($s['depth']);
             $maxDepth   = max($maxDepth, $s['depth']);
+
+            // Il periscopio d'osservazione. Arrivati a quota periscopica il
+            // I.WO lo fa alzare per il giro d'orizzonte e lo lascia fuori: e'
+            // quello che si faceva, e fino al 29/09/2026 era anche l'unico
+            // modo in cui la simulazione lo conosceva — a quota periscopica si
+            // vedeva sempre, e si era sempre visibili, come se il periscopio
+            // non si potesse abbassare. Adesso lo si abbassa dalla postazione
+            // del periscopio: ciechi, ma senza baffa. Lasciata la quota,
+            // rientra da se'.
+            if ($s['mode'] !== 'periscopio') {
+                $s['peri'] = false;
+            } elseif ($modePrima !== 'periscopio') {
+                $s['peri'] = true;
+            }
 
             if ($s['mode'] !== $modePrima) {
                 if ($s['mode'] === 'superficie') {
@@ -416,6 +432,12 @@ final class BoatSim
                 $s['air'] = max(0.0, $s['air'] - $consumoAria);
             }
             $s['prov'] = max(0.0, $s['prov'] - $ore / 24.0);
+            // Da quando si e' senza viveri: serve alla salute (Crew::salute).
+            if ($s['prov'] <= 0.0) {
+                $s['digiuno_dal'] ??= $t;
+            } else {
+                $s['digiuno_dal'] = null;
+            }
 
             // --- punto nave -----------------------------------------------------
             $intervalloFix = max(1, GameConfig::int('nav.fix_interval_h', 8)) * 3600;
@@ -635,7 +657,12 @@ final class BoatSim
                 'avarie'     => $effetti['guasti'],
                 'superficie' => $s['mode'] === 'superficie',
                 'allarme'    => (bool) $boat['battle_stations'],
+                'digiuno'    => $s['digiuno_dal'] !== null ? ($t - $s['digiuno_dal']) / 86400.0 : 0.0,
             ]);
+            if ($s['digiuno_dal'] !== null) {
+                Crew::salute($boatId, $ore, ($t - $s['digiuno_dal']) / 86400.0,
+                    Rng::for($seed, 'digiuno', $boatId, intdiv($t, $sub)));
+            }
             $ciurma = Crew::aggregate($boatId);
 
             // --- soglie e allarmi -----------------------------------------------
@@ -693,13 +720,15 @@ final class BoatSim
             'UPDATE boats SET lat=?, lon=?, est_lat=?, est_lon=?, est_error_nm=?, heading=?, speed_kn=?,
                     ordered_speed_kn=?, depth_m=?, mode=?, fuel_t=?, battery_pct=?, air_pct=?, co2_pct=?,
                     provisions_days=?, last_fix_gts=?, submerged_since=?, hull_stress=?, hull_integrity=?,
-                    ordered_depth_m=?, auto_dive_fine_gts=?, auto_dive_quota=?, last_sim_gts=?, version=version+1
+                    ordered_depth_m=?, auto_dive_fine_gts=?, auto_dive_quota=?, senza_viveri_gts=?, periscopio_alzato=?,
+                    last_sim_gts=?, version=version+1
              WHERE id = ?',
             [
                 $s['lat'], $s['lon'], $s['est_lat'], $s['est_lon'], $errore, $s['heading'], $s['speed'],
                 $s['ordered'], $s['depth'], $s['mode'], $s['fuel'], $s['battery'], $s['air'],
                 Consumption::co2FromAir($s['air']), $s['prov'], $s['last_fix'], $s['sub_since'], $s['stress'],
-                $s['scafo'], $s['ord_depth'], $s['auto_dive_fine'], $s['auto_dive_quota'], $toGts,
+                $s['scafo'], $s['ord_depth'], $s['auto_dive_fine'], $s['auto_dive_quota'], $s['digiuno_dal'],
+                $s['peri'] ? 1 : 0, $toGts,
                 $boatId,
             ]
         );
@@ -731,6 +760,20 @@ final class BoatSim
      * @param list<array<string,mixed>> $unita
      * @param list<array<string,mixed>> $zoneAeree
      */
+    /**
+     * Da dove si guarda: dalla torretta, dal periscopio alzato, o da nessuna
+     * parte. Un periscopio in avaria non si alza, e chi sta sotto la quota
+     * periscopica non vede. Restituisce l'altezza dell'occhio sull'acqua.
+     */
+    public static function occhio(string $modo, bool $periscopioAlzato, bool $periscopioGuasto): ?float
+    {
+        return match (true) {
+            $modo === 'superficie'                                             => Detection::H_TORRETTA,
+            $modo === 'periscopio' && $periscopioAlzato && !$periscopioGuasto => Detection::H_PERISCOPIO,
+            default                                                            => null,
+        };
+    }
+
     private static function rilevamento(
         int $boatId,
         ?int $patrolId,
@@ -765,9 +808,13 @@ final class BoatSim
         $qAscolto = min(1.4, ($ciurma['specialita']['radiotelegrafista'] ?? 1.2) / 1.8 + 0.35);
 
         $idrofonoGuasto = false;
+        $periscopioGuasto = false;
         foreach ($sistemi as $sy) {
             if ((string) $sy['skey'] === 'idrofono' && (string) $sy['state'] !== 'ok') {
                 $idrofonoGuasto = true;
+            }
+            if ((string) $sy['skey'] === 'periscopio_osc' && (string) $sy['state'] !== 'ok') {
+                $periscopioGuasto = true;
             }
         }
 
@@ -782,7 +829,8 @@ final class BoatSim
         $strato = Acoustics::layerDepth($s['lat'], (int) $data->format('n'), $mare);
         $sottoStrato = $strato > 0 && $s['depth'] > $strato + 10;
 
-        $sagoma = Detection::sagomaBattello($s['mode'], $s['depth'], true);
+        $occhio = self::occhio($s['mode'], $s['peri'], $periscopioGuasto);
+        $sagoma = Detection::sagomaBattello($s['mode'], $s['depth'], $occhio === Detection::H_PERISCOPIO);
 
         foreach ($unita as $u) {
             // In mare adesso, non "in mare in un momento qualsiasi di questo
@@ -840,9 +888,9 @@ final class BoatSim
             $hAlberi = $convoglio ? 30.0 : max(8.0, (float) $cls['length_m'] * 0.20);
             $vistaOk = false;
             $fumoOk = false;
-            if ($sagoma > 0.0) {
+            if ($occhio !== null) {
                 $portata = Detection::portataVisiva(
-                    $s['mode'] === 'superficie' ? Detection::H_TORRETTA : Detection::H_PERISCOPIO,
+                    $occhio,
                     $hAlberi, 1.0, (float) $meteo['visibility_nm'], $luce, $mare, $qVedette, (bool) $meteo['fog']
                 );
                 $vistaOk = $rng->chance(Detection::probabilitaVista($d, $portata, $minuti, $qVedette));
@@ -1185,8 +1233,22 @@ final class BoatSim
         if ($s['fuel'] <= 0.01) {
             $unaVolta('in_panne', fn (string $k): array => self::ev($t, $k, 'allarme', $s, Narrator::inPanne()));
         }
+        // Viveri: due avvisi prima, come per la nafta, perche' il comandante
+        // abbia il tempo di tornare invece di scoprirlo a dispensa vuota.
+        if ($s['prov'] > 0.01 && $s['prov'] <= 7.0) {
+            $unaVolta('viveri_7', fn (string $k): array => self::ev($t, $k, 'nota', $s, Narrator::viveri($s['prov'])));
+        }
+        if ($s['prov'] > 0.01 && $s['prov'] <= 3.0) {
+            $unaVolta('viveri_3', fn (string $k): array => self::ev($t, $k, 'attenzione', $s, Narrator::viveri($s['prov'])));
+        }
         if ($s['prov'] <= 0.01) {
             $unaVolta('viveri_finiti', fn (string $k): array => self::ev($t, $k, 'attenzione', $s, Narrator::viveri(0)));
+            // Finiti i viveri, il BdU ordina il rientro. Il tipo d'ordine
+            // «rientro» c'era nel database dalla migrazione 0010, e fino al
+            // 29/09/2026 non lo emetteva nessuno.
+            if (($testo = \App\Game\Bdu::ordinaRientro($boat, $t, 'viveri')) !== null) {
+                $eventi[] = self::ev($t, 'ordine_bdu', 'attenzione', $s, $testo);
+            }
         }
 
         // Troppi giorni senza punto astronomico: va detto, perche' spiega

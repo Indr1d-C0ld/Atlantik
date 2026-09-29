@@ -63,7 +63,10 @@ reazione del nemico**.
 
 La posizione si dice in **Marinequadrat**, la griglia della Kriegsmarine: BF
 1911, AK 4732. È quella che si trasmette al BdU, ed è quella con cui gli altri
-comandanti ti dicono dove hanno visto qualcosa.
+comandanti ti dicono dove hanno visto qualcosa. Sulla carta le sigle seguono lo
+zoom, dal grande quadrato fino ai quadratini di sei miglia; il quadrato sotto il
+cursore si legge in chiaro, e la destinazione ordinata dal BdU ha il suo
+riquadro, con rotta e distanza dal punto in cui *credi* di essere.
 
 **Nove basi** con le loro flottiglie storiche — Lorient (2. und 10.), Saint-
 Nazaire (6. und 7.), Brest (1. und 9.), La Pallice, Bordeaux, Kiel,
@@ -180,6 +183,12 @@ l'allarme, i giorni di missione che si accumulano, le avarie, i viveri che
 finiscono. E la resa dell'equipaggio entra dappertutto: nelle avarie, nella
 velocità delle riparazioni, nella qualità dell'ascolto, nell'errore al lancio.
 
+**I viveri** si imbarcano in cantiere, e occupano la stiva che servirebbe a
+munizioni e ricambi. Le prime due settimane c'è il fresco, e si vede nel
+morale; poi le conserve. A sette e a tre giorni dalla fine il cuoco avverte;
+finiti, il BdU ordina il rientro, e dal terzo giorno di digiuno gli uomini
+cominciano ad ammalarsi — un poco al giorno, e un malato rende la metà.
+
 Fra una missione e l'altra si mandano gli uomini ai corsi. Si feriscono, si
 muore, e i migliori vengono trasferiti a formare nuovi equipaggi — che è una
 delle ragioni per cui la qualità media crollò nel 1943.
@@ -210,6 +219,12 @@ formula. Il **fumo all'orizzonte** è un canale a sé — si vede prima degli al
 la propria sagoma; correre lascia una baffa che a sei nodi sul mare liscio
 triplica quello che si vede di te.
 
+**Il periscopio** ha la sua postazione anche in crociera. A quota periscopica
+il I.WO lo alza per il giro d'orizzonte: da lì l'orizzonte è vicino, ma la
+testa del periscopio è una sagoma piccola. Abbassato, si è ciechi e invisibili,
+e resta l'idrofono. È una scelta che si fa di continuo, ed è la stessa che si
+faceva a bordo.
+
 **Il radar alleato** non guarda la luce: di notte non ti serve a niente essere
 scuro. Il Metox canta quando qualcuno ti illumina, e mezzo minuto di anticipo è
 la differenza fra immergersi e prendersi quattro bombe sul ponte.
@@ -235,6 +250,13 @@ angolo sulla prua, velocità e distanza stimate, più l'errore del periscopio o
 la stima del I.WO se non sei tu a guardare. Si sceglie il tubo, la spoletta
 (a contatto o magnetica), la quota di corsa e l'apertura del ventaglio.
 L'errore si propaga: a duemila metri, due nodi sbagliati sono un siluro perso.
+
+**La stazione d'attacco** segue l'ordine di un attacco vero, in cinque passi:
+avvicinarsi davanti al bersaglio, osservarlo al periscopio, fare la soluzione,
+lanciare, sottrarsi. In cima, grande, il tempo reale che resta prima che il
+Primo Ufficiale prenda il comando; accanto, sempre in vista, la cronaca. Il
+bersaglio si sceglie dalla tavola o con un clic sul suo segno nel quadro, e il
+calcolatore si ricarica con le stime di quella nave — finché non le correggi tu.
 
 **Le scorte** cercano con l'ASDIC — che ha un cono, un angolo cieco sotto di
 sé, e perde il contatto nell'ultimo tratto dell'accosto, che è esattamente il
@@ -369,9 +391,9 @@ settemila volte e ha fallito otto volte, tutte fra il 17 e il 19 settembre:
 ogni fallimento con la sua riga nel diario e la sua causa nota, che è il motivo
 per cui si contano.
 
-### Le nove revisioni tecniche
+### Le dieci revisioni tecniche
 
-Il gioco è stato sottoposto a nove audit successivi, ognuno con un metodo
+Il gioco è stato sottoposto a dieci audit successivi, ognuno con un metodo
 diverso dal precedente, perché un metodo ripetuto smette di trovare. Il
 registro completo — con le misure, i numeri e le prove che lo dimostrano — sta
 in `docs/AUDIT.md` nel deployment; qui il sunto.
@@ -387,6 +409,7 @@ in `docs/AUDIT.md` nel deployment; qui il sunto.
 | 7 | Caricamenti, accessibilità, fonti | Gli `.htaccess` che proteggevano i caricamenti **non venivano letti da nessuno** |
 | 8 | *La documentazione dice il vero?* | Cinque punti della documentazione descrivevano **uno strumento tolto di proposito**, come se ci fosse ancora |
 | 9 | La matematica e i suoi confini | Una nave a quattro chilometri, di notte, **risultava riconosciuta al 97%**: oltre la portata la formula faceva `NAN`, e PHP lo trasformava nel massimo |
+| 10 | Una sessione di gioco del proprietario | **Il calcolatore di lancio restava sul primo bersaglio dell'elenco**: scegliendone un altro, si lanciava con la soluzione di un'altra nave |
 
 Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
 nessuno di questi difetti si vede leggendo il codice. Quel codice era giusto.
@@ -408,10 +431,10 @@ e ha cominciato a interrogare quello che il codice dice di sé.
 
 | | |
 |---|---|
-| Righe di codice | ~47.000 in 286 file (PHP, JavaScript, CSS, SQL e i disegni SVG) |
-| Rotte HTTP | 91 |
-| Tabelle / migrazioni | 45 / 40 |
-| Prove automatiche | **36 file, 1.000 controlli, tutti verdi** |
+| Righe di codice | ~49.000 in 310 file (PHP, JavaScript, CSS, SQL, script di shell e i disegni SVG, prove comprese) |
+| Rotte HTTP | 93 |
+| Tabelle / migrazioni | 45 / 41 |
+| Prove automatiche | **38 file, 1.055 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -471,8 +494,8 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Trentasei file — venticinque che girano in PHP e undici che interrogano il
-server attraverso Apache — per **1.000 controlli**. Si aspettano un'installazione
+Trentotto file — ventisette che girano in PHP e undici che interrogano il
+server attraverso Apache — per **1.055 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e
@@ -505,6 +528,8 @@ php tests/test_ciclo.php             # il giro intero di una missione, dalle giu
 php tests/test_combattimento.php     # Bold, rivelatore radar, sganciamento dalle scorte
 php tests/test_invarianti.php        # ordini a caso e tempo a salti: le regole che devono valere sempre
                                      # (ATLANTIK_LUNGO=1 per la versione lunga, una decina di minuti)
+php tests/test_viveri.php            # viveri scelti in cantiere, fresco, digiuno, rientro ordinato dal BdU
+php tests/test_periscopio.php        # periscopio d'osservazione in crociera: su, giù, avaria, passaggio all'attacco
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse

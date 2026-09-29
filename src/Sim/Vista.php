@@ -280,7 +280,6 @@ final class Vista
                 'classe'    => $identificata ? (string) $cls['name'] : '',
                 'classe_key'=> $identificata ? $classeKey : null,
                 'grt'       => $vista ? $grtStimato : 0,
-                'grt_vero'  => (int) $e['grt'],
                 // Che una nave sbandi o stia andando giu' lo si sa se la si
                 // vede. All'idrofono si sente un'elica, non un incendio.
                 'stato'     => $vista ? (string) $e['stato'] : 'ignoto',
@@ -291,8 +290,14 @@ final class Vista
                 'aob'       => round($aobStimato, 0),
                 'aob_lato'  => $aobFirmato < 0 ? 'sinistra' : 'dritta',
                 'velocita'  => $velStimata,
-                'integrita' => (float) $e['integrita'],
+                // Qui c'erano anche la stazza vera e l'integrita' dello scafo,
+                // fino al 29/09/2026: nessuna pagina le mostrava, ma finivano
+                // nel JSON del quadro, e chi apriva il sorgente leggeva quanto
+                // stazzava davvero un'eco d'idrofono e quanto era danneggiata.
                 'contatto'  => (float) $e['contatto'],
+                // Il numero del plottaggio, stabile per tutto l'incontro: e'
+                // quello fra le virgolette basse dell'etichetta.
+                'numero'    => $numero,
                 // Sul tavolo si segna la posizione STIMATA: rilevamento e
                 // distanza come li ha riferiti chi guarda o chi ascolta.
                 'lat'       => Geo::destination((float) $boat['lat'], (float) $boat['lon'], $rilStimato, $dStimata)[0],

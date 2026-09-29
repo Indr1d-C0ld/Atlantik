@@ -132,6 +132,80 @@ final class PlanciaController
         return Response::html(view('game/carta', $c));
     }
 
+    /**
+     * La postazione del periscopio d'osservazione.
+     *
+     * Durante un incontro il periscopio che conta e' quello d'attacco, e sta
+     * nella stazione d'attacco, al passo dell'osservazione: la pagina rimanda
+     * li', invece di offrire un secondo comando per la stessa cosa.
+     */
+    public function periscopio(Request $request): Response
+    {
+        $c = $this->ctx();
+        $fermo = $this->soloInMare($c, 'Il periscopio');
+        if ($fermo !== null) {
+            return $fermo;
+        }
+        if ($c['boat']['encounter_id'] !== null) {
+            return redirect('/attacco#osservazione');
+        }
+
+        $boat  = $c['boat'];
+        $meteo = $c['meteo'];
+        $stato = \App\Game\Periscopio::stato($boat);
+        $occhio = \App\Game\Periscopio::occhio($boat, $stato);
+        $ciurma = Crew::aggregate((int) $boat['id']);
+        $qVedette = min(1.4, ($ciurma['specialita']['marinaio'] ?? 3.0) / 6.0 + 0.45);
+
+        $c['stato_periscopio'] = $stato;
+        $c['portate'] = [
+            // Fin dove si vedrebbe un mercantile grande, con gli alberi a trenta metri.
+            'vediamo' => \App\Sim\Detection::portataVisiva(
+                \App\Sim\Detection::H_PERISCOPIO, 30.0, 1.0, (float) $meteo['visibility_nm'],
+                (float) $c['cielo']['luce'], (int) $meteo['sea_state'], $qVedette, (bool) $meteo['fog']
+            ),
+            // Fin dove la vedetta di una scorta coglierebbe la testa del periscopio.
+            'ci_vedono' => \App\Sim\Detection::portataVisiva(
+                \App\Sim\Detection::H_PONTE_SCORTA, 1.0, \App\Sim\Detection::S_PERISCOPIO,
+                (float) $meteo['visibility_nm'], (float) $c['cielo']['luce'], (int) $meteo['sea_state'], 1.15, (bool) $meteo['fog']
+            ),
+        ];
+        // Quello che c'e' nell'oculare: i contatti presi a vista (o il fumo),
+        // non quelli dell'idrofono. Col periscopio dentro, niente.
+        $c['in_vista'] = $occhio === null ? [] : array_values(array_filter(
+            Contacts::recenti((int) $boat['id'], 30),
+            static fn (array $k): bool => !(bool) $k['perso'] && in_array((string) $k['sensore'], ['vista', 'fumo'], true)
+        ));
+        $c['title'] = 'Periscopio';
+        $c['illum'] = $this->illum($c);
+        return Response::html(view('game/periscopio', $c));
+    }
+
+    /** Alza o abbassa il periscopio, o porta il battello a quota periscopica. */
+    public function periscopioComando(Request $request): Response
+    {
+        $c = $this->ctx();
+        $fermo = $this->soloInMare($c, 'Il periscopio');
+        if ($fermo !== null) {
+            return $fermo;
+        }
+        if ($c['boat']['encounter_id'] !== null) {
+            return redirect('/attacco#osservazione');
+        }
+
+        $azione = $request->str('azione');
+        if ($azione === 'quota') {
+            $res = Patrol::orders($c['boat'], null, 12.0, null);
+            $res['testo'] = 'Quota periscopica, dodici metri. Il periscopio esce appena ci si arriva.';
+        } elseif ($azione === 'alza' || $azione === 'abbassa') {
+            $res = \App\Game\Periscopio::comanda($c['boat'], $azione === 'alza');
+        } else {
+            $res = ['ok' => false, 'error' => 'Comando sconosciuto.'];
+        }
+        Session::flash($res['ok'] ? 'success' : 'error', $res['ok'] ? ($res['testo'] ?? 'Eseguito.') : ($res['error'] ?? 'Comando non eseguito.'));
+        return redirect('/periscopio');
+    }
+
     /** Horchraum: la stanza dell'ascolto, piu' quello che riportano le vedette. */
     /** Stile del disegno della carta: scelta di comodo, non di gioco. */
     public function preferenzaCarta(Request $request): Response
@@ -190,11 +264,11 @@ final class PlanciaController
                 \App\Sim\Detection::H_TORRETTA, 30.0, 1.0,
                 (float) $meteo['visibility_nm'], (float) $c['cielo']['luce'], (int) $meteo['sea_state'], 1.0, (bool) $meteo['fog']
             ),
-            'nostra_sagoma' => \App\Sim\Detection::sagomaBattello((string) $boat['mode'], (float) $boat['depth_m'], true),
+            'nostra_sagoma' => \App\Sim\Detection::sagomaBattello((string) $boat['mode'], (float) $boat['depth_m'], (bool) $boat['periscopio_alzato']),
             'ci_vedono' => \App\Sim\Detection::portataVisiva(
                 \App\Sim\Detection::H_PONTE_SCORTA,
                 (string) $boat['mode'] === 'superficie' ? 5.0 : 1.0,
-                \App\Sim\Detection::sagomaBattello((string) $boat['mode'], (float) $boat['depth_m'], true),
+                \App\Sim\Detection::sagomaBattello((string) $boat['mode'], (float) $boat['depth_m'], (bool) $boat['periscopio_alzato']),
                 (float) $meteo['visibility_nm'], (float) $c['cielo']['luce'], (int) $meteo['sea_state'], 1.15, (bool) $meteo['fog']
             ),
         ];
@@ -375,6 +449,12 @@ final class PlanciaController
                 'aria'     => (float) $boat['air_pct'],
                 'co2'      => (float) $boat['co2_pct'],
                 'viveri'   => (float) $boat['provisions_days'],
+                'viveri_testo' => \App\Sim\Crew::descriviViveri(
+                    (float) $boat['provisions_days'],
+                    ($p = Patrol::corrente((int) $boat['id'])) !== null ? (int) $p['departed_gts'] : null,
+                    ($boat['senza_viveri_gts'] ?? null) !== null ? (int) $boat['senza_viveri_gts'] : null,
+                    World::now()
+                ),
                 'autonomia_nm' => round(Consumption::rangeLeftNm($type, (float) $boat['fuel_t'], 10), 0),
                 'ore_immersione' => round(Consumption::submergedHoursLeft($type, (float) $boat['battery_pct'], max(2.0, (float) $boat['speed_kn']), (bool) $boat['silent']), 1),
             ],

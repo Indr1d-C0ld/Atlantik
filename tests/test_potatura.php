@@ -97,7 +97,7 @@ function incontro(int $boatId, int $shipId, string $stato, int $quando): int
     Database::run(
         "INSERT INTO encounters (boat_id, stato, started_gts, last_step_gts, finestra_fine, ended_gts, esito)
          VALUES (?, ?, ?, ?, ?, ?, 'prova di potatura')",
-        [$boatId, $stato, $quando, $quando, $quando + 3600, $stato === 'concluso' ? $quando : null]
+        [$boatId, $stato, $quando, $quando, time() + 3600, $stato === 'concluso' ? $quando : null]
     );
     $encId = Database::lastInsertId();
     Database::run(

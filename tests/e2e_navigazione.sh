@@ -537,6 +537,41 @@ PAGINA=$(c "${BASE_URL}/carta")
 contiene "tavolo di carteggio" "id=\"carta\"" "${PAGINA}"
 contiene "dati della carta presenti" "data-carta" "${PAGINA}"
 contiene "sigle Marinequadrat sulla carta" "quadrati" "${PAGINA}"
+# La destinazione del BdU (l'area assegnata passando da /bdu) sta sulla carta
+# col suo riquadro, e accanto, in chiaro, con rotta e distanza.
+contiene "destinazione del BdU passata alla carta" "missioni&quot;:\[{&quot;tipo&quot;:&quot;area" "${PAGINA}"
+contiene "ordini del BdU accanto alla carta" "class=\"vai-missione\"" "${PAGINA}"
+contiene "quadrato sotto il cursore" "id=\"carta-cursore\"" "${PAGINA}"
+
+# La postazione del periscopio: c'e', e' nella barra di navigazione, e i
+# comandi rispondono. Si porta il battello a quota periscopica, ci si arriva,
+# e il periscopio dev'essere fuori; poi lo si abbassa.
+contiene "periscopio nella barra di navigazione" "href=\"[^\"]*/periscopio\"" "${PAGINA}"
+PAGINA=$(c "${BASE_URL}/periscopio")
+contiene "postazione del periscopio" "Periscopio d'osservazione" "${PAGINA}"
+TOKP=$(echo "${PAGINA}" | token_da)
+CODE=$(c -o /dev/null -w '%{http_code}' -X POST "${BASE_URL}/periscopio" \
+  --data-urlencode "_token=${TOKP}" --data-urlencode "azione=quota")
+verifica "ordine di quota periscopica accettato" "302" "${CODE}"
+# Il battello di prova scende a dodici metri: si fa passare il tempo che serve.
+php -r 'require "'"${ROOT}"'/bin/_bootstrap.php";
+  $u = App\Core\Database::first("SELECT id FROM users WHERE username = ?", [$argv[1]]);
+  $b = App\Core\Database::first("SELECT id FROM boats WHERE user_id = ?", [(int) $u["id"]]);
+  App\Core\Database::run("UPDATE boats SET last_sim_gts = last_sim_gts - 1800 WHERE id = ?", [(int) $b["id"]]);
+  // Le cariche subite prima possono aver rotto il periscopio: qui
+  // si verifica il comando, non il danno, e lo si rimette in ordine.
+  App\Core\Database::run("UPDATE boat_systems SET state = \"ok\" WHERE boat_id = ? AND skey = \"periscopio_osc\"", [(int) $b["id"]]);' "${USER_NAME}"
+PAGINA=$(c "${BASE_URL}/periscopio")
+contiene "a quota periscopica il periscopio e' fuori" "data-periscopio=\"fuori\"" "${PAGINA}"
+TOKP=$(echo "${PAGINA}" | token_da)
+c -o /dev/null -X POST "${BASE_URL}/periscopio" --data-urlencode "_token=${TOKP}" --data-urlencode "azione=abbassa"
+PAGINA=$(c "${BASE_URL}/periscopio")
+contiene "e si abbassa" "data-periscopio=\"dentro\"" "${PAGINA}"
+TOKP=$(echo "${PAGINA}" | token_da)
+CODE=$(c -o /dev/null -w '%{http_code}' -X POST "${BASE_URL}/periscopio" \
+  --data-urlencode "_token=${TOKP}" --data-urlencode "azione=spara_il_periscopio")
+verifica "un comando inventato non rompe niente" "302" "${CODE}"
+PAGINA=$(c "${BASE_URL}/carta")
 
 # Tratto della carta: due stili, stessa geometria. Il valore arriva dal browser
 # e non deve poter entrare in tabella se non e' uno dei due previsti.

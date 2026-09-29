@@ -176,7 +176,7 @@ Database::run(
     "INSERT INTO encounters (boat_id, patrol_id, convoy_id, ship_id, stato, started_gts, last_step_gts,
                              last_step_real, finestra_fine, ratio, allarme)
      VALUES (?, ?, NULL, NULL, 'attacco', ?, ?, ?, ?, 1, 1)",
-    [$boatId, $patrolId, World::now(), World::now(), time(), World::now() + 7200]
+    [$boatId, $patrolId, World::now(), World::now(), time(), time() + 7200]
 );
 $encId = Database::lastInsertId();
 $classeScorta = Database::first("SELECT class_key FROM ship_classes WHERE kind = 'scorta' AND asdic = 1 LIMIT 1");
