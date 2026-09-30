@@ -68,7 +68,7 @@ $datiCarta = [
     'porti'     => $porti,
     'missioni'  => $missioni,
     'rotta'     => array_map(static fn (array $w): array => [
-        'lat' => (float) $w['lat'], 'lon' => (float) $w['lon'],
+        'lat' => (float) $w['lat'], 'lon' => (float) $w['lon'], 'auto' => (bool) ($w['auto'] ?? 0),
     ], $rotta),
     'contatti'  => array_map(static fn (array $k): array => [
         'lat'      => (float) $k['lat_est'],
@@ -102,7 +102,9 @@ $datiCarta = [
             )) ?>"
             data-carta="<?= e(json_encode($datiCarta, JSON_UNESCAPED_UNICODE)) ?>">La carta e' un disegno: la stessa posizione, in parole, sta qui sotto sotto «Punto attuale», e la rotta sotto «Rotta pianificata».</canvas>
     <p class="carta-aiuto">
-      Trascina per spostare la carta, rotella per la scala. Un clic aggiunge un punto di rotta.
+      Trascina per spostare la carta, rotella per la scala. Un clic aggiunge un punto di rotta; un punto
+      si afferra e si trascina dove serve. Se la rotta taglia la terraferma, la centrale aggiunge da sola i
+      punti per doppiare la costa: sono quelli piccoli e vuoti.
       Il cerchio tratteggiato è l'incertezza sulla posizione: dentro quel cerchio, il battello può essere ovunque.
       Le sigle in rosso sono i quadrati Marinequadrat, quelli che si trasmettono al BdU: ingrandendo,
       ogni quadrato si divide in nove e la sigla prende una cifra in più, fino ai quadratini di sei miglia.
@@ -115,6 +117,7 @@ $datiCarta = [
     <div class="strumento">
       <h3>Rotta pianificata</h3>
       <ul id="elenco-rotta"></ul>
+      <p class="note-rotta" id="note-rotta" aria-live="polite"></p>
       <form method="post" action="<?= e(url('/rotta')) ?>" style="margin-top:.8rem">
         <?= csrf_field() ?>
         <input type="hidden" name="waypoints" id="campo-waypoints" value="[]">
@@ -123,7 +126,13 @@ $datiCarta = [
           <button type="button" id="pulisci-rotta">Cancella</button>
         </div>
       </form>
-      <p class="aiuto">Il battello segue i punti nell'ordine. Raggiunto l'ultimo, resta in zona.</p>
+      <p class="aiuto">Il battello segue i punti nell'ordine. Raggiunto l'ultimo, ferma le macchine.
+        Davanti a una costa che la rotta non ha previsto si ferma da solo.</p>
+      <form method="post" action="<?= e(url('/rotta/base')) ?>" style="margin-top:.6rem">
+        <?= csrf_field() ?>
+        <button type="submit" class="bottone--fantasma">Rotta per la base</button>
+        <span class="aiuto" style="margin:0">per mare fino al canale, poi il canale fino al porto</span>
+      </form>
     </div>
 
     <div class="strumento" style="margin-top:1rem">
@@ -170,12 +179,12 @@ $datiCarta = [
       <h3>Punto attuale</h3>
       <div class="riga">
         <span class="etichetta"><?= partial('segnaposto', ['chiave' => 'griglia_navale', 'h' => 20]) ?> Quadrato</span>
-        <span class="valore"><?= e($quadrat) ?></span>
+        <span class="valore" data-campo-carta="quadrat"><?= e($quadrat) ?></span>
       </div>
-      <div class="riga"><span class="etichetta">Latitudine</span><span class="valore piccolo"><?= e(Geo::formatLat((float) $boat['est_lat'])) ?></span></div>
-      <div class="riga"><span class="etichetta">Longitudine</span><span class="valore piccolo"><?= e(Geo::formatLon((float) $boat['est_lon'])) ?></span></div>
-      <div class="riga"><span class="etichetta">Incertezza</span><span class="valore piccolo">± <?= e(number_format((float) $boat['est_error_nm'], 1, ',', '')) ?> nm</span></div>
-      <div class="riga"><span class="etichetta">Rotta</span><span class="valore piccolo"><?= e(str_pad(number_format((float) $boat['heading'], 0, ',', ''), 3, '0', STR_PAD_LEFT)) ?>°</span></div>
+      <div class="riga"><span class="etichetta">Latitudine</span><span class="valore piccolo" data-campo-carta="lat"><?= e(Geo::formatLat((float) $boat['est_lat'])) ?></span></div>
+      <div class="riga"><span class="etichetta">Longitudine</span><span class="valore piccolo" data-campo-carta="lon"><?= e(Geo::formatLon((float) $boat['est_lon'])) ?></span></div>
+      <div class="riga"><span class="etichetta">Incertezza</span><span class="valore piccolo" data-campo-carta="errore">± <?= e(number_format((float) $boat['est_error_nm'], 1, ',', '')) ?> nm</span></div>
+      <div class="riga"><span class="etichetta">Rotta</span><span class="valore piccolo" data-campo-carta="rotta"><?= e(sprintf('%03d', (int) round((float) $boat['heading']) % 360)) ?>°</span></div>
     </div>
   </div>
 </div>

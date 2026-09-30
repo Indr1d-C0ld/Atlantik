@@ -511,6 +511,8 @@ footer {
 #plotta { display: block; max-width: 100%; }
 .tavolo { max-width: 100%; }
 .carta-aiuto { font-size: .75rem; color: var(--testo-3); margin: .5rem 0 0; }
+.note-rotta { font-size: .78rem; color: var(--ambra); margin: .4rem 0 0; min-height: 1em; }
+#elenco-rotta .giro { display: block; font-size: .68rem; color: var(--testo-3); }
 .carta-cursore { font: .75rem var(--mono); color: var(--testo-2); margin: .3rem 0 0; min-height: 1.2em; }
 .elenco-missioni { list-style: none; margin: 0 0 .4rem; padding: 0; }
 .elenco-missioni li { display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline;

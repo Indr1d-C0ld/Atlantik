@@ -329,10 +329,14 @@ final class BoatSim
                 $d = Geo::distanceNm($s['lat'], $s['lon'], (float) $wp['lat'], (float) $wp['lon']);
                 if ($d <= 1.5) {
                     Database::run('UPDATE boat_waypoints SET reached_gts = ? WHERE id = ?', [$t, (int) $wp['id']]);
-                    $eventi[] = self::ev($t, 'waypoint', 'nota', $s, Narrator::waypoint(
-                        (int) $wp['seq'],
-                        Grid::toQuadrat($s['lat'], $s['lon']) ?? '—'
-                    ));
+                    // I punti aggiunti dalla centrale per doppiare una costa non
+                    // vanno nel giornale uno per uno: sono la strada, non la meta.
+                    if (!(bool) ($wp['auto'] ?? false)) {
+                        $eventi[] = self::ev($t, 'waypoint', 'nota', $s, Narrator::waypoint(
+                            (int) $wp['seq'],
+                            Grid::toQuadrat($s['lat'], $s['lon']) ?? '—'
+                        ));
+                    }
                     array_shift($waypoints);
                     if ($waypoints === []) {
                         $s['ordered'] = 0.0;
@@ -367,10 +371,34 @@ final class BoatSim
                 $s['lat'], $s['lon'], $s['heading'], $s['speed'], $dt,
                 (float) $meteo['wind_dir'], (float) $meteo['wind_kn'], $s['mode']
             );
+
+            // La costa. Fino al 30/09/2026 la simulazione non sapeva dove fosse
+            // la terra, e si passava attraverso la Bretagna. Adesso un tratto
+            // che dal mare finirebbe sulla terraferma non si fa: l'Obersteuermann
+            // ferma le macchine con la costa in vista, e la costa in vista e'
+            // anche un punto nave. Chi e' gia' a terra (un battello salvato
+            // prima di questa regola, o in un canale) si muove liberamente
+            // finche' non torna in acqua.
+            $allaCosta = !Terra::aTerra($s['lat'], $s['lon']) && Terra::attraversa($s['lat'], $s['lon'], $m['lat'], $m['lon']);
+            if ($allaCosta) {
+                if ($s['ordered'] > 0.0) {
+                    $eventi[] = self::ev($t, 'costa', 'attenzione', $s, Narrator::costa(
+                        Grid::toQuadrat($s['lat'], $s['lon']) ?? '—', $waypoints !== []
+                    ));
+                }
+                $s['speed'] = 0.0;
+                $s['ordered'] = 0.0;
+                $s['est_lat'] = $s['lat'];
+                $s['est_lon'] = $s['lon'];
+                $s['last_fix'] = $t;
+                $m['dist_nm'] = 0.0;
+                $m['lat'] = $s['lat'];
+                $m['lon'] = $s['lon'];
+            }
             $s['lat'] = $m['lat'];
             $s['lon'] = $m['lon'];
 
-            [$s['est_lat'], $s['est_lon']] = Movement::stepEstimated(
+            [$s['est_lat'], $s['est_lon']] = $allaCosta ? [$s['est_lat'], $s['est_lon']] : Movement::stepEstimated(
                 $s['est_lat'], $s['est_lon'], $s['heading'], $s['speed'], $dt, $mare, $rng,
                 (float) $m['drift_dir'], (float) $m['drift_nm']
             );

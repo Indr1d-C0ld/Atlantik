@@ -310,6 +310,19 @@ final class Narrator
     }
 
     /** Le due righe con cui il Primo Ufficiale spiega il passo successivo. */
+    /** Il battello si ferma con la costa davanti. */
+    public static function costa(string $quadrat, bool $conRotta): string
+    {
+        return sprintf(
+            'Costa a prua in %s, e fondale che sale: l\'Obersteuermann ferma le macchine. '
+            . 'La costa in vista vale un punto nave: la posizione sulla carta adesso e\' quella vera. %s',
+            $quadrat,
+            $conRotta
+                ? 'La rotta tracciata passava per terra: va ritracciata da qui, e la centrale aggiungera\' i punti per doppiare la costa.'
+                : 'Serve una rotta che la eviti, o un\'altra prora.'
+        );
+    }
+
     public static function primoConsiglio(string $quadrat): string
     {
         return sprintf(

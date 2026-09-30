@@ -39,7 +39,10 @@
   // in dimensiona(), in modo da inquadrare circa 70 gradi di longitudine:
   // l'ampiezza con cui si lavorava davvero al tavolo di carteggio.
   var vista = { lat: dati.lat, lon: dati.lon, scala: 2.6 };
-  var rotta = (dati.rotta || []).map(function (w) { return { lat: w.lat, lon: w.lon }; });
+  // Ogni punto di rotta sa se l'ha messo il comandante o la centrale
+  // (auto: aggiunto per doppiare una costa o seguire un canale). Quelli
+  // automatici si ricalcolano da capo a ogni modifica.
+  var rotta = (dati.rotta || []).map(function (w) { return { lat: w.lat, lon: w.lon, auto: !!w.auto }; });
   var modificata = false;
 
   function merc(lat) { return Math.log(Math.tan(Math.PI / 4 + (Math.max(-80, Math.min(80, lat)) * Math.PI / 180) / 2)) * 180 / Math.PI; }
@@ -744,13 +747,24 @@
       ctx.beginPath(); ctx.moveTo(start.x, start.y);
       rotta.forEach(function (wp) { var p = xy(wp.lat, wp.lon); ctx.lineTo(p.x, p.y); });
       ctx.stroke(); ctx.setLineDash([]);
+      // I punti del comandante col loro numero; quelli della centrale piccoli
+      // e vuoti: sono la strada intorno alla costa, non una meta.
+      var numero = 0;
       rotta.forEach(function (wp, i) {
         var p = xy(wp.lat, wp.lon);
+        if (wp.auto) {
+          ctx.fillStyle = stile('--carta-pergamena', '#dec7a6');
+          ctx.beginPath(); ctx.arc(p.x, p.y, 3.2, 0, 6.3); ctx.fill();
+          ctx.strokeStyle = acc; ctx.lineWidth = 1.4; ctx.stroke();
+          return;
+        }
+        numero++;
         ctx.fillStyle = acc;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, 6.3); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, i === trascinato ? 7 : 5.5, 0, 6.3); ctx.fill();
         ctx.strokeStyle = inch; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = '#16120b'; ctx.font = '700 9px ' + MONO;
-        ctx.fillText(String(i + 1), p.x - 2.5, p.y + 3);
+        ctx.fillStyle = '#16120b'; ctx.font = '700 9px ' + MONO; ctx.textAlign = 'center';
+        ctx.fillText(String(numero), p.x, p.y + 3);
+        ctx.textAlign = 'start';
       });
     }
 
@@ -868,15 +882,30 @@
     disegna();
   }
 
+  // Il punto di rotta sotto il dito, se c'e': entro una decina di pixel, il
+  // piu' vicino. Col dito la tolleranza e' piu' larga, come un polpastrello.
+  var trascinato = -1;
+  function puntoSotto(p, tocco) {
+    var meglio = -1, dMin = tocco ? 18 : 10;
+    rotta.forEach(function (wp, i) {
+      var q = xy(wp.lat, wp.lon), d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d < dMin) { dMin = d; meglio = i; }
+    });
+    return meglio;
+  }
+
   tela.addEventListener('pointerdown', function (e) {
     var p = puntoTela(e);
     dita[e.pointerId] = p;
     if (Object.keys(dita).length === 2) {
       // Due dita: da qui in poi si ingrandisce, non si trascina.
       trascino = null;
+      trascinato = -1;
       pinza = distanzaDita();
       return;
     }
+    // Premuto su un punto di rotta: si sposta quello, non la carta.
+    trascinato = puntoSotto(p, e.pointerType === 'touch');
     trascino = { x: p.x, y: p.y, lat: vista.lat, lon: vista.lon, mosso: false };
     try { tela.setPointerCapture(e.pointerId); } catch (x) { /* non tutti lo hanno */ }
   });
@@ -897,6 +926,16 @@
     var p = puntoTela(e);
     var dx = p.x - trascino.x, dy = p.y - trascino.y;
     if (Math.abs(dx) + Math.abs(dy) > 4) { trascino.mosso = true; }
+    if (trascinato >= 0) {
+      if (!trascino.mosso) { return; }
+      // Un punto spostato a mano diventa del comandante, anche se l'aveva
+      // messo la centrale: da li' in poi la rotta passa di li'.
+      var g = latlon(p.x, p.y);
+      rotta[trascinato] = { lat: Math.round(g.lat * 1000) / 1000, lon: Math.round(g.lon * 1000) / 1000, auto: false };
+      modificata = true;
+      disegna();
+      return;
+    }
     vista.lon = trascino.lon - dx / vista.scala;
     vista.lat = mercInv(merc(trascino.lat) + dy / vista.scala);
     limita();
@@ -908,18 +947,24 @@
     if (Object.keys(dita).length < 2) { pinza = null; }
     try { tela.releasePointerCapture(e.pointerId); } catch (x) { /* gia' rilasciato */ }
 
-    // Un tocco che non ha trascinato e' un punto di rotta.
-    if (trascino && !trascino.mosso && e.type === 'pointerup') {
+    if (trascino && trascinato >= 0) {
+      // Fine dello spostamento di un punto: la centrale ricalcola il giro.
+      if (trascino.mosso) { aggiornaElenco(); anteprima(); }
+    } else if (trascino && !trascino.mosso && e.type === 'pointerup') {
+      // Un tocco che non ha trascinato e' un punto di rotta.
       var p = puntoTela(e);
       if (dentroCarta(p.x, p.y)) {
         var g = latlon(p.x, p.y);
-        rotta.push({ lat: Math.round(g.lat * 1000) / 1000, lon: Math.round(g.lon * 1000) / 1000 });
+        rotta.push({ lat: Math.round(g.lat * 1000) / 1000, lon: Math.round(g.lon * 1000) / 1000, auto: false });
         modificata = true;
         aggiornaElenco();
         disegna();
+        anteprima();
       }
     }
     trascino = null;
+    trascinato = -1;
+    disegna();
   }
 
   tela.addEventListener('pointerup', finePunta);
@@ -929,8 +974,16 @@
     // aggiunge un punto: il dito non si e' alzato sulla carta.
     if (e.buttons === 0) { return; }
     delete dita[e.pointerId];
+    if (trascinato >= 0 && trascino && trascino.mosso) { aggiornaElenco(); anteprima(); }
     trascino = null;
+    trascinato = -1;
     pinza = null;
+  });
+  // Il cursore dice che cosa succede premendo: sopra un punto di rotta si
+  // afferra, altrove si traccia.
+  tela.addEventListener('pointermove', function (e) {
+    if (trascino) { return; }
+    tela.style.cursor = puntoSotto(puntoTela(e), false) >= 0 ? 'grab' : '';
   });
   tela.addEventListener('wheel', function (e) {
     e.preventDefault();
@@ -980,10 +1033,21 @@
     if (!rotta.length) {
       elenco.innerHTML = '<li class="vuoto">Nessun punto di rotta. Fai clic sulla carta per tracciarla.</li>';
     } else {
-      elenco.innerHTML = rotta.map(function (wp, i) {
-        return '<li><b>' + (i + 1) + '</b> <span>' + gradi(wp.lat, 'NS') + '  ' + gradi(wp.lon, 'EW') +
-               '</span><button type="button" data-i="' + i + '" class="togli">×</button></li>';
-      }).join('');
+      // Nell'elenco i punti del comandante, numerati come sulla carta; quelli
+      // della centrale si contano sotto il punto che servono a raggiungere.
+      var numero = 0, giro = 0, righe = [];
+      rotta.forEach(function (wp, i) {
+        if (wp.auto) { giro++; return; }
+        numero++;
+        righe.push('<li><b>' + numero + '</b> <span>' + gradi(wp.lat, 'NS') + '  ' + gradi(wp.lon, 'EW') +
+          (giro ? '<small class="giro">' + (giro === 1 ? 'un punto' : giro + ' punti') + ' della centrale prima di questo</small>' : '') +
+          '</span><button type="button" data-i="' + i + '" class="togli" title="Togli il punto">×</button></li>');
+        giro = 0;
+      });
+      if (giro) {
+        righe.push('<li class="vuoto">' + (giro === 1 ? 'Un punto' : giro + ' punti') + ' della centrale per il canale d\'uscita.</li>');
+      }
+      elenco.innerHTML = righe.join('');
     }
     if (campo) { campo.value = JSON.stringify(rotta); }
     if (bottoneSalva) { bottoneSalva.disabled = !modificata; }
@@ -1004,16 +1068,85 @@
       if (!b) { return; }
       rotta.splice(parseInt(b.getAttribute('data-i'), 10), 1);
       modificata = true;
-      aggiornaElenco(); disegna();
+      aggiornaElenco(); disegna(); anteprima();
     });
   }
 
   var pulisci = document.getElementById('pulisci-rotta');
   if (pulisci) {
     pulisci.addEventListener('click', function () {
-      rotta = []; modificata = true; aggiornaElenco(); disegna();
+      rotta = []; modificata = true; aggiornaElenco(); disegna(); scriviNote([]);
     });
   }
+
+  // --- la rotta come la ritocca la centrale -----------------------------------
+  // A ogni modifica si chiede al server che cosa ne farebbe l'Obersteuermann:
+  // i punti per doppiare la costa, un punto spostato fuori dalla terraferma.
+  // Il server e' l'unico che sa dov'e' la terra per la simulazione, e la carta
+  // mostra la sua risposta prima che la rotta venga trasmessa.
+  var noteRotta = document.getElementById('note-rotta');
+  var gettone = (document.querySelector('input[name="_token"]') || {}).value || '';
+  var giroAnteprima = 0;
+  function scriviNote(note) {
+    if (!noteRotta) { return; }
+    noteRotta.textContent = note && note.length ? 'L\'Obersteuermann: ' + note.join('; ') + '.' : '';
+  }
+  function anteprima() {
+    var mio = ++giroAnteprima;
+    var corpo = new URLSearchParams();
+    corpo.set('waypoints', JSON.stringify(rotta.filter(function (w) { return !w.auto; })));
+    corpo.set('_token', gettone);
+    if (noteRotta) { noteRotta.textContent = 'La centrale ricalcola la rotta…'; }
+    fetch(urlBase + '/rotta/anteprima', {
+      method: 'POST', body: corpo, credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'X-CSRF-Token': gettone }
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        // Una risposta vecchia non deve cancellare un ritocco piu' recente.
+        if (mio !== giroAnteprima || trascinato >= 0) { return; }
+        if (!s || !s.ok) { scriviNote(['non riesco a ricalcolare la rotta adesso']); return; }
+        rotta = s.rotta.map(function (w) { return { lat: w.lat, lon: w.lon, auto: !!w.auto }; });
+        scriviNote(s.note);
+        aggiornaElenco();
+        disegna();
+      })
+      .catch(function () { if (mio === giroAnteprima) { scriviNote(['non riesco a ricalcolare la rotta adesso']); } });
+  }
+
+  // --- la carta si tiene aggiornata --------------------------------------------
+  // Posizione stimata, incertezza e prora arrivano dalla centrale ogni venti
+  // secondi. Prima la carta le leggeva una volta sola, al caricamento: il
+  // battello accostava per seguire la rotta e la sua freccia restava sulla prora
+  // vecchia finche' non si ricaricava la pagina.
+  var urlBase = document.body.getAttribute('data-base') || '';
+  function aggiornaDaCentrale() {
+    fetch(urlBase + '/api/stato', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        if (!s || !s.ok || !s.battello || s.battello.stato !== 'mare') { return; }
+        dati.lat = s.battello.lat;
+        dati.lon = s.battello.lon;
+        dati.heading = s.battello.rotta;
+        dati.errore_nm = s.battello.errore_nm;
+        // La rotta la si riprende dalla centrale solo se il comandante non la
+        // sta ritoccando: una modifica non trasmessa non si butta via.
+        if (!modificata && trascinato < 0 && s.rotta_pianificata) {
+          rotta = s.rotta_pianificata.map(function (w) { return { lat: w.lat, lon: w.lon, auto: !!w.auto }; });
+          aggiornaElenco();
+        }
+        document.querySelectorAll('[data-campo-carta]').forEach(function (el) {
+          var v = { quadrat: s.battello.quadrat || '—', lat: s.battello.lat_txt, lon: s.battello.lon_txt,
+                    errore: '± ' + s.battello.errore_nm.toFixed(1).replace('.', ',') + ' nm',
+                    rotta: ('00' + Math.round(s.battello.rotta) % 360).slice(-3) + '°' }[el.getAttribute('data-campo-carta')];
+          if (v !== undefined && el.textContent !== v) { el.textContent = v; }
+        });
+        if (trascinato < 0) { disegna(); }
+      })
+      .catch(function () { /* si riprova al giro dopo */ });
+  }
+  setInterval(aggiornaDaCentrale, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { aggiornaDaCentrale(); } });
 
   // --- provenienza del rilievo ----------------------------------------------
   // Scritta in chiaro sotto la carta: chi la guarda deve poter sapere QUALE

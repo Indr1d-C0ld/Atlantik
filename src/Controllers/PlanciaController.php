@@ -388,20 +388,75 @@ final class PlanciaController
                 : redirect('/carta');
         }
 
-        $wp = [];
-        foreach (array_slice($dati, 0, 24) as $p) {
-            if (!is_array($p) || !isset($p['lat'], $p['lon'])) {
-                continue;
-            }
-            $wp[] = ['lat' => (float) $p['lat'], 'lon' => (float) $p['lon']];
-        }
-
-        $n = \App\Game\Patrol::setRoute((int) $c['boat']['id'], $wp);
+        $adeguata = Patrol::adegua($c['boat'], $this->puntiDaBrowser($dati));
+        $n = Patrol::setRoute((int) $c['boat']['id'], $adeguata['punti']);
 
         if ($request->wantsJson()) {
-            return Response::json(['ok' => true, 'waypoints' => $n]);
+            return Response::json(['ok' => true, 'waypoints' => $n, 'note' => $adeguata['note']]);
         }
-        Session::flash('success', $n > 0 ? "Rotta tracciata: {$n} punti." : 'Rotta cancellata.');
+        Session::flash('success', ($n > 0 ? "Rotta tracciata: {$n} punti." : 'Rotta cancellata.')
+            . ($adeguata['note'] !== [] ? ' L\'Obersteuermann: ' . implode('; ', $adeguata['note']) . '.' : ''));
+        return redirect('/carta');
+    }
+
+    /**
+     * I punti come arrivano dalla carta: al piu' ventiquattro del comandante
+     * (quelli automatici non contano, si ricalcolano), coordinate numeriche.
+     *
+     * @return list<array{lat:float,lon:float,auto:bool}>
+     */
+    private function puntiDaBrowser(array $dati): array
+    {
+        $wp = [];
+        foreach ($dati as $p) {
+            if (!is_array($p) || !isset($p['lat'], $p['lon']) || !is_numeric($p['lat']) || !is_numeric($p['lon'])) {
+                continue;
+            }
+            $auto = !empty($p['auto']);
+            if (!$auto && count(array_filter($wp, static fn (array $w): bool => !$w['auto'])) >= 24) {
+                continue;
+            }
+            $wp[] = ['lat' => (float) $p['lat'], 'lon' => (float) $p['lon'], 'auto' => $auto];
+        }
+        return $wp;
+    }
+
+    /**
+     * La rotta come la ritoccherebbe la centrale, senza trasmetterla: la carta
+     * la chiede a ogni modifica, cosi' il comandante vede subito il giro
+     * intorno alla costa invece di scoprirlo dopo.
+     */
+    public function rottaAnteprima(Request $request): Response
+    {
+        $c = $this->ctx();
+        if ((string) $c['boat']['state'] !== 'mare') {
+            return Response::json(['ok' => false, 'error' => 'Il battello non e\' in mare.'], 422);
+        }
+        $dati = json_decode((string) $request->input('waypoints', '[]'), true);
+        if (!is_array($dati)) {
+            return Response::json(['ok' => false, 'error' => 'Rotta non leggibile.'], 422);
+        }
+        $adeguata = Patrol::adegua($c['boat'], $this->puntiDaBrowser($dati));
+        return Response::json(['ok' => true, 'rotta' => $adeguata['punti'], 'note' => $adeguata['note']]);
+    }
+
+    /** Rotta per la base: per mare fino all'uscita del canale, poi il canale. */
+    public function rottaBase(Request $request): Response
+    {
+        $c = $this->ctx();
+        $fermo = $this->soloInMare($c, 'Il carteggio della rotta');
+        if ($fermo !== null) {
+            return $fermo;
+        }
+        $r = Patrol::rottaBase($c['boat']);
+        if (!$r['trovata']) {
+            Session::flash('error', 'Da qui l\'Obersteuermann non trova una via per mare fino alla base.');
+            return redirect('/carta');
+        }
+        $n = Patrol::setRoute((int) $c['boat']['id'], $r['punti']);
+        $base = World::port((string) $c['boat']['home_port_key']);
+        Session::flash('success', sprintf('Rotta per %s tracciata: %s, canale compreso. Ordina le macchine dalla centrale.',
+            (string) ($base['name'] ?? 'la base'), plurale($n, 'un punto', '%d punti')));
         return redirect('/carta');
     }
 
@@ -416,6 +471,7 @@ final class PlanciaController
 
         $rotta = array_map(static fn (array $w): array => [
             'seq' => (int) $w['seq'], 'lat' => (float) $w['lat'], 'lon' => (float) $w['lon'], 'label' => $w['label'],
+            'auto' => (bool) ($w['auto'] ?? 0),
         ], Patrol::route((int) $boat['id']));
 
         $effetti = Damage::effects(Damage::systems((int) $boat['id']), (float) $boat['hull_stress'],

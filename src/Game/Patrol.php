@@ -174,7 +174,30 @@ final class Patrol
             }
         }
 
-        if ($waypoints !== []) {
+        // L'uscita dal porto. Sette basi su nove stanno, sulla carta, in fondo a
+        // un estuario o a un fiordo: la rotta d'uscita e' il canale, fino al
+        // mare aperto, e la traccia l'Obersteuermann. Il comandante ordina le
+        // macchine e aggiunge il resto dall'uscita in poi.
+        $canale = \App\Sim\Terra::canali()[(string) $base['port_key']] ?? [];
+        if ($waypoints === [] && count($canale) > 1) {
+            $uscita = [];
+            foreach (array_slice($canale, 1) as [$la, $lo]) {
+                $uscita[] = ['lat' => $la, 'lon' => $lo, 'auto' => true];
+            }
+            self::setRoute((int) $boat['id'], $uscita);
+            $u = $canale[count($canale) - 1];
+            BoatSim::save([
+                'gts' => $now, 'kind' => 'rotta', 'severity' => 'nota',
+                'lat' => (float) $base['lat'], 'lon' => (float) $base['lon'],
+                'quadrat' => Grid::toQuadrat((float) $base['lat'], (float) $base['lon']),
+                'text' => sprintf(
+                    'L\'Obersteuermann ha tracciato l\'uscita: %d miglia di canale fino al mare aperto, in %s. '
+                    . 'Macchine avanti quando il comandante lo ordina.',
+                    (int) round(self::lunghezza([(float) $base['lat'], (float) $base['lon']], $canale)),
+                    Grid::toQuadrat((float) $u[0], (float) $u[1]) ?? 'mare aperto'
+                ),
+            ], $patrolId, (int) $boat['id']);
+        } elseif ($waypoints !== []) {
             self::setRoute((int) $boat['id'], $waypoints);
         }
 
@@ -201,11 +224,93 @@ final class Patrol
             $seq++;
             $n++;
             Database::run(
-                'INSERT INTO boat_waypoints (boat_id, seq, lat, lon, label) VALUES (?, ?, ?, ?, ?)',
-                [$boatId, $seq, $lat, $lon, $wp['label'] ?? Grid::toQuadrat($lat, $lon)]
+                'INSERT INTO boat_waypoints (boat_id, seq, lat, lon, label, auto) VALUES (?, ?, ?, ?, ?, ?)',
+                [$boatId, $seq, $lat, $lon, $wp['label'] ?? Grid::toQuadrat($lat, $lon), !empty($wp['auto']) ? 1 : 0]
             );
         }
         return $n;
+    }
+
+    /** Lunghezza di una spezzata, in miglia, dal punto di partenza. */
+    private static function lunghezza(array $da, array $punti): float
+    {
+        $l = 0.0;
+        foreach ($punti as $p) {
+            $l += Geo::distanceNm((float) $da[0], (float) $da[1], (float) $p[0], (float) $p[1]);
+            $da = $p;
+        }
+        return $l;
+    }
+
+    /**
+     * Adegua la rotta del comandante alla terraferma.
+     *
+     * Si parte dal punto STIMATO — la rotta la traccia chi crede di essere li'
+     * — e per ogni tratto che taglia la terra l'Obersteuermann aggiunge i punti
+     * per doppiare la costa; un punto messo sulla terra si sposta nel mare piu'
+     * vicino, uno irraggiungibile si toglie. I punti automatici arrivati dal
+     * browser non contano: si ricalcolano da capo a ogni rotta nuova, cosi' un
+     * punto del comandante spostato sulla carta si porta dietro il suo giro.
+     *
+     * @param list<array{lat:float,lon:float,auto?:bool}> $punti
+     * @return array{punti:list<array{lat:float,lon:float,auto:bool}>, note:list<string>, aggiunti:int}
+     */
+    public static function adegua(array $boat, array $punti): array
+    {
+        $da = [(float) $boat['est_lat'], (float) $boat['est_lon']];
+        $out = [];
+        $note = [];
+        $aggiunti = 0;
+        $n = 0;
+        foreach ($punti as $p) {
+            if (!empty($p['auto'])) {
+                continue;
+            }
+            $n++;
+            $lat = max(-60.0, min(75.0, (float) $p['lat']));
+            $lon = Geo::normLon((float) $p['lon']);
+            $r = \App\Sim\Terra::rotta($da[0], $da[1], $lat, $lon);
+            if (!$r['trovata']) {
+                $note[] = sprintf('il punto %d non si raggiunge per mare, e l\'ho tolto', $n);
+                continue;
+            }
+            if ($r['spostato']) {
+                $note[] = sprintf('il punto %d stava sulla terraferma: l\'ho portato nel mare piu\' vicino', $n);
+            }
+            $ultimo = count($r['punti']) - 1;
+            foreach ($r['punti'] as $i => [$la, $lo]) {
+                $out[] = ['lat' => round($la, 4), 'lon' => round($lo, 4), 'auto' => $i < $ultimo];
+                $aggiunti += $i < $ultimo ? 1 : 0;
+            }
+            $da = $r['punti'][$ultimo];
+        }
+        if ($aggiunti > 0) {
+            array_unshift($note, plurale($aggiunti,
+                'la rotta tagliava la terraferma: ho aggiunto un punto per doppiare la costa',
+                'la rotta tagliava la terraferma: ho aggiunto %d punti per doppiare la costa'));
+        }
+        return ['punti' => $out, 'note' => $note, 'aggiunti' => $aggiunti];
+    }
+
+    /**
+     * La rotta per la base: per mare fino all'uscita del canale, poi il canale
+     * fino al porto. Dal punto stimato, come ogni rotta.
+     *
+     * @return array{punti:list<array{lat:float,lon:float,auto:bool}>, trovata:bool}
+     */
+    public static function rottaBase(array $boat): array
+    {
+        $base = World::port((string) $boat['home_port_key']);
+        if ($base === null) {
+            return ['punti' => [], 'trovata' => false];
+        }
+        $r = \App\Sim\Terra::rotta((float) $boat['est_lat'], (float) $boat['est_lon'], (float) $base['lat'], (float) $base['lon']);
+        $ultimo = count($r['punti']) - 1;
+        $punti = [];
+        foreach ($r['punti'] as $i => [$la, $lo]) {
+            $punti[] = ['lat' => round($la, 4), 'lon' => round($lo, 4), 'auto' => $i < $ultimo];
+        }
+        return ['punti' => $punti, 'trovata' => $r['trovata']];
     }
 
     /** @return list<array<string,mixed>> */

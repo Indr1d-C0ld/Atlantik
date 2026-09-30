@@ -68,6 +68,14 @@ zoom, dal grande quadrato fino ai quadratini di sei miglia; il quadrato sotto il
 cursore si legge in chiaro, e la destinazione ordinata dal BdU ha il suo
 riquadro, con rotta e distanza dal punto in cui *credi* di essere.
 
+**La terra c'è anche per la simulazione**, non solo sulla carta: le stesse coste
+del disegno decidono dove si naviga. Si esce dalla base per il canale vero — il
+canale di Kiel fino all'Elba, la Gironda da Bordeaux, il fiordo da Trondheim —
+e la centrale lo traccia da sola alla partenza. Se la rotta che tracci taglia
+una costa, l'Obersteuermann aggiunge i punti per doppiarla, e li vedi prima di
+trasmetterla; i punti si afferrano e si trascinano sulla carta. Contro la costa
+il battello si ferma, e la costa in vista vale un punto nave.
+
 **Nove basi** con le loro flottiglie storiche — Lorient (2. und 10.), Saint-
 Nazaire (6. und 7.), Brest (1. und 9.), La Pallice, Bordeaux, Kiel,
 Wilhelmshaven, Bergen, Trondheim — e ventitré fra porti e ancoraggi nel
@@ -277,7 +285,9 @@ affonda ore dopo, e il BdU te la accredita comunque.
 ## Il mondo che gira da solo
 
 Seicento-settecento navi in mare in ogni momento — seicentotrenta adesso, in
-quattordici convogli — su **undici rotte storiche**
+quattordici convogli — su **undici rotte storiche**, tracciate sui passaggi veri:
+il Canale del Nord per Liverpool, capo San Vincenzo per Gibilterra, il passaggio
+della Mona dai Caraibi, Tail of the Bank per il Clyde,
 e **otto serie di convogli** — HX e SC verso est, ON e ONS verso ovest, OG e HG
 per Gibilterra, SL da Freetown, TM le petroliere — più il naviglio isolato, le
 rotte dei Caraibi, del Capo e dell'Islanda.
@@ -391,9 +401,9 @@ settemila volte e ha fallito otto volte, tutte fra il 17 e il 19 settembre:
 ogni fallimento con la sua riga nel diario e la sua causa nota, che è il motivo
 per cui si contano.
 
-### Le dieci revisioni tecniche
+### Le undici revisioni tecniche
 
-Il gioco è stato sottoposto a dieci audit successivi, ognuno con un metodo
+Il gioco è stato sottoposto a undici audit successivi, ognuno con un metodo
 diverso dal precedente, perché un metodo ripetuto smette di trovare. Il
 registro completo — con le misure, i numeri e le prove che lo dimostrano — sta
 in `docs/AUDIT.md` nel deployment; qui il sunto.
@@ -410,6 +420,7 @@ in `docs/AUDIT.md` nel deployment; qui il sunto.
 | 8 | *La documentazione dice il vero?* | Cinque punti della documentazione descrivevano **uno strumento tolto di proposito**, come se ci fosse ancora |
 | 9 | La matematica e i suoi confini | Una nave a quattro chilometri, di notte, **risultava riconosciuta al 97%**: oltre la portata la formula faceva `NAN`, e PHP lo trasformava nel massimo |
 | 10 | Una sessione di gioco del proprietario | **Il calcolatore di lancio restava sul primo bersaglio dell'elenco**: scegliendone un altro, si lanciava con la soluzione di un'altra nave |
+| 11 | *Dove sta la terra?* | La simulazione non sapeva dove fosse: **il battello attraversava la Bretagna**, e tutte e undici le rotte dei convogli passavano per la terraferma, fino a duecentoquaranta miglia |
 
 Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
 nessuno di questi difetti si vede leggendo il codice. Quel codice era giusto.
@@ -431,10 +442,10 @@ e ha cominciato a interrogare quello che il codice dice di sé.
 
 | | |
 |---|---|
-| Righe di codice | ~49.000 in 310 file (PHP, JavaScript, CSS, SQL, script di shell e i disegni SVG, prove comprese) |
-| Rotte HTTP | 93 |
-| Tabelle / migrazioni | 45 / 41 |
-| Prove automatiche | **38 file, 1.055 controlli, tutti verdi** |
+| Righe di codice | ~50.500 in 314 file (PHP, JavaScript, CSS, SQL, script di shell e i disegni SVG, prove comprese) |
+| Rotte HTTP | 95 |
+| Tabelle / migrazioni | 45 / 42 |
+| Prove automatiche | **39 file, 1.110 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -494,8 +505,8 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Trentotto file — ventisette che girano in PHP e undici che interrogano il
-server attraverso Apache — per **1.055 controlli**. Si aspettano un'installazione
+Trentanove file — ventotto che girano in PHP e undici che interrogano il
+server attraverso Apache — per **1.110 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e
@@ -530,6 +541,7 @@ php tests/test_invarianti.php        # ordini a caso e tempo a salti: le regole 
                                      # (ATLANTIK_LUNGO=1 per la versione lunga, una decina di minuti)
 php tests/test_viveri.php            # viveri scelti in cantiere, fresco, digiuno, rientro ordinato dal BdU
 php tests/test_periscopio.php        # periscopio d'osservazione in crociera: su, giù, avaria, passaggio all'attacco
+php tests/test_terra.php             # la terraferma: canali delle basi, rotte che doppiano la costa, rotte del traffico
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse

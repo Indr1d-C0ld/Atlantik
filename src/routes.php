@@ -74,6 +74,8 @@ $router->get('/ktb', [PlanciaController::class, 'ktb'], ['active']);
 // Ordini
 $router->post('/ordini', [PlanciaController::class, 'ordini'], ['active', 'throttle']);
 $router->post('/rotta', [PlanciaController::class, 'rotta'], ['active', 'throttle']);
+$router->post('/rotta/anteprima', [PlanciaController::class, 'rottaAnteprima'], ['active', 'throttle']);
+$router->post('/rotta/base', [PlanciaController::class, 'rottaBase'], ['active', 'throttle']);
 $router->post('/carta/stile', [PlanciaController::class, 'preferenzaCarta'], ['active', 'throttle']);
 $router->post('/rientro', [PlanciaController::class, 'rientro'], ['active', 'throttle']);
 
