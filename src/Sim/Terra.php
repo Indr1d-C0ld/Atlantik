@@ -221,15 +221,29 @@ final class Terra
             [$la2, $lo2] = $mare;
             $spostato = true;
         }
+        // Una partenza sulla terraferma: succede alla posizione STIMATA, che dopo
+        // ore di deriva puo' finire dentro la costa mentre il battello vero sta
+        // in mare. Si comincia dal mare piu' vicino e si pianifica da li'.
+        if (self::aTerra($la1, $lo1)) {
+            $mare = self::mareVicino($la1, $lo1);
+            if ($mare === null) {
+                return ['punti' => [], 'spostato' => $spostato, 'trovata' => false];
+            }
+            $resto = self::rotta($mare[0], $mare[1], $la2, $lo2);
+            array_unshift($resto['punti'], $mare);
+            $resto['spostato'] = $resto['spostato'] || $spostato;
+            return $resto;
+        }
         if (!self::attraversa($la1, $lo1, $la2, $lo2)) {
             return ['punti' => [[$la2, $lo2]], 'spostato' => $spostato, 'trovata' => true];
         }
 
         // Fuori dal canale di partenza, dentro quello d'arrivo.
+        $origine = [$la1, $lo1];
         $prima = [];
         $dopo = [];
-        [$dp, $cp, $ip] = self::distanzaCanale($la1, $lo1);
-        [$da, $ca, $ia] = self::distanzaCanale($la2, $lo2);
+        [$dp, $cp, $ip] = self::agganciaCanale($la1, $lo1);
+        [$da, $ca, $ia] = self::agganciaCanale($la2, $lo2);
         if ($cp !== null && $dp <= self::CORRIDOIO_NM) {
             $punti = self::$canali[$cp];
             if ($cp === $ca && $da <= self::CORRIDOIO_NM) {
@@ -264,9 +278,65 @@ final class Terra
         }
         // $dopo comincia dall'uscita del canale d'arrivo, che e' gia' l'ultimo
         // punto di $mezzo: la si salta.
+        // Si semplifica dalla posizione vera di partenza, non dal vertice del
+        // canale piu' vicino: partendo da quello, il primo tratto reale (dal
+        // largo di Brest, dalla rada) poteva tagliare un capo che dal vertice
+        // non si vedeva. Trovato il 07/10/2026 da test_terra, una volta su
+        // qualche decina, secondo dove il battello si era fermato.
         $tutti = array_merge($prima, $mezzo, array_slice($dopo, 1));
-        $partenza = $prima !== [] ? $prima[0] : [$la1, $lo1];
-        return ['punti' => self::semplifica($partenza, $tutti), 'spostato' => $spostato, 'trovata' => true];
+        return ['punti' => self::semplifica($origine, $tutti), 'spostato' => $spostato, 'trovata' => true];
+    }
+
+    /**
+     * Il canale da cui un punto deve passare, se c'e'.
+     *
+     * Dentro il corridoio, il canale e' quello. Fuori, conta lo stesso se il
+     * punto sta in acque interne — una rada, un estuario, un fiordo — da cui il
+     * mare aperto non si vede: la rada di Brest, per esempio, e' acqua sulla
+     * carta, ma la maglia della ricerca non ci trova celle abbastanza larghe, e
+     * la rotta saltava fuori dal Goulet passando sopra la penisola di Crozon.
+     * Allora si aggancia il canale nel vertice piu' vicino che si vede, entro
+     * quindici miglia, e lo si percorre.
+     *
+     * Restituisce [distanza, canale, indice] come distanzaCanale(): distanza
+     * zero vuol dire «agganciato», INF «nessun canale».
+     *
+     * @return array{0:float,1:?string,2:int}
+     */
+    private static function agganciaCanale(float $la, float $lo): array
+    {
+        $vicino = self::distanzaCanale($la, $lo);
+        if ($vicino[0] <= self::CORRIDOIO_NM) {
+            return $vicino;
+        }
+        // I vertici si scorrono tutti (sono poche decine): il riquadro che
+        // velocizza distanzaCanale() taglia a sei miglia, e qui ne servono
+        // quindici — la rada di Brest ne dista nove.
+        $meglio = null;
+        foreach (self::canali() as $chiave => $punti) {
+            foreach ($punti as $i => [$y, $x]) {
+                $d = Geo::distanceNm($la, $lo, $y, $x);
+                if ($d <= 15.0 && ($meglio === null || $d < $meglio[0])) {
+                    $meglio = [$d, $chiave];
+                }
+            }
+        }
+        if ($meglio === null) {
+            return [INF, null, 0];
+        }
+        $punti = self::$canali[$meglio[1]];
+        [$ul, $uo] = $punti[count($punti) - 1];
+        if (!self::attraversa($la, $lo, $ul, $uo)) {
+            return [INF, null, 0];          // l'uscita si vede: non e' acqua interna
+        }
+        $visto = null;
+        foreach ($punti as $i => [$y, $x]) {
+            $d = Geo::distanceNm($la, $lo, $y, $x);
+            if ($d <= 15.0 && ($visto === null || $d < $visto[0]) && !self::attraversa($la, $lo, $y, $x)) {
+                $visto = [$d, $i];
+            }
+        }
+        return $visto === null ? [INF, null, 0] : [0.0, $meglio[1], $visto[1]];
     }
 
     /**
@@ -357,16 +427,29 @@ final class Terra
         ];
         $centro = static fn (int $r, int $c): array => [$lat0 + ($r + 0.5) * $dlat, $lon0 + ($c + 0.5) * $dlon];
 
-        // Partenza e arrivo sulla maglia: la cella d'acqua piu' vicina.
-        $aggancia = static function (float $la, float $lo) use ($cella, $eAcqua): ?array {
+        // Partenza e arrivo sulla maglia: la cella d'acqua piu' vicina CHE SI
+        // VEDE dal punto. Prendendo solo la piu' vicina, da una rada o da un
+        // fiordo si saltava a una cella oltre la penisola, e il primo tratto
+        // passava sopra la terra (il golfo del Morbihan, lo Sognefjord, il
+        // Frohavet: test_terra, 07/10/2026).
+        $aggancia = static function (float $la, float $lo) use ($cella, $eAcqua, $centro): ?array {
             [$r, $c] = $cella($la, $lo);
-            for ($raggio = 0; $raggio <= 6; $raggio++) {
+            for ($raggio = 0; $raggio <= 12; $raggio++) {
+                $meglio = null;
                 for ($i = -$raggio; $i <= $raggio; $i++) {
                     for ($j = -$raggio; $j <= $raggio; $j++) {
-                        if (max(abs($i), abs($j)) === $raggio && $eAcqua($r + $i, $c + $j)) {
-                            return [$r + $i, $c + $j];
+                        if (max(abs($i), abs($j)) !== $raggio || !$eAcqua($r + $i, $c + $j)) {
+                            continue;
+                        }
+                        [$y, $x] = $centro($r + $i, $c + $j);
+                        $d = Geo::distanceNm($la, $lo, $y, $x);
+                        if (($meglio === null || $d < $meglio[0]) && !self::attraversa($la, $lo, $y, $x)) {
+                            $meglio = [$d, $r + $i, $c + $j];
                         }
                     }
+                }
+                if ($meglio !== null) {
+                    return [$meglio[1], $meglio[2]];
                 }
             }
             return null;
@@ -387,6 +470,7 @@ final class Terra
             $passi[] = [$dr, $dc, 60.0 * hypot($dr * $dlat, $dc * $dlon * $kx)];
         }
 
+        $inizio = microtime(true);
         $coda = new \SplPriorityQueue();
         $coda->setExtractFlags(\SplPriorityQueue::EXTR_DATA);
         $k0 = $chiave($s[0], $s[1]);
@@ -406,7 +490,10 @@ final class Terra
             if ($k === $kg) {
                 break;
             }
-            if (++$espansi > 150000) {
+            // Un tetto alle celle e uno al tempo: una rotta che non esiste
+            // (dal Mediterraneo alla Groenlandia) non deve tenere ferma una
+            // pagina per dieci secondi.
+            if (++$espansi > 150000 || ($espansi % 2000 === 0 && microtime(true) - $inizio > 2.0)) {
                 return null;
             }
             foreach ($passi as [$dr, $dc, $w]) {
@@ -416,6 +503,14 @@ final class Terra
                 }
                 // In diagonale solo se non si taglia un angolo di terra.
                 if ($dr !== 0 && $dc !== 0 && (!$eAcqua($r + $dr, $c) || !$eAcqua($r, $c + $dc))) {
+                    continue;
+                }
+                // E non si passa sopra un isolotto piu' piccolo della cella:
+                // centri e angoli in acqua, ma un'isola fra i due centri (le
+                // Ebridi Esterne, 07/10/2026). Si guarda il punto di mezzo.
+                $mezzoLa = $lat0 + ($r + 0.5 + $dr / 2) * $dlat;
+                $mezzoLo = $lon0 + ($c + 0.5 + $dc / 2) * $dlon;
+                if (self::dentroCosta($mezzoLa, $mezzoLo) && !self::nelCorridoio($mezzoLa, $mezzoLo)) {
                     continue;
                 }
                 $nk = $chiave($nr, $nc);

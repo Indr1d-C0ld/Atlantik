@@ -100,7 +100,8 @@ final class Contacts
                 'UPDATE contacts SET last_gts = ?, bearing = ?, range_nm = ?, range_err_nm = ?,
                         course_est = ?, speed_est = ?, certezza = ?, lat_est = ?, lon_est = ?,
                         sensore = ?, classe_est = COALESCE(?, classe_est),
-                        classe_key_est = COALESCE(?, classe_key_est),
+                        classe_key_est = IF(? = "vista", COALESCE(?, classe_key_est), NULL),
+                        visto_gts = IF(? = "vista", ?, visto_gts),
                         navi_stimate = COALESCE(?, navi_stimate), perso = 0
                  WHERE id = ?',
                 [
@@ -109,7 +110,15 @@ final class Contacts
                     $velStimata > 0.5 && $velStimata < 30 ? round($velStimata, 1) : $esistente['speed_est'],
                     round($certezza, 3), round($latEst, 5), round($lonEst, 5),
                     (string) $dati['sensore'], $dati['classe_est'] ?? null,
-                    $dati['classe_key_est'] ?? null, $dati['navi'] ?? null,
+                    // La classe riconosciuta segue il sensore del momento, come
+                    // la classe a parole: si tiene finche' il contatto si vede,
+                    // si toglie quando resta solo l'idrofono. Prima restava
+                    // (COALESCE), e un contatto «all'idrofono» si portava dietro
+                    // la sagoma di quando lo si vedeva: nessuna pagina la
+                    // mostrava, ma la regola si aggirava (e2e_navigazione).
+                    (string) $dati['sensore'], $dati['classe_key_est'] ?? null,
+                    (string) $dati['sensore'], $gts,
+                    $dati['navi'] ?? null,
                     (int) $esistente['id'],
                 ]
             );
@@ -119,8 +128,8 @@ final class Contacts
         Database::run(
             'INSERT INTO contacts (boat_id, patrol_id, target_kind, ship_id, convoy_id, sensore, first_gts, last_gts,
                                    bearing, range_nm, range_err_nm, classe_est, classe_key_est,
-                                   certezza, navi_stimate, lat_est, lon_est)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                   certezza, navi_stimate, lat_est, lon_est, visto_gts)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $boatId, $patrolId, $kind === 'convoglio' ? 'convoglio' : ($kind === 'aereo' ? 'aereo' : 'nave'),
                 $shipId, $convoyId, (string) $dati['sensore'], $gts, $gts,
@@ -128,6 +137,7 @@ final class Contacts
                 $dati['classe_est'] ?? null, $dati['classe_key_est'] ?? null,
                 min(0.35, self::certezzaMassima((string) $dati['sensore'])), $dati['navi'] ?? null,
                 round($latEst, 5), round($lonEst, 5),
+                (string) $dati['sensore'] === 'vista' ? $gts : null,
             ]
         );
         return ['id' => Database::lastInsertId(), 'nuovo' => true];

@@ -66,11 +66,35 @@ final class Outfitting
         return (int) round((float) $type['disp_surf_t'] * 0.55);
     }
 
-    /** Carico consigliato: quello che avrebbe imbarcato la flottiglia. */
+    /**
+     * Quanti giorni di viveri si possono imbarcare: fino al doppio della
+     * dotazione normale del tipo, e sempre entro la stiva.
+     *
+     * La dotazione normale e' quella delle celle frigorifere e dei depositi;
+     * per le missioni lunghe si stipava il resto dove capitava — casse in
+     * sentina, salami appesi ai tubi, il secondo gabinetto chiuso e riempito
+     * di scatolame. Fino al 07/10/2026 qui i viveri si tagliavano in silenzio
+     * alla dotazione normale: chi ne scriveva sessanta su un Tipo VII se ne
+     * ritrovava quarantadue, e sembrava che il campo non si potesse cambiare.
+     */
+    public static function viveriMax(array $type): int
+    {
+        return (int) min((int) self::voci()['viveri']['max'], 2 * (int) $type['provisions_days']);
+    }
+
+    /**
+     * Carico consigliato: quello che avrebbe imbarcato la flottiglia.
+     *
+     * Deve stare nella stiva. Sul piccolo Tipo II D non ci stava (192 unita'
+     * contro 173): chi non aveva mai allestito partiva con un carico
+     * impossibile e la pagina del cantiere segnava la stiva in rosso. Quando
+     * non ci sta si riducono le dotazioni di consumo, non i viveri: un battello
+     * costiero porta meno ricambi e meno bombole, non meno pane.
+     */
     public static function standard(array $type): array
     {
         $haCannone = !empty($type['deck_gun']);
-        return [
+        $carico = [
             'viveri'            => (int) $type['provisions_days'],
             'ricambi'           => 12,
             'potassa'           => 90,
@@ -79,6 +103,21 @@ final class Outfitting
             'munizioni_flak'    => 1200,
             'bold'              => 12,
         ];
+        $capacita = self::capacita($type);
+        $eccesso = self::spazioUsato($carico) - $capacita;
+        if ($eccesso > 0) {
+            $voci = self::voci();
+            $riducibili = array_diff(array_keys($carico), ['viveri']);
+            $spazioRiducibile = 0.0;
+            foreach ($riducibili as $k) {
+                $spazioRiducibile += $carico[$k] * $voci[$k]['spazio'];
+            }
+            $fattore = max(0.0, 1.0 - $eccesso / max(1.0, $spazioRiducibile));
+            foreach ($riducibili as $k) {
+                $carico[$k] = (int) floor($carico[$k] * $fattore);
+            }
+        }
+        return $carico;
     }
 
     /** @return array<string,float> quantita' attuali */
@@ -107,7 +146,7 @@ final class Outfitting
      * limiti di una singola voce.
      *
      * @param array<string,int|float> $carico
-     * @return array{ok:bool, error?:string, spazio?:float, capacita?:int}
+     * @return array{ok:bool, error?:string, spazio?:float, capacita?:int, note?:list<string>}
      */
     public static function load(array $boat, array $type, array $carico): array
     {
@@ -117,15 +156,19 @@ final class Outfitting
 
         $voci = self::voci();
         $pulito = [];
+        $note = [];
         foreach ($voci as $k => $v) {
             $q = (float) ($carico[$k] ?? 0);
             if ($k === 'munizioni_cannone' && empty($type['deck_gun'])) {
                 $q = 0;
             }
-            if ($k === 'viveri') {
-                $q = min($q, (float) $type['provisions_days']);
+            $max = $k === 'viveri' ? (float) self::viveriMax($type) : (float) $v['max'];
+            $pulito[$k] = max(0.0, min($max, $q));
+            // Se si taglia, lo si dice: tagliare in silenzio sembrava un campo
+            // che non si lasciava cambiare.
+            if ($q > $max) {
+                $note[] = sprintf('%s: al massimo %s %s', $v['nome'], number_format($max, 0, ',', '.'), $v['unita']);
             }
-            $pulito[$k] = max(0.0, min((float) $v['max'], $q));
         }
 
         $spazio = self::spazioUsato($pulito);
@@ -146,7 +189,7 @@ final class Outfitting
         }
         Database::run('UPDATE boats SET provisions_days = ? WHERE id = ?', [$pulito['viveri'], (int) $boat['id']]);
 
-        return ['ok' => true, 'spazio' => $spazio, 'capacita' => $capacita];
+        return ['ok' => true, 'spazio' => $spazio, 'capacita' => $capacita, 'note' => $note];
     }
 
     /** Consuma una dotazione, senza scendere sotto zero. */

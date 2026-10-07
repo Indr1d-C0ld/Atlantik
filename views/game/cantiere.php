@@ -25,6 +25,11 @@
             <input type="text" name="<?= e($k) ?>" inputmode="numeric" style="width:6rem;padding:.3rem .4rem"
                    value="<?= e(number_format((float) ($scorte[$k] ?? 0), 0, '.', '')) ?>">
             <span style="color:var(--testo-3);font-size:.75rem"><?= e($v['unita']) ?></span>
+            <?php if ($k === 'viveri'): ?>
+              <span style="display:block;color:var(--testo-3);font-size:.7rem">
+                normale <?= e((string) (int) $type['provisions_days']) ?>, stipando fino a <?= e((string) \App\Game\Outfitting::viveriMax($type)) ?>
+              </span>
+            <?php endif; ?>
           </td>
           <td style="color:var(--testo-3)"><?= e(number_format($v['spazio'], 2, ',', '')) ?></td>
           <td style="color:var(--testo-3);font-size:.8rem"><?= e($v['note']) ?></td>

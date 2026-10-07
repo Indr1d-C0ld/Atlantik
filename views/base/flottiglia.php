@@ -30,7 +30,14 @@
       <div class="riga"><span class="etichetta">Autonomia a 10 kn</span><span class="valore piccolo"><?= e(number_format($autonomia, 0, ',', '.')) ?> nm</span></div>
       <div class="riga"><span class="etichetta">Quota di prova</span><span class="valore piccolo"><?= e($type['test_depth_m']) ?> m (collasso <?= e($type['crush_depth_min_m']) ?>–<?= e($type['crush_depth_max_m']) ?> m)</span></div>
       <div class="riga"><span class="etichetta">Immersione rapida</span><span class="valore piccolo"><?= e($type['dive_time_s']) ?> s</span></div>
-      <div class="riga"><span class="etichetta">Viveri</span><span class="valore piccolo"><?= e($type['provisions_days']) ?> giorni</span></div>
+      <?php
+      // I viveri sono quelli scelti in cantiere, non la dotazione del tipo:
+      // fino al 07/10/2026 qui c'era la dotazione, e sembrava che la scelta non
+      // contasse.
+      $viveriScelti = \App\Game\Outfitting::stores((int) $boat['id'])['viveri'] ?? (float) $type['provisions_days'];
+      ?>
+      <div class="riga"><span class="etichetta">Viveri a bordo</span><span class="valore piccolo"><?= e(number_format((float) $viveriScelti, 0, ',', '.')) ?> giorni<?=
+        (int) round((float) $viveriScelti) !== (int) $type['provisions_days'] ? e(' (dotazione normale ' . (int) $type['provisions_days'] . ')') : '' ?></span></div>
     </div>
 
     <div class="strumento">
@@ -92,7 +99,8 @@
     </div>
   </form>
   <p class="aiuto">
-    All'uscita il battello viene rifornito e armato secondo la dotazione del tipo. Le riparazioni no: quelle le fa il cantiere mentre si sta in porto, e quello che non ha finito parte cosi' com'e'. La rotta si traccia in mare, al tavolo di carteggio.
+    All'uscita il battello viene rifornito e armato secondo l'allestimento scelto in cantiere — viveri compresi:
+    se ne possono stipare fino al doppio della dotazione normale, se la stiva li tiene. Le riparazioni no: quelle le fa il cantiere mentre si sta in porto, e quello che non ha finito parte cosi' com'e'. La rotta si traccia in mare, al tavolo di carteggio.
   </p>
 </div>
 

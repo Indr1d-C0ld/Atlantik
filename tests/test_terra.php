@@ -264,11 +264,21 @@ ok('il giornale lo racconta una volta', count($costa) === 1, count($costa) . ' r
 // La rotta per la base, da qui.
 $b = Database::first('SELECT * FROM boats WHERE id = ?', [$id]);
 $rb = Patrol::rottaBase($b);
-[$l, $tocca] = misura((float) $b['est_lat'], (float) $b['est_lon'], $rb['punti']);
+// Dopo ore di deriva la posizione stimata puo' stare dentro la costa: allora la
+// rotta comincia dal mare piu' vicino, e la si misura da li'.
+$daTerra = Terra::aTerra((float) $b['est_lat'], (float) $b['est_lon']);
+$primo = $rb['punti'][0] ?? ['lat' => (float) $b['est_lat'], 'lon' => (float) $b['est_lon']];
+[$l, $tocca] = $daTerra
+    ? misura((float) $primo['lat'], (float) $primo['lon'], array_slice($rb['punti'], 1))
+    : misura((float) $b['est_lat'], (float) $b['est_lon'], $rb['punti']);
+ok('dalla stima dentro la costa, la rotta comincia in mare', !$daTerra || !Terra::aTerra((float) $primo['lat'], (float) $primo['lon']),
+    $daTerra ? 'stima a terra' : 'stima in mare: niente da verificare');
 $ultimo = end($rb['punti']);
 ok('la rotta per la base arriva al porto per mare e per il canale', $rb['trovata'] && $tocca === 0
     && Geo::distanceNm($ultimo['lat'], $ultimo['lon'], 54.32, 10.14) < Patrol::RAGGIO_PORTO_NM,
-    sprintf('%d punti, %.0f miglia', count($rb['punti']), $l));
+    sprintf('%d punti, %.0f miglia, %d tratti a terra, fine a %.1f miglia dal porto, partenza %.3f %.3f',
+        count($rb['punti']), $l, $tocca, $ultimo ? Geo::distanceNm($ultimo['lat'], $ultimo['lon'], 54.32, 10.14) : -1,
+        (float) $b['est_lat'], (float) $b['est_lon']));
 
 echo "\n";
 if ($falliti === 0) { echo "\033[0;32mTutte le verifiche superate.\033[0m\n"; exit(0); }

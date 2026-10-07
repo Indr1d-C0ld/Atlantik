@@ -151,7 +151,9 @@ final class Rifornimento
         $type = World::type((string) $boat['type_key']);
         $nafta = min((float) $rdv['nafta_t'], (float) $type['fuel_t'] - (float) $boat['fuel_t']);
         Database::run(
-            'UPDATE boats SET fuel_t = LEAST(?, fuel_t + ?), provisions_days = LEAST(?, provisions_days + 14),
+            // I viveri arrivano fino alla dotazione normale del tipo, ma non si
+            // tolgono: chi ne aveva stipati di piu' in partenza se li tiene.
+            'UPDATE boats SET fuel_t = LEAST(?, fuel_t + ?), provisions_days = LEAST(GREATEST(?, provisions_days), provisions_days + 14),
                     senza_viveri_gts = NULL WHERE id = ?',
             [(float) $type['fuel_t'], $nafta, (float) $type['provisions_days'], (int) $boat['id']]
         );

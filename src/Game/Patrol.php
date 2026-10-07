@@ -97,7 +97,7 @@ final class Patrol
             [(int) $boat['id']]
         );
         $viveri = $scelta !== null
-            ? max(0.0, min((float) $type['provisions_days'], (float) $scelta['qty_max']))
+            ? max(0.0, min((float) Outfitting::viveriMax($type), (float) $scelta['qty_max']))
             : (float) $type['provisions_days'];
 
         // Battello pronto: casse piene, batterie cariche, aria buona.

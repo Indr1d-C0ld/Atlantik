@@ -89,6 +89,40 @@ Patrol::depart(Database::first('SELECT * FROM boats WHERE id = ?', [(int) $b3['i
 $pieni = (float) Database::first('SELECT provisions_days FROM boats WHERE id = ?', [(int) $b3['id']])['provisions_days'];
 ok('senza allestimento si parte col pieno', abs($pieni - (float) $T['provisions_days']) < 0.001, sprintf('%.1f giorni', $pieni));
 
+// Segnalazione del 07/10/2026: «non viene ancora permesso di modificare il
+// numero dei viveri all'imbarco». Il cantiere li tagliava in silenzio alla
+// dotazione normale: chi ne scriveva di piu' se li ritrovava come prima.
+$b4 = $nuovo('d');
+$T4 = World::type((string) $b4['type_key']);
+$normale = (int) $T4['provisions_days'];
+$carico4 = Outfitting::standard($T4);
+$carico4['viveri'] = $normale + 20;
+$r4 = Outfitting::load($b4, $T4, $carico4);
+$imbarcati = (float) Database::first("SELECT qty_max FROM boat_stores WHERE boat_id = ? AND item_key = 'viveri'", [(int) $b4['id']])['qty_max'];
+ok('in cantiere si stipano piu\' viveri della dotazione normale', (bool) $r4['ok'] && abs($imbarcati - ($normale + 20)) < 0.001,
+    sprintf('%.0f giorni, la dotazione normale e\' %d%s', $imbarcati, $normale, isset($r4['error']) ? ' — ' . $r4['error'] : ''));
+Patrol::depart(Database::first('SELECT * FROM boats WHERE id = ?', [(int) $b4['id']]));
+$inMare = (float) Database::first('SELECT provisions_days FROM boats WHERE id = ?', [(int) $b4['id']])['provisions_days'];
+ok('e si parte con quelli', abs($inMare - ($normale + 20)) < 0.001, sprintf('%.0f giorni', $inMare));
+
+$b5 = $nuovo('e');
+// Per stiparne il doppio si fa spazio: ricambi, potassa e ossigeno restano a terra.
+$carico5 = array_merge(Outfitting::standard($T4), ['ricambi' => 0, 'potassa' => 0, 'ossigeno' => 0]);
+$carico5['viveri'] = 999;
+$r5 = Outfitting::load($b5, $T4, $carico5);
+$tetto = (float) Database::first("SELECT qty_max FROM boat_stores WHERE boat_id = ? AND item_key = 'viveri'", [(int) $b5['id']])['qty_max'];
+ok('oltre il doppio non si va, e il cantiere lo dice', abs($tetto - Outfitting::viveriMax($T4)) < 0.001
+    && (bool) array_filter($r5['note'] ?? [], static fn (string $n): bool => str_contains($n, 'Viveri')),
+    sprintf('%.0f giorni; %s', $tetto, implode('; ', $r5['note'] ?? [])));
+
+$fuori = [];
+foreach (World::types() as $tipo) {
+    if ((int) $tipo['playable'] === 1 && Outfitting::spazioUsato(Outfitting::standard($tipo)) > Outfitting::capacita($tipo)) {
+        $fuori[] = $tipo['type_key'];
+    }
+}
+ok('la dotazione standard sta nella stiva di ogni tipo', $fuori === [], $fuori === [] ? '' : implode(', ', $fuori));
+
 // ==========================================================================
 titolo('Il cibo fresco');
 // ==========================================================================

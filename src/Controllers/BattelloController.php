@@ -260,6 +260,7 @@ final class BattelloController
         $res = Outfitting::load($c['boat'], $c['type'], $carico);
         Session::flash($res['ok'] ? 'success' : 'error', $res['ok']
             ? sprintf('Carico imbarcato: %.0f unita\' di stiva su %d.', $res['spazio'], $res['capacita'])
+                . (($res['note'] ?? []) !== [] ? ' Ridotto: ' . implode('; ', $res['note']) . '.' : '')
             : ($res['error'] ?? 'Carico non valido.'));
         return redirect('/cantiere');
     }

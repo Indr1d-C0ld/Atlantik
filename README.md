@@ -192,7 +192,8 @@ finiscono. E la resa dell'equipaggio entra dappertutto: nelle avarie, nella
 velocità delle riparazioni, nella qualità dell'ascolto, nell'errore al lancio.
 
 **I viveri** si imbarcano in cantiere, e occupano la stiva che servirebbe a
-munizioni e ricambi. Le prime due settimane c'è il fresco, e si vede nel
+munizioni e ricambi: la dotazione del tipo, o fino al doppio stipandoli dove si
+può, come si faceva davvero. Le prime due settimane c'è il fresco, e si vede nel
 morale; poi le conserve. A sette e a tre giorni dalla fine il cuoco avverte;
 finiti, il BdU ordina il rientro, e dal terzo giorno di digiuno gli uomini
 cominciano ad ammalarsi — un poco al giorno, e un malato rende la metà.
@@ -444,8 +445,8 @@ e ha cominciato a interrogare quello che il codice dice di sé.
 |---|---|
 | Righe di codice | ~50.500 in 314 file (PHP, JavaScript, CSS, SQL, script di shell e i disegni SVG, prove comprese) |
 | Rotte HTTP | 95 |
-| Tabelle / migrazioni | 45 / 42 |
-| Prove automatiche | **39 file, 1.110 controlli, tutti verdi** |
+| Tabelle / migrazioni | 45 / 43 |
+| Prove automatiche | **39 file, 1.118 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -506,7 +507,7 @@ php bin/console.php mail:smista                  # smista la coda di posta
 ### Le prove
 
 Trentanove file — ventotto che girano in PHP e undici che interrogano il
-server attraverso Apache — per **1.110 controlli**. Si aspettano un'installazione
+server attraverso Apache — per **1.118 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e

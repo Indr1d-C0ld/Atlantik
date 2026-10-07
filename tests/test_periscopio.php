@@ -118,11 +118,11 @@ Traffic::ensure($gts);
 $cv = Database::first(
     "SELECT * FROM convoys WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ? LIMIT 1", [$gts, $gts]
 );
-// Per guardare serve una nave isolata, non un convoglio: il contatto conserva
-// soltanto l'ULTIMO sensore che l'ha preso (se nell'ultimo passo la nave si
-// sente ma non si vede, la riga dice «idrofono» anche dopo mezz'ora
-// d'osservazione), ma la classe di una nave isolata si scrive solo a vista e
-// poi resta. E' la traccia che un avvistamento c'e' stato.
+// Il contatto conserva soltanto l'ULTIMO sensore che l'ha preso: se
+// nell'ultimo passo la nave si sente ma non si vede, la riga dice «idrofono»
+// anche dopo mezz'ora d'osservazione. La traccia che un avvistamento c'e' stato
+// e' visto_gts, l'ultima volta che la si e' vista (dal 07/10/2026; prima la si
+// ricavava dalla classe riconosciuta, che adesso si toglie col solo idrofono).
 $nave = Database::first(
     "SELECT * FROM ships WHERE convoy_id IS NULL AND state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ? LIMIT 1",
     [$gts - 3600, $gts]
@@ -146,13 +146,13 @@ if ($nave === null) {
         Database::run('DELETE FROM contacts WHERE boat_id = ?', [$id]);
         $assetto($la, $lo, 12.0, 12.0, $alzato);
         BoatSim::advance($id);
-        return Database::first('SELECT sensore, classe_key_est FROM contacts WHERE boat_id = ? AND ship_id = ?',
+        return Database::first('SELECT sensore, classe_key_est, visto_gts FROM contacts WHERE boat_id = ? AND ship_id = ?',
             [$id, (int) $nave['id']]);
     };
     $giu = $vista(false);
     $su  = $vista(true);
     ok('col periscopio dentro, a un miglio da una nave, non la si vede mai',
-        $giu === null || ($giu['classe_key_est'] === null && (string) $giu['sensore'] !== 'vista'),
+        $giu === null || ($giu['visto_gts'] === null && (string) $giu['sensore'] !== 'vista'),
         $giu === null ? 'nessun contatto' : 'contatto all\'' . $giu['sensore']);
 
     $meteo = World::weather($la, $lo, $gts);
@@ -161,8 +161,8 @@ if ($nave === null) {
     $portata = Detection::portataVisiva(Detection::H_PERISCOPIO, max(8.0, (float) $cls['length_m'] * 0.20), 1.0,
         (float) $meteo['visibility_nm'], (float) $cielo['luce'], (int) $meteo['sea_state'], 1.0, (bool) $meteo['fog']);
     if ($portata > 2.5) {
-        ok('col periscopio fuori la si vede', $su !== null && $su['classe_key_est'] !== null,
-            sprintf('%s, portata %.1f nm', $su === null ? 'nessun contatto' : 'classe ' . ($su['classe_key_est'] ?? 'ignota'), $portata));
+        ok('col periscopio fuori la si vede', $su !== null && $su['visto_gts'] !== null,
+            sprintf('%s, portata %.1f nm', $su === null ? 'nessun contatto' : ($su['visto_gts'] !== null ? 'vista' : 'mai vista'), $portata));
     } else {
         printf("  \033[0;90mportata del periscopio su questa nave %.1f nm: il confronto col periscopio fuori si salta\033[0m\n", $portata);
     }
@@ -171,6 +171,40 @@ if ($nave === null) {
 if ($cv !== null) {
     $p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
     [$la, $lo] = Geo::destination((float) $p['lat'], (float) $p['lon'], 90.0, 1.2);
+}
+
+// ==========================================================================
+titolo('La sagoma riconosciuta segue il sensore del momento');
+// ==========================================================================
+
+// Il 07/10/2026 un contatto del mondo vero era «all'idrofono» con la classe
+// riconosciuta di quando lo si vedeva: la prova end-to-end che lo vieta l'ha
+// trovato. Qui la sequenza a mano: visto, poi solo sentito, poi rivisto.
+if ($nave !== null) {
+    $rngC = \App\Sim\Rng::for(1, 'prova contatti');
+    $dati = static fn (string $sensore, ?string $classe): array => [
+        'kind' => 'nave', 'id' => (int) $nave['id'], 'sensore' => $sensore, 'bearing' => 90.0, 'distanza' => 3.0,
+        'est_lat' => 47.0, 'est_lon' => -20.0, 'classe_est' => $classe ?? 'eliche', 'classe_key_est' => $classe,
+        'snr' => 25.0,
+    ];
+    $leggiC = static fn (): array => Database::first('SELECT sensore, classe_key_est, visto_gts FROM contacts WHERE boat_id = ? AND ship_id = ?',
+        [$id, (int) $nave['id']]);
+    \App\Sim\Contacts::upsert($id, null, $dati('vista', (string) $nave['class_key']), World::now(), $rngC);
+    $c1 = $leggiC();
+    \App\Sim\Contacts::upsert($id, null, $dati('idrofono', null), World::now() + 300, $rngC);
+    $c2 = $leggiC();
+    \App\Sim\Contacts::upsert($id, null, $dati('vista', null), World::now() + 600, $rngC);
+    $c3 = $leggiC();
+    ok('vista: la classe c\'e\'', $c1['classe_key_est'] !== null, (string) $c1['classe_key_est']);
+    ok('solo idrofono: la classe si toglie', $c2['sensore'] === 'idrofono' && $c2['classe_key_est'] === null,
+        (string) ($c2['classe_key_est'] ?? 'nessuna'));
+    ok('ma resta scritto quando la si e\' vista l\'ultima volta', $c1['visto_gts'] !== null
+        && (int) $c2['visto_gts'] === (int) $c1['visto_gts'] && (int) $c3['visto_gts'] > (int) $c1['visto_gts']);
+    Database::run('DELETE FROM contacts WHERE boat_id = ?', [$id]);
+    \App\Sim\Contacts::upsert($id, null, $dati('vista', (string) $nave['class_key']), World::now(), $rngC);
+    \App\Sim\Contacts::upsert($id, null, $dati('vista', null), World::now() + 300, $rngC);
+    ok('rivista senza classe nuova, la classe di prima resta', $leggiC()['classe_key_est'] !== null);
+    Database::run('DELETE FROM contacts WHERE boat_id = ?', [$id]);
 }
 
 // ==========================================================================
