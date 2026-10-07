@@ -446,7 +446,7 @@ e ha cominciato a interrogare quello che il codice dice di sé.
 | Righe di codice | ~50.500 in 314 file (PHP, JavaScript, CSS, SQL, script di shell e i disegni SVG, prove comprese) |
 | Rotte HTTP | 95 |
 | Tabelle / migrazioni | 45 / 43 |
-| Prove automatiche | **39 file, 1.118 controlli, tutti verdi** |
+| Prove automatiche | **39 file, 1.124 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -507,7 +507,7 @@ php bin/console.php mail:smista                  # smista la coda di posta
 ### Le prove
 
 Trentanove file — ventotto che girano in PHP e undici che interrogano il
-server attraverso Apache — per **1.118 controlli**. Si aspettano un'installazione
+server attraverso Apache — per **1.124 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e

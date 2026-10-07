@@ -379,8 +379,16 @@ final class Terra
      */
     private static function cerca(float $la1, float $lo1, float $la2, float $lo2): ?array
     {
+        // Due secondi in tutto, non per tentativo: la rotta che non esiste
+        // fallisce una volta sola.
+        $scadenza = microtime(true) + 2.0;
+        // Fra il Mediterraneo e l'oceano si passa per Gibilterra, e il
+        // riquadro deve contenerla: se no il primo tentativo, da Brest a
+        // Barcellona, esplora tutto il golfo di Biscaglia prima di arrendersi.
+        $includi = self::mediterraneo($la1, $lo1) !== self::mediterraneo($la2, $lo2)
+            ? self::PASSAGGI['gibilterra'] : [];
         foreach ([[4.0, 6.0], [12.0, 20.0]] as [$mLat, $mLon]) {
-            $percorso = self::astar($la1, $lo1, $la2, $lo2, $mLat, $mLon);
+            $percorso = self::astar($la1, $lo1, $la2, $lo2, $mLat, $mLon, $scadenza, $includi);
             if ($percorso !== null) {
                 return $percorso;
             }
@@ -388,13 +396,28 @@ final class Terra
         return null;
     }
 
-    /** @return list<array{0:float,1:float}>|null */
-    private static function astar(float $la1, float $lo1, float $la2, float $lo2, float $mLat, float $mLon): ?array
+    /**
+     * Il punto sta nel Mediterraneo (stretto compreso). A grandi linee, ma sul
+     * mare basta: a ovest di Tarifa e' oceano, e sopra i 43 gradi a ovest di
+     * Greenwich c'e' solo il golfo di Biscaglia.
+     */
+    private static function mediterraneo(float $la, float $lo): bool
     {
-        $lat0 = max(-60.0, min($la1, $la2) - $mLat);
-        $lat1 = min(80.0, max($la1, $la2) + $mLat);
-        $lon0 = max(-108.0, min($lo1, $lo2) - $mLon);
-        $lon1 = min(44.0, max($lo1, $lo2) + $mLon);
+        return $lo > -5.6 && $la < 46.0 && ($la < 43.0 || $lo > 0.0);
+    }
+
+    /**
+     * @param list<array{0:float,1:float}> $includi  punti che il riquadro deve contenere
+     * @return list<array{0:float,1:float}>|null
+     */
+    private static function astar(float $la1, float $lo1, float $la2, float $lo2, float $mLat, float $mLon, float $scadenza, array $includi = []): ?array
+    {
+        $lats = [$la1, $la2, ...array_column($includi, 0)];
+        $lons = [$lo1, $lo2, ...array_column($includi, 1)];
+        $lat0 = max(-60.0, min($lats) - $mLat);
+        $lat1 = min(80.0, max($lats) + $mLat);
+        $lon0 = max(-108.0, min($lons) - $mLon);
+        $lon1 = min(44.0, max($lons) + $mLon);
         $dlat = self::MAGLIA;
         $dlon = self::MAGLIA / max(0.25, cos(deg2rad(($la1 + $la2) / 2)));
         $righe = (int) ceil(($lat1 - $lat0) / $dlat);
@@ -404,97 +427,147 @@ final class Terra
         // tratto dritto fra due celle vicine non taglia una lingua di terra
         // piu' stretta della cella (le isole Frisone, prima di questa regola,
         // si attraversavano). Le righe si calcolano alla prima richiesta.
-        $centri = [];    // riga => '1'/'0' ai centri delle celle
-        $angoli = [];    // bordo => '1'/'0' agli angoli (colonne + 1 punti)
+        $centri = [];    // riga => '1'/'2'/'0' ai centri delle celle
+        $angoli = [];    // bordo => '1'/'2'/'0' agli angoli (colonne + 1 punti)
         $eAcqua = static function (int $r, int $c) use (&$centri, &$angoli, $lat0, $lon0, $dlat, $dlon, $righe, $colonne): bool {
             if ($r < 0 || $c < 0 || $r >= $righe || $c >= $colonne) {
                 return false;
             }
             $centri[$r] ??= self::riga($lat0 + ($r + 0.5) * $dlat, $lon0, $dlon, $colonne);
+            if ($centri[$r][$c] === '2') {
+                // Dentro un canale o un passaggio basta il centro: il corridoio
+                // e' acqua per definizione, e gli angoli di una cella larga
+                // possono uscirne. Per le rotte lunghe da nord la cella e'
+                // larga quasi quanto lo stretto di Gibilterra, e un angolo
+                // finiva su Tarifa o sul Marocco: da Capo Farewell a Barcellona
+                // non c'era rotta (07/10/2026).
+                return true;
+            }
             if ($centri[$r][$c] !== '1') {
                 return false;
             }
             foreach ([$r, $r + 1] as $b) {
                 $angoli[$b] ??= self::riga($lat0 + $b * $dlat, $lon0 - $dlon / 2, $dlon, $colonne + 1);
-                if ($angoli[$b][$c] !== '1' || $angoli[$b][$c + 1] !== '1') {
+                if ($angoli[$b][$c] === '0' || $angoli[$b][$c + 1] === '0') {
                     return false;
                 }
             }
             return true;
+        };
+        // Il punto di mezzo di un passo cade sempre sulla maglia o fra le sue
+        // righe e colonne: in diagonale e' l'angolo comune (gia' controllato,
+        // salvo nei corridoi), in orizzontale sta sulla riga dei centri e fra
+        // due colonne, in verticale fra due righe e sulla colonna dei centri.
+        // Anche queste righe si calcolano una volta sola: chiederlo punto per
+        // punto alla costa triplicava il tempo della ricerca.
+        $mezziO = [];    // riga => '1'/'2'/'0' fra le colonne, sulla riga dei centri
+        $mezziV = [];    // bordo => '1'/'2'/'0' fra le righe, sulle colonne dei centri
+        $mezzoInAcqua = static function (int $r, int $c, int $dr, int $dc) use (&$mezziO, &$mezziV, &$angoli, $lat0, $lon0, $dlat, $dlon, $colonne): bool {
+            if ($dr === 0) {
+                $mezziO[$r] ??= self::riga($lat0 + ($r + 0.5) * $dlat, $lon0 - $dlon / 2, $dlon, $colonne + 1);
+                return $mezziO[$r][$c + ($dc > 0 ? 1 : 0)] !== '0';
+            }
+            $b = $r + ($dr > 0 ? 1 : 0);
+            if ($dc === 0) {
+                $mezziV[$b] ??= self::riga($lat0 + $b * $dlat, $lon0, $dlon, $colonne);
+                return $mezziV[$b][$c] !== '0';
+            }
+            $angoli[$b] ??= self::riga($lat0 + $b * $dlat, $lon0 - $dlon / 2, $dlon, $colonne + 1);
+            return $angoli[$b][$c + ($dc > 0 ? 1 : 0)] !== '0';
         };
         $cella = static fn (float $la, float $lo): array => [
             (int) floor(($la - $lat0) / $dlat), (int) floor(($lo - $lon0) / $dlon),
         ];
         $centro = static fn (int $r, int $c): array => [$lat0 + ($r + 0.5) * $dlat, $lon0 + ($c + 0.5) * $dlon];
 
-        // Partenza e arrivo sulla maglia: la cella d'acqua piu' vicina CHE SI
-        // VEDE dal punto. Prendendo solo la piu' vicina, da una rada o da un
+        $chiave = static fn (int $r, int $c): int => $r * $colonne + $c;
+
+        // Partenza e arrivo sulla maglia: le celle d'acqua CHE SI VEDONO dal
+        // punto. Prendendo solo la piu' vicina in assoluto, da una rada o da un
         // fiordo si saltava a una cella oltre la penisola, e il primo tratto
         // passava sopra la terra (il golfo del Morbihan, lo Sognefjord, il
-        // Frohavet: test_terra, 07/10/2026).
-        $aggancia = static function (float $la, float $lo) use ($cella, $eAcqua, $centro): ?array {
+        // Frohavet: test_terra, 07/10/2026). E non basta la piu' vicina che si
+        // vede: all'imbocco dello Sognefjord quella sta in una sacca chiusa fra
+        // gli scogli, e la ricerca non ne usciva. Allora si prendono tutte
+        // quelle che si vedono fino a due anelli oltre la prima, e la ricerca
+        // parte da tutte insieme (e arriva alla prima che raggiunge).
+        $aggancia = static function (float $la, float $lo) use ($cella, $eAcqua, $centro, $chiave): array {
             [$r, $c] = $cella($la, $lo);
-            for ($raggio = 0; $raggio <= 12; $raggio++) {
-                $meglio = null;
+            $viste = [];
+            $fino = 12;
+            for ($raggio = 0; $raggio <= $fino; $raggio++) {
                 for ($i = -$raggio; $i <= $raggio; $i++) {
                     for ($j = -$raggio; $j <= $raggio; $j++) {
                         if (max(abs($i), abs($j)) !== $raggio || !$eAcqua($r + $i, $c + $j)) {
                             continue;
                         }
                         [$y, $x] = $centro($r + $i, $c + $j);
-                        $d = Geo::distanceNm($la, $lo, $y, $x);
-                        if (($meglio === null || $d < $meglio[0]) && !self::attraversa($la, $lo, $y, $x)) {
-                            $meglio = [$d, $r + $i, $c + $j];
+                        if (!self::attraversa($la, $lo, $y, $x)) {
+                            $viste[$chiave($r + $i, $c + $j)] = [$r + $i, $c + $j, Geo::distanceNm($la, $lo, $y, $x)];
                         }
                     }
                 }
-                if ($meglio !== null) {
-                    return [$meglio[1], $meglio[2]];
+                if ($viste !== [] && $fino === 12) {
+                    $fino = min(12, $raggio + 2);
                 }
             }
-            return null;
+            return $viste;
         };
-        $s = $aggancia($la1, $lo1);
-        $g = $aggancia($la2, $lo2);
-        if ($s === null || $g === null) {
+        $partenze = $aggancia($la1, $lo1);
+        $mete = $aggancia($la2, $lo2);
+        if ($partenze === [] || $mete === []) {
             return null;
         }
 
-        $chiave = static fn (int $r, int $c): int => $r * $colonne + $c;
         $kx = cos(deg2rad(($la1 + $la2) / 2));
         // Stima pesata (A* «avido» di un 40%): esplora molte meno celle, e il
         // giro in piu' che puo' costare lo toglie la semplificazione dopo.
-        $h = static fn (int $r, int $c): float => 1.4 * 60.0 * hypot(($r - $g[0]) * $dlat, ($c - $g[1]) * $dlon * $kx);
+        $h = static fn (int $r, int $c): float => 1.4 * 60.0 * hypot(
+            $lat0 + ($r + 0.5) * $dlat - $la2,
+            ($lon0 + ($c + 0.5) * $dlon - $lo2) * $kx,
+        );
         $passi = [];
         foreach ([[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]] as [$dr, $dc]) {
             $passi[] = [$dr, $dc, 60.0 * hypot($dr * $dlat, $dc * $dlon * $kx)];
         }
 
-        $inizio = microtime(true);
+        // L'arrivo e' un nodo in piu' (chiave -1), raggiungibile da ogni cella
+        // che lo vede: cosi' si arriva per la via piu' corta fino al punto, non
+        // fino alla cella.
+        $ARRIVO = -1;
         $coda = new \SplPriorityQueue();
         $coda->setExtractFlags(\SplPriorityQueue::EXTR_DATA);
-        $k0 = $chiave($s[0], $s[1]);
-        $costo = [$k0 => 0.0];
+        $costo = [];
         $da = [];
-        $coda->insert([$s[0], $s[1]], -$h($s[0], $s[1]));
+        foreach ($partenze as $k => [$r, $c, $d]) {
+            $costo[$k] = $d;
+            $coda->insert([$r, $c], -($d + $h($r, $c)));
+        }
         $chiuso = [];
-        $kg = $chiave($g[0], $g[1]);
         $espansi = 0;
         while (!$coda->isEmpty()) {
             [$r, $c] = $coda->extract();
-            $k = $chiave($r, $c);
+            $k = $r === $ARRIVO ? $ARRIVO : $chiave($r, $c);
             if (isset($chiuso[$k])) {
                 continue;
             }
             $chiuso[$k] = true;
-            if ($k === $kg) {
+            if ($k === $ARRIVO) {
                 break;
             }
             // Un tetto alle celle e uno al tempo: una rotta che non esiste
             // (dal Mediterraneo alla Groenlandia) non deve tenere ferma una
             // pagina per dieci secondi.
-            if (++$espansi > 150000 || ($espansi % 2000 === 0 && microtime(true) - $inizio > 2.0)) {
+            if (++$espansi > 150000 || ($espansi % 2000 === 0 && microtime(true) > $scadenza)) {
                 return null;
+            }
+            if (isset($mete[$k])) {
+                $nuovo = $costo[$k] + $mete[$k][2];
+                if (!isset($costo[$ARRIVO]) || $nuovo < $costo[$ARRIVO]) {
+                    $costo[$ARRIVO] = $nuovo;
+                    $da[$ARRIVO] = $k;
+                    $coda->insert([$ARRIVO, $ARRIVO], -$nuovo);
+                }
             }
             foreach ($passi as [$dr, $dc, $w]) {
                 $nr = $r + $dr; $nc = $c + $dc;
@@ -508,9 +581,7 @@ final class Terra
                 // E non si passa sopra un isolotto piu' piccolo della cella:
                 // centri e angoli in acqua, ma un'isola fra i due centri (le
                 // Ebridi Esterne, 07/10/2026). Si guarda il punto di mezzo.
-                $mezzoLa = $lat0 + ($r + 0.5 + $dr / 2) * $dlat;
-                $mezzoLo = $lon0 + ($c + 0.5 + $dc / 2) * $dlon;
-                if (self::dentroCosta($mezzoLa, $mezzoLo) && !self::nelCorridoio($mezzoLa, $mezzoLo)) {
+                if (!$mezzoInAcqua($r, $c, $dr, $dc)) {
                     continue;
                 }
                 $nk = $chiave($nr, $nc);
@@ -522,13 +593,20 @@ final class Terra
                 }
             }
         }
-        if (!isset($chiuso[$kg])) {
+        if (!isset($chiuso[$ARRIVO])) {
             return null;
         }
 
+        // Dalla cella d'arrivo indietro fino a quella di partenza, COMPRESA: e'
+        // l'unica che si sa vedere dal punto di partenza, e la semplificazione
+        // prende il primo punto senza controllarlo (davanti a Brest il primo
+        // tratto tagliava capo Sizun, 07/10/2026).
         $celle = [];
-        for ($k = $kg; $k !== $k0; $k = $da[$k]) {
+        for ($k = $da[$ARRIVO]; ; $k = $da[$k]) {
             $celle[] = $centro(intdiv($k, $colonne), $k % $colonne);
+            if (!isset($da[$k])) {
+                break;
+            }
         }
         $celle = array_reverse($celle);
         $celle[] = [$la2, $lo2];
@@ -536,7 +614,8 @@ final class Terra
     }
 
     /**
-     * Una riga della maglia: '1' dove il centro della cella e' acqua. La si
+     * Una riga della maglia: '1' dove il centro della cella e' acqua, '2' dove
+     * e' acqua perche' sta nel corridoio di un canale o di un passaggio. La si
      * riempie per intervalli — gli incroci della latitudine con i lati di
      * costa, ordinati, delimitano la terra a coppie — e poi si riaprono le
      * celle dei canali.
@@ -559,11 +638,22 @@ final class Terra
                 $riga[$c] = '0';
             }
         }
-        // Canali e passaggi: si riapre la cella se il punto sta nel corridoio.
-        if (str_contains($riga, '0')) {
-            for ($c = 0; $c < $colonne; $c++) {
-                if ($riga[$c] === '0' && self::nelCorridoio($la, $lon0 + ($c + 0.5) * $dlon)) {
-                    $riga[$c] = '1';
+        // Canali e passaggi: ogni cella con il centro nel corridoio diventa
+        // '2', che sia acqua o terra per la carta. Per non chiedere a ogni
+        // cella, si guardano solo le colonne dentro il riquadro di ciascuna
+        // linea.
+        foreach ([self::$canali ?? [], self::PASSAGGI] as $linee) {
+            foreach ($linee as $chiave => $punti) {
+                $r = self::$riquadri[$chiave] ??= self::riquadro($punti);
+                if ($la < $r[0] || $la > $r[1]) {
+                    continue;
+                }
+                $c0 = max(0, (int) floor(($r[2] - $lon0) / $dlon));
+                $c1 = min($colonne - 1, (int) ceil(($r[3] - $lon0) / $dlon));
+                for ($c = $c0; $c <= $c1; $c++) {
+                    if ($riga[$c] !== '2' && self::nelCorridoio($la, $lon0 + ($c + 0.5) * $dlon)) {
+                        $riga[$c] = '2';
+                    }
                 }
             }
         }

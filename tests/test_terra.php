@@ -110,6 +110,16 @@ $casi = [
     // In linea d'aria attraversa Francia e Spagna: girando la penisola iberica
     // sono circa milleduecento miglia contro ottocento.
     ['dalla Manica a Gibilterra e oltre', 50.1, -1.0, 36.5, -2.0, 1.65],
+    // I casi trovati il 07/10/2026 dalle verifiche a tappeto. All'imbocco dello
+    // Sognefjord la cella d'acqua piu' vicina sta in una sacca chiusa fra gli
+    // scogli; sotto capo Sizun il primo tratto tagliava la punta; da sud della
+    // Groenlandia la cella era larga come lo stretto di Gibilterra, e un angolo
+    // finiva su Tarifa.
+    ['dall\'imbocco dello Sognefjord all\'Atlantico', 61.055, 5.085, 52.0, -20.0, 1.25],
+    ['dall\'imbocco dello Sognefjord a Bergen', 61.055, 5.085, 60.39, 5.32, 1.6],
+    ['da sotto capo Sizun a Kiel', 48.0, -4.6, 54.32, 10.14, 1.5],
+    ['da Capo Farewell a Barcellona', 58.17, -39.45, 41.49, 2.38, 1.45],
+    ['dal golfo del Leone alla Groenlandia', 41.48, 8.10, 64.44, -40.04, 1.45],
 ];
 foreach ($casi as [$nome, $a, $b, $c, $d, $maxAllungo]) {
     $r = Terra::rotta($a, $b, $c, $d);
