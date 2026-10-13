@@ -185,6 +185,10 @@ $slot = [
         'src/Controllers/CombattimentoController.php',
         "#'ora'\s*=>\s*World::clock\(\)->formatDiario\(\(int\) \\\$e\['gts'\]\)#",
     ],
+    'il giornale negli avvisi per posta' => [
+        'src/Game/Avvisi.php',
+        '#\$orologio->formatDiario\(\(int\) \$r\[\'gts\'\]\)#',
+    ],
     'il giornale in centrale' => [
         'views/game/zentrale.php',
         '#<span class="ora"><\?=\s*e\(\$clock->formatDiario\(#',
@@ -208,6 +212,11 @@ $ammessi = [
     'src/Controllers/RifinituraController.php',
     'src/Controllers/PlanciaController.php',
     'src/Controllers/CombattimentoController.php',
+    // Gli avvisi per posta riportano righe del giornale di guerra, con la
+    // loro ora di bordo: e' il giornale, solo spedito (09/10/2026).
+    'src/Game/Avvisi.php',
+    // Il giornale di guerra pubblicato: e' un Kriegstagebuch, con le sue ore di bordo.
+    'views/pubblico/giornale.php',
 ];
 $fuoriPosto = [];
 foreach (['src', 'views', 'bin'] as $ramo) {

@@ -522,7 +522,11 @@ final class Terra
         $kx = cos(deg2rad(($la1 + $la2) / 2));
         // Stima pesata (A* «avido» di un 40%): esplora molte meno celle, e il
         // giro in piu' che puo' costare lo toglie la semplificazione dopo.
-        $h = static fn (int $r, int $c): float => 1.4 * 60.0 * hypot(
+        // Sulle rotte lunghe ancora di piu': da Capo Farewell a Barcellona,
+        // col 40%, la ricerca stava sopra il secondo, e col server carico
+        // sforava i due secondi del tetto (09/10/2026).
+        $peso = Geo::distanceNm($la1, $lo1, $la2, $lo2) > 600.0 ? 2.0 : 1.4;
+        $h = static fn (int $r, int $c): float => $peso * 60.0 * hypot(
             $lat0 + ($r + 0.5) * $dlat - $la2,
             ($lon0 + ($c + 0.5) * $dlon - $lo2) * $kx,
         );

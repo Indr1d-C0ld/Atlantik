@@ -59,7 +59,7 @@ final class Patrol
 
         $now = World::now();
         $numero = (int) (Database::first(
-            'SELECT COALESCE(MAX(number), 0) + 1 AS n FROM patrols WHERE boat_id = ?',
+            "SELECT COALESCE(MAX(number), 0) + 1 AS n FROM patrols WHERE boat_id = ? AND tipo = 'guerra'",
             [(int) $boat['id']]
         )['n'] ?? 1);
 
@@ -200,6 +200,9 @@ final class Patrol
         } elseif ($waypoints !== []) {
             self::setRoute((int) $boat['id'], $waypoints);
         }
+
+        // La missione speciale accettata in porto parte con il battello.
+        MissioniSpeciali::allaPartenza(Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]), $patrolId, $now);
 
         return ['ok' => true, 'patrol_id' => $patrolId];
     }
@@ -400,6 +403,9 @@ final class Patrol
 
         $patrol = self::corrente((int) $boat['id']);
         $now = World::now();
+
+        // Una missione speciale non compiuta, al rientro, e' fallita.
+        MissioniSpeciali::allaFine((int) $boat['id'], $now);
 
         if ($patrol !== null) {
             BoatSim::save([

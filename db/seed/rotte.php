@@ -83,6 +83,13 @@ return [
             [56.0, -7.0], [55.5, -6.7], [55.4, -6.2], [55.22, -5.95], [55.3, -5.4], [55.45, -5.05], [55.7, -5.02],
             [55.88, -4.98], [55.96, -4.82],
         ]],
+        // Fuori dalla guerra dei convogli: la rotta del convoglio d'esercitazione
+        // dell'Agru-Front, a nord della penisola di Hela, nella baia di Danzica.
+        // Non ha una serie, quindi il generatore del traffico non la usa mai: la
+        // usa solo App\Game\Addestramento. Cinquantadue miglia, verso levante.
+        'agru' => ['nome' => 'Baia di Danzica (esercitazione)', 'punti' => [
+            [55.12, 18.10], [55.02, 18.80], [55.04, 19.60],
+        ]],
     ],
 
     // Serie di convogli: ogni quanto partono, quanto sono grandi, come sono scortati.

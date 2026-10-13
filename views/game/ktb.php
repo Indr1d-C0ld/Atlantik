@@ -27,6 +27,24 @@ use App\Sim\Clock;
       <span><a href="<?= e(url('/ktb/' . (int) $patrol_scelta['id'] . '/esporta')) ?>">scarica il giornale</a></span>
     </div>
 
+    <?php if ((string) $patrol_scelta['state'] !== 'in_corso' && (string) ($patrol_scelta['tipo'] ?? 'guerra') === 'guerra'): ?>
+      <div class="ktb-pubblica">
+        <?php if (!empty($patrol_scelta['pubblica_token'])): $link = rtrim((string) \App\Core\Config::get('app.public_url', ''), '/') . '/giornale/' . $patrol_scelta['pubblica_token']; ?>
+          <p class="aiuto">Giornale pubblicato: chi ha questo collegamento lo legge, anche senza essere arruolato.</p>
+          <p><a href="<?= e(url('/giornale/' . $patrol_scelta['pubblica_token'])) ?>"><?= e($link) ?></a></p>
+          <form method="post" action="<?= e(url('/ktb/' . (int) $patrol_scelta['id'] . '/ritira')) ?>">
+            <?= csrf_field() ?><button type="submit" class="bottone--fantasma">Ritirarlo</button>
+          </form>
+        <?php else: ?>
+          <form method="post" action="<?= e(url('/ktb/' . (int) $patrol_scelta['id'] . '/pubblica')) ?>">
+            <?= csrf_field() ?>
+            <button type="submit" class="bottone--fantasma">Pubblicare il giornale</button>
+            <span class="aiuto">Una pagina da dare a chi vuoi: il giornale impaginato come un Kriegstagebuch, con la carta della rotta. Si ritira quando vuoi.</span>
+          </form>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
+
     <?php if ($righe === []): ?>
       <p class="sommario">Nessuna annotazione.</p>
     <?php else: ?>

@@ -134,7 +134,7 @@ final class Trofei
 
         // --- navigazione ----------------------------------------------------------
         $prova('traversata', static function () use ($boatId) {
-            $r = Database::first('SELECT MAX(distance_nm) d FROM patrols WHERE boat_id = ?', [$boatId]);
+            $r = Database::first("SELECT MAX(distance_nm) d FROM patrols WHERE boat_id = ? AND tipo = 'guerra'", [$boatId]);
             return ((float) ($r['d'] ?? 0)) >= 5000 ? sprintf('%.0f miglia', (float) $r['d']) : false;
         });
 
@@ -168,7 +168,7 @@ final class Trofei
 
         $prova('profondo', static function () use ($boatId, $boat) {
             $tipo = World::type((string) $boat['type_key']);
-            $r = Database::first('SELECT MAX(max_depth_m) d FROM patrols WHERE boat_id = ?', [$boatId]);
+            $r = Database::first("SELECT MAX(max_depth_m) d FROM patrols WHERE boat_id = ? AND tipo = 'guerra'", [$boatId]);
             return ((float) ($r['d'] ?? 0)) > (float) $tipo['test_depth_m']
                 ? sprintf('%.0f metri', (float) $r['d']) : false;
         });

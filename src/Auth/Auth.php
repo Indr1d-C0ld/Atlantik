@@ -43,7 +43,8 @@ final class Auth
 
         $row = Database::first(
             'SELECT id, username, email, status, role, email_verified_at, created_at, last_login_at,
-                    sessioni_da, sessioni_gen
+                    sessioni_da, sessioni_gen,
+                    last_seen_at IS NULL OR last_seen_at < DATE_SUB(NOW(), INTERVAL 60 SECOND) AS da_vedere
              FROM users WHERE id = ?',
             [(int) $id]
         );
@@ -69,6 +70,14 @@ final class Auth
             Session::flush();
             return self::$cached = null;
         }
+
+        // Quando il comandante e' alla console. Serve agli avvisi per posta
+        // (App\Game\Avvisi): a chi sta gia' guardando non si scrive. Una
+        // scrittura al minuto al massimo, non una per richiesta.
+        if ((int) $row['da_vedere'] === 1) {
+            Database::run('UPDATE users SET last_seen_at = NOW() WHERE id = ?', [(int) $row['id']]);
+        }
+        unset($row['da_vedere']);
 
         return self::$cached = $row;
     }

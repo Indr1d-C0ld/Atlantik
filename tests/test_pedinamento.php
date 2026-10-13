@@ -76,8 +76,7 @@ if ($cv === null) {
     exit(0);
 }
 
-$pos = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts,
-    (float) $cv['deviazione']);
+$pos = Traffic::pos($cv, $gts);
 
 // Il battello, attaccato al convoglio.
 Database::run(
@@ -142,8 +141,7 @@ if ($ordine2 !== null) {
 
     // Sei ore dopo, il battello e' dove sara' il convoglio.
     $dopo = $gts + 6 * 3600 + 60;
-    $pos2 = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $dopo,
-        (float) $cv['deviazione']);
+    $pos2 = Traffic::pos($cv, $dopo);
     if ($pos2 === null) {
         ok('il convoglio e\' ancora in mare sei ore dopo', false, 'arrivato prima');
     } else {

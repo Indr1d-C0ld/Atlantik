@@ -106,10 +106,13 @@ final class Danni
             $ritardataria = (bool) $nave['ritardataria'];
             $convoyId = $nave['convoy_id'];
             $convoglioPerduto = $nave['convoglio_perduto'];
+            $deviazione = (float) ($nave['deviazione'] ?? 0.0);
 
             if ($convoyId !== null && $fattore < self::SOGLIA_RITARDATARIA) {
-                $cv = Database::first('SELECT serie, numero FROM convoys WHERE id = ?', [(int) $convoyId]);
+                $cv = Database::first('SELECT * FROM convoys WHERE id = ?', [(int) $convoyId]);
                 $convoglioPerduto = $cv !== null ? $cv['serie'] . $cv['numero'] : null;
+                // Resta dov'e': con la deviazione del convoglio in quel momento.
+                $deviazione = $cv !== null ? round(Traffic::deviazioneAl($cv, $gts), 2) : $deviazione;
                 $convoyId = null;
                 $ritardataria = true;
                 $out['ritardatarie']++;
@@ -133,7 +136,7 @@ final class Danni
                 'UPDATE ships
                     SET integrita = ?, allagamento = ?, incendio = ?,
                         speed_kn = ?, departed_gts = ?, eta_gts = ?,
-                        convoy_id = ?, colonna = NULL, fila = NULL,
+                        convoy_id = ?, colonna = NULL, fila = NULL, deviazione = ?, danno_arma = NULL,
                         ritardataria = ?, convoglio_perduto = ?,
                         danno_gts = ?,
                         danno_boat_id = ?, danno_patrol_id = ?, danno_commander_id = ?,
@@ -142,7 +145,7 @@ final class Danni
                 [
                     round($integrita, 2), round($allagamento, 2), round($incendio, 2),
                     $nuovaVel, $nuovoDeparted, $nuovaEta,
-                    $convoyId, $ritardataria ? 1 : 0, $convoglioPerduto,
+                    $convoyId, $deviazione, $ritardataria ? 1 : 0, $convoglioPerduto,
                     $gts,
                     (int) $boat['id'],
                     $enc['patrol_id'] !== null ? (int) $enc['patrol_id'] : null,
@@ -235,9 +238,11 @@ final class Danni
 
         foreach ($navi as $n) {
             $quando = (int) $n['affonda_gts'];
-            $pos = Traffic::posizione(
-                (string) $n['rotta_key'], (float) $n['speed_kn'], (int) $n['departed_gts'], $quando
-            );
+            // Una nave ancora in convoglio sta dove sta il convoglio, con la
+            // deviazione che l'Ammiragliato gli ha dato: la sua, scritta, e'
+            // zero, e la metteva fino a centoquaranta miglia piu' in la'.
+            $cvN = $n['convoy_id'] !== null ? Database::first('SELECT * FROM convoys WHERE id = ?', [(int) $n['convoy_id']]) : null;
+            $pos = Traffic::pos($cvN !== null ? ['deviazione' => Traffic::deviazioneAl($cvN, $quando)] + $n : $n, $quando);
             $lat = $pos !== null ? $pos['lat'] : (float) ($n['lat_ultima'] ?? 0.0);
             $lon = $pos !== null ? $pos['lon'] : (float) ($n['lon_ultima'] ?? 0.0);
 
@@ -279,32 +284,43 @@ final class Danni
             return;
         }
 
+        $mina = (string) ($n['danno_arma'] ?? '') === 'mina';
         $siluri = (int) (Database::first(
-            "SELECT COUNT(*) c FROM torpedo_runs WHERE boat_id = ? AND esito = 'colpito'",
-            [(int) $boat['id']]
+            // I siluri finiti addosso a QUESTA nave. Fino al 09/10/2026 si
+            // contavano tutti quelli a segno del battello, in tutta la sua vita.
+            "SELECT COUNT(*) c FROM torpedo_runs t JOIN encounter_entities e ON e.id = t.entity_id
+              WHERE t.boat_id = ? AND t.esito = 'colpito' AND e.ship_id = ?",
+            [(int) $boat['id'], (int) $n['id']]
         )['c'] ?? 0);
 
         Database::run(
             'INSERT INTO sinkings (boat_id, patrol_id, commander_id, ship_id, nome, bandiera, class_key, grt,
                                    carico, arma, siluri_usati, convoglio, gts, lat, lon, quadrat)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "siluro", ?, ?, ?, ?, ?, ?)',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 (int) $boat['id'], $n['danno_patrol_id'], $n['danno_commander_id'], (int) $n['id'],
                 (string) $n['name'], (string) $n['flag'], (string) $n['class_key'], (int) $n['grt'],
-                $n['carico'], min(4, max(1, $siluri)), $n['convoglio_perduto'], $quando,
+                // Una mina del campo posato in una missione speciale, o il siluro.
+                $n['carico'], $mina ? 'mina' : 'siluro', $mina ? 0 : min(4, max(1, $siluri)), $n['convoglio_perduto'], $quando,
                 $lat, $lon, Grid::toQuadrat($lat, $lon),
             ]
         );
 
         $orario = World::clock()->format($quando);
-        $testo = sprintf(
-            'Conferma dal BdU: la %s, colpita in %s e rimasta indietro, e\' affondata il %s. '
-            . 'Accreditate %s tonnellate di stazza lorda.',
-            (string) $n['name'],
-            Grid::toQuadrat($lat, $lon),
-            $orario,
-            number_format((int) $n['grt'], 0, ',', '.')
-        );
+        $testo = $mina
+            ? sprintf(
+                'Conferma dal BdU: la %s e\' saltata su una delle nostre mine in %s, ed e\' affondata il %s. '
+                . 'Accreditate %s tonnellate di stazza lorda.',
+                (string) $n['name'], Grid::toQuadrat($lat, $lon), $orario, number_format((int) $n['grt'], 0, ',', '.')
+            )
+            : sprintf(
+                'Conferma dal BdU: la %s, colpita in %s e rimasta indietro, e\' affondata il %s. '
+                . 'Accreditate %s tonnellate di stazza lorda.',
+                (string) $n['name'],
+                Grid::toQuadrat($lat, $lon),
+                $orario,
+                number_format((int) $n['grt'], 0, ',', '.')
+            );
 
         Database::run(
             'INSERT INTO radio_messages (destinatario, dest_boat_id, tipo, testo, quadrat, lat, lon, gts, durata_s)

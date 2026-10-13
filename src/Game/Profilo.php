@@ -31,7 +31,7 @@ final class Profilo
     public static function di(int $commanderId): ?array
     {
         $cmd = Database::first(
-            'SELECT c.*, u.username FROM commanders c
+            'SELECT c.*, u.username, u.role FROM commanders c
              LEFT JOIN users u ON u.id = c.user_id WHERE c.id = ?',
             [$commanderId]
         );
@@ -75,7 +75,7 @@ final class Profilo
             'missioni'     => Database::all(
                 "SELECT id, number, departed_gts, returned_gts, state, distance_nm,
                         affondate, grt_affondato, siluri_lanciati, area_quadrat
-                   FROM patrols WHERE commander_id = ? ORDER BY id DESC LIMIT 15",
+                   FROM patrols WHERE commander_id = ? AND tipo = 'guerra' ORDER BY id DESC LIMIT 15",
                 [$commanderId]
             ),
         ];
@@ -101,7 +101,7 @@ final class Profilo
                     COALESCE(SUM(siluri_lanciati), 0) siluri,
                     COALESCE(SUM(fuel_used_t), 0) nafta,
                     COALESCE(MAX(max_depth_m), 0) quota_max
-               FROM patrols WHERE commander_id = ?",
+               FROM patrols WHERE commander_id = ? AND tipo = 'guerra'",
             [$commanderId]
         ) ?? [];
 
@@ -131,6 +131,12 @@ final class Profilo
             'grt_missione'  => $concluse > 0 ? $grt / $concluse : null,
             'grt_mille_miglia' => $miglia > 0 ? $grt / ($miglia / 1000) : null,
             'colpi_a_segno' => $siluri > 0 ? 100 * self::siluriASegno($commanderId) / $siluri : null,
+            // I naufraghi a cui si e' data la rotta, e quanti di loro si sono salvati.
+            'naufraghi'     => Database::first(
+                "SELECT COUNT(*) volte, COALESCE(SUM(salvati), 0) salvati, SUM(stato = 'in_mare') in_mare
+                   FROM naufraghi WHERE commander_id = ? AND aiutati = 1",
+                [$commanderId]
+            ) ?? ['volte' => 0, 'salvati' => 0, 'in_mare' => 0],
         ];
     }
 
@@ -138,7 +144,8 @@ final class Profilo
     {
         return (int) (Database::first(
             "SELECT COUNT(*) n FROM torpedo_runs t
-               JOIN patrols p ON p.boat_id = t.boat_id AND p.commander_id = ?
+               JOIN encounters e ON e.id = t.encounter_id
+               JOIN patrols p ON p.id = e.patrol_id AND p.commander_id = ? AND p.tipo = 'guerra'
               WHERE t.esito = 'colpito'",
             [$commanderId]
         )['n'] ?? 0);
@@ -158,12 +165,12 @@ final class Profilo
         return [
             'giorni' => Database::first(
                 "SELECT *, (COALESCE(returned_gts, ?) - departed_gts) / 86400.0 AS giorni
-                   FROM patrols WHERE commander_id = ?
+                   FROM patrols WHERE commander_id = ? AND tipo = 'guerra'
                   ORDER BY giorni DESC LIMIT 1",
                 [World::now(), $commanderId]
             ),
             'miglia' => Database::first(
-                'SELECT * FROM patrols WHERE commander_id = ? ORDER BY distance_nm DESC LIMIT 1',
+                "SELECT * FROM patrols WHERE commander_id = ? AND tipo = 'guerra' ORDER BY distance_nm DESC LIMIT 1",
                 [$commanderId]
             ),
         ];

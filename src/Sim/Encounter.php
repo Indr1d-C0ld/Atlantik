@@ -120,13 +120,13 @@ final class Encounter
             if ($cv === null) {
                 return ['ok' => false, 'error' => 'Convoglio non piu\' in mare.'];
             }
-            $pos = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+            $pos = Traffic::pos($cv, $gts);
         } elseif ($shipId !== null) {
             $sh = Database::first('SELECT * FROM ships WHERE id = ?', [$shipId]);
             if ($sh === null || (string) $sh['state'] !== 'in_mare') {
                 return ['ok' => false, 'error' => 'La nave non e\' piu\' in mare.'];
             }
-            $pos = Traffic::posizione((string) $sh['rotta_key'], (float) $sh['speed_kn'], (int) $sh['departed_gts'], $gts);
+            $pos = Traffic::pos($sh, $gts);
         } else {
             return ['ok' => false, 'error' => 'Contatto non ingaggiabile.'];
         }
@@ -335,12 +335,23 @@ final class Encounter
         $giaNelGiornale = [];
 
         $allarme = (bool) $enc['allarme'];
+        $allarmeGts = $enc['allarme_gts'] !== null ? (int) $enc['allarme_gts'] : null;
         $cariche = (int) $enc['cariche_subite'];
+        // Addestramento (App\Game\Addestramento): teste d'esercitazione nei
+        // siluri, cariche di segnalazione. Quello che le cariche avrebbero
+        // fatto in guerra si conta qui, e pesa sul giudizio dell'istruttore.
+        $esercitazione = \App\Game\Addestramento::eAddestramento($enc['patrol_id'] !== null ? (int) $enc['patrol_id'] : null);
+        $dannoSimulato = (float) ($enc['danno_simulato'] ?? 0.0);
         $affondate = (int) $enc['affondate'];
         $grtAffondato = (int) $enc['grt_affondato'];
         $perduto = false;
 
         for ($i = 0; $i < $passi; $i++) {
+            // Quando il convoglio si e' accorto di noi: il primo passo con
+            // l'allarme gia' dato. Serve a dire se l'avvicinamento e' riuscito.
+            if ($allarme && $allarmeGts === null) {
+                $allarmeGts = $t;
+            }
             $t += $passo;
             $rng = Rng::for(World::seed(), 'tattico', $encId, intdiv($t, $passo));
             $ore = $passo / 3600.0;
@@ -429,7 +440,7 @@ final class Encounter
                 if ((string) $sil['esito'] !== 'in_corsa') {
                     continue;
                 }
-                $esito = self::muoviSiluro($sil, $entita, $passo, $t, $rng, $b);
+                $esito = self::muoviSiluro($sil, $entita, $passo, $t, $rng, $b, $esercitazione);
                 if ($esito !== null) {
                     $eventi[] = $esito['testo'];
                     if (($esito['colpito'] ?? false) && !$allarme) {
@@ -481,7 +492,14 @@ final class Encounter
                 if ($esitiScorte['cariche'] > 0) {
                     $cariche += $esitiScorte['cariche'];
                 }
-                if ($esitiScorte['danno'] > 0.0) {
+                if ($esitiScorte['danno'] > 0.0 && $esercitazione) {
+                    $colpo = Scorte::sollecitazione($b['depth'], $type, $esitiScorte['danno']);
+                    $dannoSimulato += $colpo;
+                    $eventi[] = sprintf(
+                        'Carica di segnalazione %s: in guerra, %.0f%% di sollecitazione sullo scafo.',
+                        $colpo >= 5.0 ? 'vicinissima' : ($colpo >= 1.7 ? 'vicina' : 'lontana'), $colpo
+                    );
+                } elseif ($esitiScorte['danno'] > 0.0) {
                     Scorte::applicaDanno((int) $boat['id'], $b, $type, $esitiScorte['danno'], $t, $rng, $eventi);
                     if ($b['stress'] >= 100.0) {
                         // Lo scafo ha ceduto sotto le cariche: applicaDanno ha
@@ -529,6 +547,14 @@ final class Encounter
             );
         }
 
+        if ($allarme && $allarmeGts === null) {
+            $allarmeGts = $t;
+        }
+        Database::run(
+            'UPDATE encounters SET allarme_gts = ?, danno_simulato = ? WHERE id = ?',
+            [$allarmeGts, round($dannoSimulato, 1), $encId]
+        );
+
         // Il periscopio non resta fuori per distrazione. Se il comandante se ne
         // dimentica lo abbassa il I.WO dopo cinque minuti, e se si cambia quota
         // scende comunque: fuori dall'acqua a quaranta metri non ci arriva.
@@ -547,7 +573,7 @@ final class Encounter
                     battery_pct = ?, fuel_t = ?, air_pct = ?, co2_pct = ?, hull_stress = ?, last_sim_gts = ?,
                     periscopio_alzato = ?, periscopio_gts = ?,
                     est_lat = est_lat + (? - lat), est_lon = est_lon + (? - lon), version = version + 1
-             WHERE id = ?',
+             WHERE id = ? AND state <> "base"',
             [
                 $b['lat'], $b['lon'], $b['heading'], $b['speed'], $b['depth'], $b['mode'],
                 $b['battery'], $b['fuel'], $b['air'], Consumption::co2FromAir($b['air']), $b['stress'], $t,
@@ -754,7 +780,7 @@ final class Encounter
      *
      * @return array{testo:string,colpito?:bool,affondata?:bool,grt?:int}|null
      */
-    private static function muoviSiluro(array &$sil, array &$entita, int $passo, int $t, Rng $rng, array $b): ?array
+    private static function muoviSiluro(array &$sil, array &$entita, int $passo, int $t, Rng $rng, array $b, bool $esercitazione = false): ?array
     {
         $tipo = Torpedo::tipo((string) $sil['tkey']);
         $avanza = (float) $sil['speed_kn'] * ($passo / 3600.0);      // miglia
@@ -817,6 +843,19 @@ final class Encounter
             }
 
             $sil['esito_gts'] = $t;
+
+            // La testa d'esercitazione non ha carica: il siluro passa sotto la
+            // chiglia, la nave segnala il colpo e a fine corsa lo si ripesca.
+            // Conta la geometria, non la spoletta.
+            if ($esercitazione) {
+                $sil['esito'] = 'colpito';
+                $sil['entity_id'] = (int) $e['id'];
+                $sil['nota'] = 'testa d\'esercitazione';
+                return ['testo' => sprintf(
+                    'Tubo %d: a segno su %s. Testa d\'esercitazione: passa sotto la chiglia, la nave alza il segnale del colpo.',
+                    (int) $sil['tubo'], (string) $e['name']
+                ), 'colpito' => true];
+            }
 
             if ((string) ($sil['nota'] ?? '') === 'spoletta difettosa') {
                 $sil['esito'] = 'cilecca';
@@ -983,6 +1022,7 @@ final class Encounter
                     (float) $e['lat'], (float) $e['lon'], Grid::toQuadrat((float) $e['lat'], (float) $e['lon']),
                 ]
             );
+            $sinkingId = Database::lastInsertId();
         } catch (\PDOException $ex) {
             if ($ex->getCode() === '23000') {
                 return null;   // ci e' arrivato un altro un istante fa
@@ -1000,6 +1040,10 @@ final class Encounter
         if ($enc['convoy_id'] !== null) {
             Database::run('UPDATE convoys SET affondate = affondate + 1 WHERE id = ?', [(int) $enc['convoy_id']]);
         }
+        // In mare restano le scialuppe (App\Game\Naufraghi): poche, se la nave
+        // e' andata giu' in fiamme.
+        \App\Game\Naufraghi::nascono($sinkingId, $boat, $enc['patrol_id'] !== null ? (int) $enc['patrol_id'] : null,
+            $e, $t, (float) ($e['incendio'] ?? 0.0) >= 80.0);
         if ($enc['patrol_id'] !== null) {
             Database::run(
                 'UPDATE patrols SET affondate = affondate + 1, grt_affondato = grt_affondato + ? WHERE id = ?',
@@ -1205,6 +1249,9 @@ final class Encounter
      */
     public static function cannone(array $enc, array $boat, int $entityId, int $colpi, int $gts): array
     {
+        if (\App\Game\Addestramento::eAddestramento($enc['patrol_id'] !== null ? (int) $enc['patrol_id'] : null)) {
+            return ['ok' => false, 'error' => 'In esercitazione il cannone resta coperto: i bersagli sono navi della scuola.'];
+        }
         $type = World::type((string) $boat['type_key']);
         if (empty($type['deck_gun'])) {
             return ['ok' => false, 'error' => 'Questo battello non ha cannone di coperta.'];
@@ -1403,7 +1450,9 @@ final class Encounter
             return ['passi' => 0, 'eventi' => [], 'stato' => 'concluso', 'chiuso' => true];
         }
 
-        $scaduta = time() > (int) $enc['finestra_fine'];
+        // Scaduta la finestra il I.WO disimpegna — ma non se l'incontro e' suo:
+        // quello lo conduce gia' lui, secondo la dottrina (Dottrina::conduci).
+        $scaduta = time() > (int) $enc['finestra_fine'] && (string) ($enc['condotta'] ?? 'comandante') !== 'iwo';
         if ($scaduta) {
             $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $enc['boat_id']]);
             if ($boat !== null && (float) $boat['ordered_depth_m'] < 60.0) {
@@ -1536,5 +1585,10 @@ final class Encounter
                     periscopio_alzato = (mode = \'periscopio\'), periscopio_gts = NULL, last_sim_gts = ? WHERE id = ?',
             [$gts, (int) $enc['boat_id']]
         );
+
+        // Un'esercitazione finisce col suo incontro: giudizio, e si torna in base.
+        if ($enc['patrol_id'] !== null) {
+            \App\Game\Addestramento::dopoIncontro((int) $enc['patrol_id'], $gts);
+        }
     }
 }

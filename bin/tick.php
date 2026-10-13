@@ -66,9 +66,24 @@ try {
     $traffico = $fase('traffico', static fn (): array => Traffic::ensure(World::now()),
         ['convogli' => 0, 'navi' => 0, 'arrivati' => 0]);
 
+    // L'Ammiragliato fa girare i convogli al largo di dove gli U-Boot si sono
+    // fatti sentire; il B-Dienst a volte lo legge, e il BdU lo dice.
+    $ammiragliato = $fase('ammiragliato', static fn (): array => \App\Sim\Ammiragliato::valuta(World::now()),
+        ['deviati' => 0, 'decifrati' => 0]);
+
     // Il BdU lavora anche di notte: comunicati, aree operative, gruppi.
     $bdu = $fase('bdu', static fn (): array => \App\Game\Bdu::mantieni(World::now()),
         ['comunicati' => 0, 'aree' => 0, 'aperti' => 0]);
+
+    // Le esercitazioni dell'Agru-Front il cui convoglio e' passato senza
+    // essere attaccato: giudizio, e il battello torna in base.
+    $fase('addestramento', static fn (): array => \App\Game\Addestramento::mantieni(World::now()), ['conclusi' => 0]);
+
+    // I campi minati delle missioni speciali: le navi che ci passano sopra.
+    $mine = $fase('mine', static fn (): array => \App\Game\MissioniSpeciali::campiMinati(World::now()), ['colpite' => 0]);
+
+    // La sorte dei naufraghi, giorni dopo: la notizia arriva a chi li ha lasciati.
+    $fase('naufraghi', static fn (): array => \App\Game\Naufraghi::destino(World::now()), ['decisi' => 0]);
 
     // Chi era stato colpito e non era affondato subito: qualcuno non ce la fa.
     $agonia = $fase('agonia', static fn (): array => \App\Sim\Danni::agonia(World::now()),
@@ -80,6 +95,11 @@ try {
     $incontri = 0;
     foreach (Database::all("SELECT * FROM encounters WHERE stato <> 'concluso'") as $enc) {
         try {
+            // Gli incontri cominciati dal I.WO (dottrina, colleghi) li conduce
+            // lui: una decisione per battito, poi il passo.
+            if ((string) ($enc['condotta'] ?? 'comandante') === 'iwo') {
+                \App\Game\Dottrina::conduci((int) $enc['id']);
+            }
             Encounter::passoAutomatico((int) $enc['id']);
             $incontri++;
         } catch (\Throwable $e) {
@@ -115,8 +135,20 @@ try {
         }
     }
 
+    // I colleghi mossi dal motore: partono, pattugliano, segnalano, rientrano.
+    $colleghi = $fase('colleghi', static fn (): array => \App\Game\Colleghi::mantieni(World::now()), ['in_servizio' => 0]);
+
+    // La dottrina d'ingaggio: dove il comandante non c'e' e c'e' un bersaglio
+    // a portata, il I.WO da' battaglia. Dopo l'avanzamento, cosi' guarda i
+    // contatti di adesso.
+    $dottrina = $fase('dottrina', static fn (): array => \App\Game\Dottrina::cerca(World::now()), ['aperti' => 0]);
+
     // Manutenzione leggera: i freni scaduti non servono a nessuno.
     $fase('freni', static function (): array { \App\Core\RateLimiter::gc(); return []; }, []);
+
+    // Avvisi per posta: quello che e' successo in mare a chi non c'e'. Prima
+    // della posta, cosi' il messaggio parte in questo stesso battito.
+    $avvisi = $fase('avvisi', static fn (): array => \App\Game\Avvisi::smista(), ['inviati' => 0]);
 
     // Posta in uscita: qualche messaggio per battito. Chi non e' partito al
     // primo colpo riparte da qui, con attesa crescente (audit A6).
@@ -134,6 +166,7 @@ try {
                 'DELETE FROM tick_runs WHERE started_at < DATE_SUB(NOW(), INTERVAL 30 DAY) LIMIT 5000'
             )->rowCount();
             \App\Core\Posta::pota(30);
+            Database::run('DELETE FROM avvisi WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY) LIMIT 5000');
 
             // Le trasmissioni dei battelli che non ci sono piu'. La chiave
             // esterna azzera boat_id invece di portarsi via la riga, cosi' un
@@ -178,6 +211,12 @@ try {
                 'potate_entita'  => $potato['entita'] ?? 0,
                 'potate_corse'   => $potato['corse'] ?? 0,
                 'potati_contatti' => $potato['contatti'] ?? 0,
+                'avvisi'         => $avvisi['inviati'],
+                'colleghi'       => $colleghi['in_servizio'],
+                'iwo_attacchi'   => $dottrina['aperti'],
+                'convogli_deviati' => $ammiragliato['deviati'],
+                'bdienst'        => $ammiragliato['decifrati'],
+                'mine_colpite'   => $mine['colpite'],
                 'posta_inviata'  => $posta['inviati'],
                 'posta_in_coda'  => $fase('conteggio posta',
                     static fn (): array => \App\Core\Posta::stato(), ['in_coda' => 0])['in_coda'],

@@ -118,7 +118,7 @@ $statoPrima = [
 ];
 $apertoPrima = Encounter::corrente((int) $boat['id']);
 
-$p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+$p = Traffic::pos($cv, $gts);
 $encId = null;
 
 try {
@@ -233,7 +233,7 @@ if ($cv === null || $boat === null) {
     $encId = null;
     $condannataId = null;
     try {
-        $p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+        $p = Traffic::pos($cv, $gts);
         Database::run('UPDATE boats SET lat = ?, lon = ? WHERE id = ?', [$p['lat'], $p['lon'], (int) $boat['id']]);
         $boat = Database::first('SELECT * FROM boats WHERE id = ?', [(int) $boat['id']]);
 
@@ -301,8 +301,7 @@ if ($cv === null || $boat === null) {
         // battello a venti miglia per rompere il contatto, e da li' un incontro
         // nuovo si chiuderebbe al primo passo.
         $adesso = World::now();
-        $pc = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'],
-            $adesso, (float) $cv['deviazione']);
+        $pc = Traffic::pos($cv, $adesso);
         if ($pc !== null) {
             Database::run('UPDATE boats SET lat = ?, lon = ?, est_lat = ?, est_lon = ? WHERE id = ?',
                 [$pc['lat'], $pc['lon'], $pc['lat'], $pc['lon'], (int) $boat['id']]);

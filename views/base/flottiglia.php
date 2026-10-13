@@ -104,6 +104,42 @@
   </p>
 </div>
 
+<div class="pannello"<?= (int) $totali['n'] === 0 && $addestramenti === [] ? ' style="border-left:3px solid var(--ambra)"' : '' ?> id="agru">
+  <h2>Addestramento tattico — Agru-Front</h2>
+  <p class="sommario">
+    Nessun comandante andava al fronte senza essere passato dall'Agru-Front, nel Baltico: un convoglio
+    d'esercitazione nella baia di Danzica, vecchi piroscafi in colonna e due cacciasommergibili della
+    scuola a fare la scorta. Si attacca davvero, dalla stazione d'attacco, ma con la testa d'esercitazione
+    nei siluri; le cariche degli UJ sono di segnalazione, e l'istruttore conta quello che in guerra
+    sarebbero costate. Alla fine giudica avvicinamento, tiro e disimpegno.
+  </p>
+  <p class="aiuto">
+    Dura quanto un attacco: il convoglio arriva in pochi minuti. Siluri, nafta e viveri tornano come
+    prima, e non conta fra le missioni di guerra. Superato, l'equipaggio guadagna competenza<?= !$agruSuperato ? ', e il primo vale anche prestigio' : '' ?>.
+    <?= (int) $totali['n'] === 0 ? '<b>Prima di uscire in guerra per la prima volta, è il posto dove imparare la stazione d\'attacco.</b>' : '' ?>
+  </p>
+  <form method="post" action="<?= e(url('/addestramento')) ?>">
+    <?= csrf_field() ?>
+    <div class="azioni"><button type="submit"<?= (int) $totali['n'] === 0 ? '' : ' class="bottone--fantasma"' ?>>Partire per l'addestramento</button></div>
+  </form>
+  <?php if ($addestramenti !== []): ?>
+    <table class="dati" style="margin-top:.8rem">
+      <tr><th>Data</th><th>Giudizio</th><th>Il rapporto dell'istruttore</th></tr>
+      <?php foreach ($addestramenti as $a): ?>
+        <tr>
+          <td><?= e($clock->format((int) $a['finito_gts'])) ?></td>
+          <td><b><?= e((string) $a['giudizio']) ?></b></td>
+          <td style="color:var(--testo-2)"><?= e((string) $a['rapporto']) ?></td>
+        </tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endif; ?>
+</div>
+
+<?= partial('missione', ['boat' => $boat, 'offerte' => $offerte, 'attiva' => $missioneAttiva]) ?>
+
+<?= partial('dottrina', ['boat' => $boat]) ?>
+
 <?php if (!empty($affondamenti)): ?>
 <div class="pannello">
   <h2>Albo degli affondamenti</h2>
@@ -131,7 +167,7 @@
     <tr><th>N.</th><th>Partenza</th><th>Rientro</th><th>Miglia</th><th>Nafta</th><th>Stato</th><th></th></tr>
     <?php foreach ($patrols as $p): ?>
       <tr>
-        <td><?= e($p['number']) ?></td>
+        <td><?= (string) ($p['tipo'] ?? 'guerra') === 'addestramento' ? '<span title="Addestramento, Agru-Front">A</span>' : e($p['number']) ?></td>
         <td><?= e($clock->format((int) $p['departed_gts'])) ?></td>
         <td><?= $p['returned_gts'] !== null ? e($clock->format((int) $p['returned_gts'])) : '—' ?></td>
         <td><?= e(number_format((float) $p['distance_nm'], 0, ',', '.')) ?></td>

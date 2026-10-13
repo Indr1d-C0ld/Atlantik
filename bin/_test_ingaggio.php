@@ -102,7 +102,7 @@ if ($cv === null) {
     exit(1);
 }
 
-$p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+$p = Traffic::pos($cv, $gts);
 [$lat, $lon] = Geo::destination($p['lat'], $p['lon'], Geo::normBearing($p['heading'] + 40), 4.0);
 
 Database::run(

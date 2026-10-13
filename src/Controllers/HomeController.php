@@ -45,6 +45,15 @@ final class HomeController
         ]));
     }
 
+    /** Il manuale del comandante: pubblico, perche' chi non gioca ancora possa capire che gioco e'. */
+    public function manuale(Request $request): Response
+    {
+        return Response::html(view('manuale', [
+            'title'  => 'Manuale del comandante',
+            'dentro' => Auth::check() && Auth::status() === 'active',
+        ]));
+    }
+
     /** Sonda di servizio: usata dal monitoraggio e dal tick per sapere se l'app e' viva. */
     public function health(Request $request): Response
     {

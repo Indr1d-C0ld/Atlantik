@@ -34,7 +34,8 @@ use App\Game\Carriera;
 
   <table class="dati" style="margin-top:1rem">
     <tr><th>Battelli in mare</th><td><?= e($stat['battelli_in_mare']) ?> su <?= e($stat['battelli']) ?></td>
-        <th>Comandanti in servizio</th><td><?= e($stat['comandanti_attivi']) ?></td></tr>
+        <th>Comandanti in servizio</th><td><?= e($stat['comandanti_attivi']) ?><?= (int) ($stat['colleghi'] ?? 0) > 0
+          ? ' <span style="color:var(--testo-3)">(di cui ' . e((string) $stat['colleghi']) . ' colleghi del motore)</span>' : '' ?></td></tr>
     <tr><th>Fascicoli chiusi</th><td><?= e($stat['fascicoli_chiusi']) ?></td>
         <th>Missioni compiute</th><td><?= e($stat['patrol']) ?></td></tr>
     <tr><th>Miglia percorse</th><td><?= e(number_format((float) $stat['miglia'], 0, ',', '.')) ?></td>
@@ -72,7 +73,7 @@ use App\Game\Carriera;
       <?php foreach ($classifica as $i => $c): ?>
         <tr>
           <td><?= $i + 1 ?></td>
-          <td><?= e($c['nome']) ?> <span style="color:var(--testo-3)">(<?= e($c['username']) ?>)</span></td>
+          <td><?= e($c['nome']) ?> <span style="color:var(--testo-3)">(<?= ($c['role'] ?? '') === 'motore' ? 'collega del motore' : e($c['username']) ?>)</span></td>
           <td><?= e(Carriera::gradoNome((int) $c['grado'])) ?></td>
           <td><?= e($c['patrols']) ?></td>
           <td><?= e($c['affondate']) ?></td>

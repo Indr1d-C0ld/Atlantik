@@ -100,7 +100,7 @@ $boatId = (int) $boat['id'];
 $encId = null;
 
 try {
-    $p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+    $p = Traffic::pos($cv, $gts);
     Database::run('UPDATE boats SET state = "mare", lat = ?, lon = ?, est_lat = ?, est_lon = ? WHERE id = ?',
         [$p['lat'], $p['lon'], $p['lat'], $p['lon'], $boatId]);
     $boat = Database::first('SELECT * FROM boats WHERE id = ?', [$boatId]);

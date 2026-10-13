@@ -46,6 +46,39 @@ final class RifinituraController
      * Esporta il giornale di guerra come file di testo: e' un documento, e un
      * documento si deve poter portare via.
      */
+    /** Pubblica il giornale di una missione conclusa: un collegamento da dare a chi si vuole. */
+    public function pubblicaKtb(Request $request, string $id): Response
+    {
+        $res = \App\Game\GiornalePubblico::pubblica((int) Auth::id(), (int) $id);
+        Session::flash($res['ok'] ? 'success' : 'error', $res['ok']
+            ? 'Giornale pubblicato. Il collegamento e\' qui sotto: chi lo ha puo\' leggerlo, anche senza essere arruolato.'
+            : ($res['error'] ?? 'Non riuscito.'));
+        return redirect('/ktb?patrol=' . (int) $id);
+    }
+
+    public function ritiraKtb(Request $request, string $id): Response
+    {
+        \App\Game\GiornalePubblico::ritira((int) Auth::id(), (int) $id);
+        Session::flash('success', 'Giornale ritirato: il collegamento non funziona piu\'.');
+        return redirect('/ktb?patrol=' . (int) $id);
+    }
+
+    /** La pagina pubblica del giornale: niente accesso richiesto, solo il gettone. */
+    public function giornale(Request $request, string $token): Response
+    {
+        $d = \App\Game\GiornalePubblico::dati($token);
+        if ($d === null) {
+            return Response::html(view('errors/generic', [
+                'title' => 'Giornale non trovato', 'status' => 404,
+                'message' => 'Questo giornale di guerra non c\'e\', o il suo comandante l\'ha ritirato.',
+            ]), 404);
+        }
+        return Response::html(view('pubblico/giornale', $d + [
+            'title' => 'Kriegstagebuch ' . ($d['boat']['uboat_number'] ?? ''),
+            'clock' => World::clock(),
+        ]));
+    }
+
     public function esportaKtb(Request $request, string $id): Response
     {
         $user = Auth::user();
@@ -225,7 +258,7 @@ final class RifinituraController
         // c'e' piu' niente da contare.
         $comandanti = (int) (Database::first('SELECT COUNT(*) n FROM commanders WHERE user_id = ?', [$id])['n'] ?? 0);
         $battelli   = (int) (Database::first('SELECT COUNT(*) n FROM boats WHERE user_id = ?', [$id])['n'] ?? 0);
-        $missioni   = (int) (Database::first('SELECT COUNT(*) n FROM patrols WHERE user_id = ?', [$id])['n'] ?? 0);
+        $missioni   = (int) (Database::first("SELECT COUNT(*) n FROM patrols WHERE user_id = ? AND tipo = 'guerra'", [$id])['n'] ?? 0);
 
         \App\Support\Audit::log('admin.user_cancellato', (int) Auth::id(), 'user', $id, [
             'username'   => $nome,

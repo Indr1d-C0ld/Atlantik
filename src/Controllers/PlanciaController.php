@@ -337,9 +337,82 @@ final class PlanciaController
         return redirect('/zentrale');
     }
 
+    /** Missioni speciali: accettare un'offerta del BdU, rimetterla, compierla. */
+    public function missioneAccetta(Request $request): Response
+    {
+        $c = $this->ctx();
+        $res = \App\Game\MissioniSpeciali::accetta($c['boat'], $request->int('missione'));
+        Session::flash($res['ok'] ? 'success' : 'error', $res['ok']
+            ? 'Missione accettata: si parte con quella alla prossima uscita.' : ($res['error'] ?? 'Non riuscito.'));
+        return redirect('/base#missione');
+    }
+
+    public function missioneRinuncia(Request $request): Response
+    {
+        $c = $this->ctx();
+        $res = \App\Game\MissioniSpeciali::rinuncia($c['boat']);
+        Session::flash($res['ok'] ? 'success' : 'error', $res['ok'] ? 'Missione rimessa al BdU.' : ($res['error'] ?? 'Non riuscito.'));
+        return redirect('/base#missione');
+    }
+
+    public function missioneEsegui(Request $request): Response
+    {
+        $c = $this->ctx();
+        $res = \App\Game\MissioniSpeciali::esegui($c['boat'], World::now());
+        Session::flash($res['ok'] ? 'success' : 'error', $res['ok'] ? (string) $res['testo'] : ($res['error'] ?? 'Non riuscito.'));
+        return redirect('/zentrale#missione');
+    }
+
+    /** I naufraghi: dare la rotta, o prendere a bordo il comandante della nave. */
+    public function naufraghi(Request $request): Response
+    {
+        $c = $this->ctx();
+        $id = $request->int('naufraghi');
+        $res = $request->str('azione') === 'comandante'
+            ? \App\Game\Naufraghi::prendiComandante($c['boat'], $id, World::now())
+            : \App\Game\Naufraghi::aiuta($c['boat'], $id, World::now());
+        Session::flash($res['ok'] ? 'success' : 'error', $res['ok'] ? (string) $res['testo'] : ($res['error'] ?? 'Non riuscito.'));
+        return redirect('/zentrale#naufraghi');
+    }
+
+    /** La dottrina d'ingaggio: che cosa il I.WO puo' attaccare da solo. */
+    public function dottrina(Request $request): Response
+    {
+        $c = $this->ctx();
+        $res = \App\Game\Dottrina::imposta((int) $c['boat']['id'], $request->str('dottrina'));
+        if (!$res['ok']) {
+            Session::flash('error', $res['error'] ?? 'Dottrina non valida.');
+        } else {
+            Session::flash('success', 'Ordine lasciato al I.WO: '
+                . \App\Game\Dottrina::DOTTRINE[$request->str('dottrina')]['spiega'] . '.');
+        }
+        return redirect((string) $c['boat']['state'] === 'mare' ? '/zentrale#dottrina' : '/base#dottrina');
+    }
+
+    /** Si parte per il Baltico: l'addestramento tattico dell'Agru-Front. */
+    public function addestramento(Request $request): Response
+    {
+        $c = $this->ctx();
+        $res = \App\Game\Addestramento::parti($c['boat']);
+        if (!$res['ok']) {
+            Session::flash('error', $res['error'] ?? 'Addestramento non disponibile.');
+            return redirect('/base');
+        }
+        Session::flash('success', 'Trasferiti nel Baltico. Il convoglio d\'esercitazione e\' in arrivo e il contatto e\' gia\' in mano: si ingaggia dall\'ascolto.');
+        return redirect('/zentrale');
+    }
+
     public function rientro(Request $request): Response
     {
         $c = $this->ctx();
+        // In addestramento non si entra in porto: si chiude l'esercitazione, e
+        // l'istruttore giudica quello che c'e' da giudicare.
+        if ($c['patrol'] !== null && (string) ($c['patrol']['tipo'] ?? 'guerra') === 'addestramento') {
+            \App\Game\Addestramento::interrompi($c['boat']);
+            $a = Database::first('SELECT giudizio FROM addestramenti WHERE patrol_id = ?', [(int) $c['patrol']['id']]);
+            Session::flash('info', 'Esercitazione chiusa. Giudizio dell\'istruttore: ' . (string) ($a['giudizio'] ?? '—') . '.');
+            return redirect('/base');
+        }
         $res = \App\Game\Patrol::dock($c['boat']);
         if (!$res['ok']) {
             Session::flash('error', $res['error'] ?? 'Rientro non riuscito.');
@@ -447,6 +520,10 @@ final class PlanciaController
         $fermo = $this->soloInMare($c, 'Il carteggio della rotta');
         if ($fermo !== null) {
             return $fermo;
+        }
+        if ($c['patrol'] !== null && (string) ($c['patrol']['tipo'] ?? 'guerra') === 'addestramento') {
+            Session::flash('info', 'Dal Baltico non si torna navigando: finita l\'esercitazione, il battello rientra da se\'.');
+            return redirect('/carta');
         }
         $r = Patrol::rottaBase($c['boat']);
         if (!$r['trovata']) {

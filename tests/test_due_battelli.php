@@ -89,8 +89,7 @@ if ($cv === null) {
     echo "\n\033[0;32mTutte le verifiche superate.\033[0m\n";
     exit(0);
 }
-$pos = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'],
-    $gts, (float) $cv['deviazione']);
+$pos = Traffic::pos($cv, $gts);
 
 titolo('Due battelli, un convoglio');
 

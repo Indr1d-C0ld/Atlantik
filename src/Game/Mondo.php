@@ -48,7 +48,7 @@ final class Mondo
             'isolate'    => $navi - $inConvoglio,
             'in_convoglio' => $inConvoglio,
             'scorte'     => $uno("SELECT COUNT(*) n FROM ships WHERE state = 'in_mare' AND ruolo = 'scorta'"),
-            'convogli'   => $uno("SELECT COUNT(*) n FROM convoys WHERE state = 'in_mare'"),
+            'convogli'   => $uno("SELECT COUNT(*) n FROM convoys WHERE state = 'in_mare' AND esercitazione = 0"),
             'affondate'  => $uno("SELECT COUNT(*) n FROM ships WHERE state = 'affondata'"),
             'grt_in_mare' => (int) (Database::first("SELECT COALESCE(SUM(grt),0) n FROM ships WHERE state = 'in_mare'")['n'] ?? 0),
             'battelli'   => $uno("SELECT COUNT(*) n FROM boats WHERE state <> 'perduto'"),
@@ -127,7 +127,7 @@ final class Mondo
                FROM convoys c WHERE c.state = 'in_mare' AND c.departed_gts <= ? AND c.eta_gts >= ?",
             [$gts, $gts]
         ) as $c) {
-            $p = Traffic::posizione((string) $c['rotta_key'], (float) $c['speed_kn'], (int) $c['departed_gts'], $gts, (float) $c['deviazione']);
+            $p = Traffic::pos($c, $gts);
             if ($p === null) {
                 continue;
             }
@@ -148,11 +148,11 @@ final class Mondo
 
         $navi = [];
         foreach (Database::all(
-            "SELECT id, name, flag, class_key, ruolo, rotta_key, speed_kn, departed_gts, grt, integrita, ritardataria, convoy_id
+            "SELECT id, name, flag, class_key, ruolo, rotta_key, speed_kn, departed_gts, grt, integrita, ritardataria, convoy_id, deviazione
                FROM ships WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ? AND convoy_id IS NULL",
             [$gts, $gts]
         ) as $s) {
-            $p = Traffic::posizione((string) $s['rotta_key'], (float) $s['speed_kn'], (int) $s['departed_gts'], $gts);
+            $p = Traffic::pos($s, $gts);
             if ($p === null) {
                 continue;
             }

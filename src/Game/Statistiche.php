@@ -18,14 +18,19 @@ final class Statistiche
             "SELECT COUNT(*) n, SUM(state='mare') mare, SUM(state='perduto') persi FROM boats"
         );
         $cmd = Database::first(
-            "SELECT COUNT(*) n, SUM(stato='attivo') attivi, SUM(stato<>'attivo') chiusi FROM commanders"
+            "SELECT COUNT(*) n, SUM(c.stato='attivo') attivi, SUM(c.stato<>'attivo') chiusi,
+                    SUM(c.stato='attivo' AND u.role = 'motore') colleghi
+               FROM commanders c JOIN users u ON u.id = c.user_id"
         );
         $traffico = Traffic::stato($gts);
         $patrol = Database::first(
-            "SELECT COUNT(*) n, COALESCE(SUM(distance_nm),0) nm, COALESCE(SUM(siluri_lanciati),0) siluri FROM patrols"
+            "SELECT COUNT(*) n, COALESCE(SUM(distance_nm),0) nm, COALESCE(SUM(siluri_lanciati),0) siluri FROM patrols WHERE tipo = 'guerra'"
         );
         $colpi = Database::first(
-            "SELECT COUNT(*) n, SUM(esito='colpito') colpiti FROM torpedo_runs"
+            "SELECT COUNT(*) n, SUM(t.esito='colpito') colpiti FROM torpedo_runs t
+               JOIN encounters e ON e.id = t.encounter_id
+               LEFT JOIN patrols p ON p.id = e.patrol_id
+              WHERE COALESCE(p.tipo, 'guerra') = 'guerra'"
         );
 
         $persi = (int) ($battelli['persi'] ?? 0);
@@ -41,6 +46,7 @@ final class Statistiche
             'scambio'          => $persi > 0 ? (int) round($grt / $persi) : null,
             'comandanti'       => (int) ($cmd['n'] ?? 0),
             'comandanti_attivi'=> (int) ($cmd['attivi'] ?? 0),
+            'colleghi'         => (int) ($cmd['colleghi'] ?? 0),
             'fascicoli_chiusi' => (int) ($cmd['chiusi'] ?? 0),
             'patrol'           => (int) ($patrol['n'] ?? 0),
             'miglia'           => (float) ($patrol['nm'] ?? 0),
@@ -60,7 +66,7 @@ final class Statistiche
     public static function classifica(int $limite = 20): array
     {
         return Database::all(
-            "SELECT c.nome, c.grado, c.stato, c.patrols, c.affondate, c.grt_affondato, c.segnalazioni, u.username
+            "SELECT c.nome, c.grado, c.stato, c.patrols, c.affondate, c.grt_affondato, c.segnalazioni, u.username, u.role
              FROM commanders c JOIN users u ON u.id = c.user_id
              WHERE c.grt_affondato > 0 OR c.patrols > 0
              ORDER BY c.grt_affondato DESC LIMIT " . max(1, min(100, $limite))

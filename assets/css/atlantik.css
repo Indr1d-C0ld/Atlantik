@@ -357,6 +357,8 @@ button:active { transform: translateY(1px); }
 .elenco-lavori li::before { content: "□"; position: absolute; left: .3rem; color: var(--testo-3); }
 .elenco-lavori li.fatto { color: var(--testo); }
 .elenco-lavori li.fatto::before { content: "■"; color: var(--verde); }
+.elenco-avvisi { list-style: none; padding: 0; margin: .4rem 0 0; font-size: .9rem; }
+.elenco-avvisi li { padding: .45rem 0; border-bottom: 1px solid var(--acciaio-2); color: var(--testo-2); }
 
 /* --- Pie' di pagina -------------------------------------------------------- */
 
@@ -1000,4 +1002,47 @@ footer {
   .pannello, .strumento, .nav-plancia {
     overscroll-behavior-x: contain;
   }
+}
+
+/* Manuale del comandante */
+.manuale p, .manuale li { line-height: 1.6; color: var(--testo-2); max-width: 46rem; }
+.manuale p b, .manuale li b { color: var(--testo); }
+.manuale ol { padding-left: 1.3rem; }
+.manuale li { margin-bottom: .5rem; }
+.indice-manuale { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin-top: .8rem; font-size: .88rem; }
+
+/* Il giornale di guerra pubblico: un documento, non una plancia. */
+.ktb-documento { max-width: 60rem; margin: 0 auto 2rem; padding: 2rem 2.2rem; background: #efe8d8; color: #2a2620;
+  border: 1px solid #c9bfa6; box-shadow: 0 2px 18px rgba(0,0,0,.35); font-family: var(--mono); }
+.ktb-documento h1 { font-family: var(--mono); color: #1d1a15; letter-spacing: .06em; text-transform: uppercase; margin: .2rem 0; }
+.ktb-documento h2 { font-family: var(--mono); color: #1d1a15; font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; margin: 1.6rem 0 .5rem; }
+.ktb-documento a { color: #6b2a1e; }
+.ktb-segreto { color: #8a2a1e; font-size: .75rem; text-transform: uppercase; letter-spacing: .15em; margin: 0; }
+.ktb-sotto { margin: 0 0 1rem; color: #5a5245; }
+.ktb-nota { color: #6f675a; font-size: .85em; }
+.ktb-scheda, .ktb-tabella { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.ktb-scheda th, .ktb-scheda td { text-align: left; padding: .25rem .5rem; border-bottom: 1px dotted #b8ad93; }
+.ktb-scheda th { color: #6f675a; font-weight: normal; white-space: nowrap; }
+.ktb-tabella th { text-align: left; border-bottom: 2px solid #2a2620; padding: .3rem .4rem; font-weight: normal; text-transform: uppercase; font-size: .72rem; letter-spacing: .06em; }
+.ktb-tabella td { vertical-align: top; padding: .35rem .4rem; border-bottom: 1px solid #d6ccb4; }
+.ktb-tabella .ktb-ora { white-space: nowrap; }
+.ktb-tabella tr.ktb-rilievo td { background: rgba(138,42,30,.07); }
+.ktb-figura { margin: 1.2rem 0; }
+.ktb-figura figcaption { font-size: .75rem; color: #6f675a; margin-top: .3rem; }
+.ktb-carta { width: 100%; height: auto; border: 1px solid #b8ad93; }
+.ktb-carta-mare { fill: #dfe6e4; }
+.ktb-carta-coste polygon { fill: #cdbf9d; stroke: #8f8166; stroke-width: .6; }
+.ktb-carta-rotta { fill: none; stroke: #8a2a1e; stroke-width: 1.6; stroke-dasharray: 5 3; }
+.ktb-carta-base { fill: #1d1a15; }
+.ktb-carta-croci path { stroke: #1d1a15; stroke-width: 2; }
+.ktb-giudizio { line-height: 1.6; }
+.ktb-piede { margin-top: 2rem; font-size: .75rem; color: #6f675a; border-top: 1px solid #b8ad93; padding-top: .6rem; }
+.ktb-pubblica { margin-top: .8rem; }
+@media (max-width: 640px) {
+  .ktb-documento { padding: 1.1rem .9rem; }
+  .ktb-tabella { display: block; overflow-x: auto; }
+  /* La scheda a quattro colonne diventa a due: etichetta e valore. */
+  .ktb-scheda, .ktb-scheda tbody { display: block; }
+  .ktb-scheda tr { display: grid; grid-template-columns: 9rem minmax(0, 1fr); }
+  .ktb-scheda th, .ktb-scheda td { display: block; }
 }

@@ -1,5 +1,6 @@
 <?php
-/** @var array $cmd  @var ?array $ritratto  @var list $catalogo  @var string $azione  @var bool $admin */
+/** @var array $cmd  @var ?array $ritratto  @var list $catalogo  @var string $azione  @var bool $admin  @var ?array $avvisi */
+use App\Game\Avvisi;
 use App\Game\Ritratto;
 
 $id = (int) $cmd['id'];
@@ -60,6 +61,49 @@ $presi  = count($catalogo) - $liberi;
     </div>
   </div>
 </div>
+
+<?php if (!$admin && isset($avvisi)): ?>
+<div class="pannello" style="margin-top:1.2rem" id="avvisi">
+  <h2>Avvisi per posta</h2>
+  <p class="sommario">
+    Il mare non aspetta che tu sia collegato: un convoglio passa, e se nessuno gli dà battaglia
+    passa e basta. Se vuoi, il BdU ti scrive a <b><?= e($avvisi['email']) ?></b> quando succede
+    qualcosa. Non ti scrive quando sei già alla console, e non più di una volta ogni mezz'ora per
+    la stessa cosa: quello che succede nel frattempo arriva tutto insieme nel messaggio dopo.
+  </p>
+  <form method="post" action="<?= e(url('/comandante/avvisi')) ?>">
+    <?= csrf_field() ?>
+    <?php foreach (Avvisi::CATEGORIE as $cat => $c): ?>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:.5rem;text-transform:none;letter-spacing:0;color:var(--testo)">
+          <input type="checkbox" name="avviso_<?= e($cat) ?>" value="1"
+                 <?= ($avvisi['pref'][Avvisi::chiave($cat)] ?? 'no') === 'si' ? 'checked' : '' ?>>
+          <?= e($c['nome']) ?>
+        </label>
+        <p class="aiuto"><?= e(ucfirst($c['spiega'])) ?>.</p>
+      </div>
+    <?php endforeach; ?>
+    <button type="submit">Salva</button>
+  </form>
+  <?php if ($avvisi['ultimi'] !== []): ?>
+    <h3 style="margin-top:1.2rem">Gli ultimi</h3>
+    <ul class="elenco-avvisi">
+      <?php foreach ($avvisi['ultimi'] as $a):
+          $sorte = match (true) {
+              $a['inviato_at'] !== null   => 'mandato alle ' . fmt_dt($a['inviato_at']),
+              $a['saltato'] === 'spento'   => 'non mandato: categoria spenta',
+              $a['saltato'] === 'presente' => 'non mandato: eri alla console',
+              $a['saltato'] === 'tetto'    => 'non mandato: già dodici messaggi oggi',
+              $a['saltato'] === 'scaduto'  => 'non mandato: troppo vecchio per servire',
+              $a['saltato'] !== null       => 'non mandato: ' . (string) $a['saltato'],
+              default                      => 'in attesa',
+          }; ?>
+        <li><span class="aiuto"><?= e(Avvisi::CATEGORIE[$a['categoria']]['nome'] ?? '') ?> · <?= e($sorte) ?></span><br><?= e($a['testo']) ?></li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <div class="pannello" style="margin-top:1.2rem">
   <h2>Una fotografia portata da casa</h2>

@@ -24,6 +24,10 @@ final class Preferenze
             'valori'  => ['piena', 'essenziale'],
             'difetto' => 'piena',
         ],
+        // Avvisi per posta (Avvisi): spenti finche' il giocatore non li chiede.
+        'avvisi.contatti' => ['valori' => ['no', 'si'], 'difetto' => 'no'],
+        'avvisi.pericoli' => ['valori' => ['no', 'si'], 'difetto' => 'no'],
+        'avvisi.bdu'      => ['valori' => ['no', 'si'], 'difetto' => 'no'],
     ];
 
     /** @return array<string,string> */

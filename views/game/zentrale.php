@@ -11,6 +11,14 @@ $classe = static fn (float $p): string => $p <= 12 ? 'allarme' : ($p <= 30 ? 'at
 <?= partial('nav_plancia', ['attiva' => 'zentrale']) ?>
 <?= partial('intestazione_battello', compact('boat', 'type', 'clock', 'now')) ?>
 
+<?php if ((string) ($patrol['tipo'] ?? 'guerra') === 'addestramento'): ?>
+<p class="guida guida--normale" style="margin:0 0 1rem">
+  <b>Addestramento, Agru-Front.</b> Il convoglio d'esercitazione è già in contatto, e passa in pochi minuti:
+  <a href="<?= e(url(\App\Sim\Encounter::corrente((int) $boat['id']) !== null ? '/attacco' : '/contatti')) ?>">si dà battaglia da qui</a>. Teste d'esercitazione nei siluri,
+  cariche di segnalazione dagli UJ. Finito l'attacco, l'istruttore giudica e il battello rientra in base.
+</p>
+<?php endif; ?>
+
 <div data-plancia data-stato-url="<?= e(url('/api/stato')) ?>" data-intervallo="30000">
 <div class="griglia-plancia">
 
@@ -145,10 +153,42 @@ $classe = static fn (float $p): string => $p <= 12 ? 'allarme' : ($p <= 30 ? 'at
     <a class="bottone bottone--fantasma" href="<?= e(url('/ktb')) ?>">Giornale completo</a>
     <form method="post" action="<?= e(url('/rientro')) ?>" style="display:inline">
       <?= csrf_field() ?>
-      <button type="submit" class="bottone--fantasma">Entrare in porto</button>
+      <button type="submit" class="bottone--fantasma"><?= (string) ($patrol['tipo'] ?? 'guerra') === 'addestramento' ? 'Chiudere l\'esercitazione' : 'Entrare in porto' ?></button>
     </form>
   </div>
 </div>
 </div>
+
+<?php $scialuppe = \App\Game\Naufraghi::inVista($boat, $now); ?>
+<?php if ($scialuppe !== []): ?>
+<div class="pannello" id="naufraghi" style="margin-top:1.2rem">
+  <h2>Scialuppe in vista</h2>
+  <p class="sommario">
+    Quello che resta delle navi affondate. Che cosa farne lo decide il comandante: dare la rotta per terra,
+    acqua e gallette — costa viveri, e fermarsi in superficie sul punto di un affondamento è il modo più
+    sicuro di farsi trovare —, prendere a bordo il comandante della nave, o andarsene.
+  </p>
+  <?php foreach ($scialuppe as $n): $manca = \App\Game\Naufraghi::manca($boat, $n); ?>
+    <form method="post" action="<?= e(url('/naufraghi')) ?>" class="campo" style="border-top:1px solid var(--acciaio-2);padding-top:.6rem">
+      <?= csrf_field() ?>
+      <input type="hidden" name="naufraghi" value="<?= e((string) $n['id']) ?>">
+      <p style="margin:.2rem 0"><b><?= e($n['nave']) ?></b>: <?= e((string) $n['nelle_scialuppe']) ?> uomini su
+        <?= e(plurale((int) $n['scialuppe'], 'una scialuppa', '%d scialuppe')) ?>, a <?= e(number_format((float) $n['distanza'], 1, ',', '')) ?> miglia.</p>
+      <?php if ($manca !== []): ?><p class="aiuto">Prima: <?= e(implode('; ', $manca)) ?>.</p><?php endif; ?>
+      <div class="azioni">
+        <button type="submit" name="azione" value="aiuta" class="bottone--fantasma"<?= $manca !== [] || (int) $n['aiutati'] === 1 ? ' disabled' : '' ?>>Dare la rotta, acqua e gallette</button>
+        <button type="submit" name="azione" value="comandante" class="bottone--fantasma"<?= $manca !== [] || (int) $n['comandante_preso'] === 1 ? ' disabled' : '' ?>>Prendere a bordo il comandante</button>
+      </div>
+    </form>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php $situazione = \App\Game\MissioniSpeciali::situazione($boat, $now); ?>
+<?php if ($situazione !== null): ?>
+<?= partial('missione', ['boat' => $boat, 'situazione' => $situazione]) ?>
+<?php endif; ?>
+
+<?= partial('dottrina', ['boat' => $boat]) ?>
 
 <script src="<?= e(asset('js/plancia.js')) ?>" defer></script>

@@ -129,6 +129,12 @@ App\Core\Database::run(
 echo $cid, " ", App\Core\Database::lastInsertId(), " ", (int) $u["id"];' "${UT_ATT}")
 read -r ID_CMD ID_PATROL ID_UTENTE <<< "${ID_CMD}"
 
+# Il giornale pubblico vuole un gettone vero: si pubblica la missione conclusa
+# appena creata, e l'ospite deve poterla leggere.
+TOKEN_GIORNALE=$(php -r '
+require "'"${ROOT}"'/bin/_bootstrap.php";
+echo App\Game\GiornalePubblico::pubblica((int) $argv[1], (int) $argv[2])["token"] ?? "";' "${ID_UTENTE}" "${ID_PATROL}")
+
 # --- che cosa si pretende, e in che direzione --------------------------------
 #
 # La domanda che conta non e' "il giocatore legittimo vede la pagina?" — quello
@@ -163,6 +169,7 @@ while read -r ROTTA MW; do
   URL="${ROTTA}"
   case "${ROTTA}" in
     /rapporto/*|/ktb/*)      URL="${ROTTA//\{id\}/${ID_PATROL}}" ;;
+    /giornale/*)             URL="${ROTTA//\{token\}/${TOKEN_GIORNALE}}" ;;
     /admin/utente/*)         URL="${ROTTA//\{id\}/${ID_UTENTE}}" ;;
     *\{id\}*)                URL="${ROTTA//\{id\}/${ID_CMD}}" ;;
   esac

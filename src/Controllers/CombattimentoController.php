@@ -30,6 +30,12 @@ final class CombattimentoController
         $boat = Fleet::ensureBoat((int) $user['id']);
         $enc  = Encounter::corrente((int) $boat['id']);
 
+        // Il comandante e' alla stazione d'attacco: se l'incontro l'aveva
+        // cominciato il I.WO secondo la dottrina, il comando torna a lui.
+        if ($enc !== null && \App\Game\Dottrina::riprendi($enc, $boat)) {
+            $enc = Encounter::corrente((int) $boat['id']);
+        }
+
         // Se c'e' un incontro in corso, il tempo lo fa scorrere lui.
         if ($enc !== null) {
             Encounter::step((int) $enc['id']);

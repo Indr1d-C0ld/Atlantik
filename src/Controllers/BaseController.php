@@ -51,7 +51,7 @@ final class BaseController
         $totali = Database::first(
             'SELECT COUNT(*) n, COALESCE(SUM(distance_nm),0) nm, COALESCE(SUM(fuel_used_t),0) t,
                     COALESCE(MAX(max_depth_m),0) q, COALESCE(SUM(siluri_lanciati),0) siluri
-             FROM patrols WHERE boat_id = ? AND state <> "in_corso"',
+             FROM patrols WHERE boat_id = ? AND state <> "in_corso" AND tipo = "guerra"',
             [(int) $boat['id']]
         );
         $bottino = Database::first(
@@ -90,6 +90,14 @@ final class BaseController
                 'SELECT * FROM sinkings WHERE boat_id = ? ORDER BY gts DESC LIMIT 12', [(int) $boat['id']]
             ),
             'cmd'       => $cmd,
+            'addestramenti' => \App\Game\Addestramento::storia((int) $cmd['id'], 3),
+            // Le offerte si scrivono qui, non nella vista: una vista non scrive.
+            'offerte'   => \App\Game\MissioniSpeciali::offerte($boat, World::now()),
+            'missioneAttiva' => \App\Game\MissioniSpeciali::attiva((int) $boat['id']),
+            'agruSuperato' => (int) (Database::first(
+                "SELECT COUNT(*) n FROM addestramenti WHERE commander_id = ? AND giudizio IN ('ottimo','buono','sufficiente')",
+                [(int) $cmd['id']]
+            )['n'] ?? 0) > 0,
             'grado'     => \App\Game\Carriera::gradoNome((int) $cmd['grado']),
             'clock'     => World::clock(),
             'now'       => World::now(),

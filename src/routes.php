@@ -20,6 +20,7 @@ use App\Core\Router;
 
 // Pubbliche
 $router->get('/', [HomeController::class, 'index']);
+$router->get('/manuale', [HomeController::class, 'manuale']);
 $router->get('/health', [HomeController::class, 'health']);
 
 // Arruolamento e verifica dell'indirizzo
@@ -58,6 +59,7 @@ $router->post('/comandante/ritratto', [ProfiloController::class, 'scegli'], ['ac
 $router->post('/comandante/ritratto/carica', [ProfiloController::class, 'carica'], ['active', 'throttle']);
 $router->post('/comandante/ritratto/togli', [ProfiloController::class, 'togli'], ['active', 'throttle']);
 $router->post('/comandante/nota', [ProfiloController::class, 'nota'], ['active', 'throttle']);
+$router->post('/comandante/avvisi', [ProfiloController::class, 'avvisi'], ['active', 'throttle']);
 
 // Base di flottiglia
 $router->get('/base', [BaseController::class, 'index'], ['active']);
@@ -78,6 +80,12 @@ $router->post('/rotta/anteprima', [PlanciaController::class, 'rottaAnteprima'], 
 $router->post('/rotta/base', [PlanciaController::class, 'rottaBase'], ['active', 'throttle']);
 $router->post('/carta/stile', [PlanciaController::class, 'preferenzaCarta'], ['active', 'throttle']);
 $router->post('/rientro', [PlanciaController::class, 'rientro'], ['active', 'throttle']);
+$router->post('/addestramento', [PlanciaController::class, 'addestramento'], ['active', 'throttle']);
+$router->post('/dottrina', [PlanciaController::class, 'dottrina'], ['active', 'throttle']);
+$router->post('/missione/accetta', [PlanciaController::class, 'missioneAccetta'], ['active', 'throttle']);
+$router->post('/missione/rinuncia', [PlanciaController::class, 'missioneRinuncia'], ['active', 'throttle']);
+$router->post('/missione/esegui', [PlanciaController::class, 'missioneEsegui'], ['active', 'throttle']);
+$router->post('/naufraghi', [PlanciaController::class, 'naufraghi'], ['active', 'throttle']);
 
 // Battello ed equipaggio
 $router->get('/battello', [BattelloController::class, 'battello'], ['active']);
@@ -120,6 +128,9 @@ $router->get('/statistiche', [RadioController::class, 'statistiche']);
 // Trofei ed esportazione
 $router->get('/trofei', [RifinituraController::class, 'trofei'], ['active']);
 $router->get('/ktb/{id}/esporta', [RifinituraController::class, 'esportaKtb'], ['active']);
+$router->post('/ktb/{id}/pubblica', [RifinituraController::class, 'pubblicaKtb'], ['active', 'throttle']);
+$router->post('/ktb/{id}/ritira', [RifinituraController::class, 'ritiraKtb'], ['active', 'throttle']);
+$router->get('/giornale/{token}', [RifinituraController::class, 'giornale']);
 
 // Amministrazione
 $router->get('/admin', [RifinituraController::class, 'admin'], ['admin']);

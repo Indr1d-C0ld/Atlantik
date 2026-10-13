@@ -270,15 +270,24 @@ final class Scorte
      *
      * @param list<string> $eventi
      */
+    /**
+     * Quanto una carica sollecita lo scafo, in punti percentuali. Piu' si e'
+     * profondi, piu' lo scafo e' gia' sollecitato e meno regge. Serve anche
+     * all'addestramento, dove la carica non fa danno ma si conta.
+     */
+    public static function sollecitazione(float $quota, array $type, float $danno): float
+    {
+        $fattoreQuota = 1.0 + max(0.0, ($quota - (float) $type['test_depth_m']) / 120.0);
+        return $danno * 0.28 * $fattoreQuota;
+    }
+
     public static function applicaDanno(int $boatId, array &$b, array $type, float $danno, int $t, Rng $rng, array &$eventi): void
     {
         if ($danno <= 0.0) {
             return;
         }
 
-        // Piu' si e' profondi, piu' lo scafo e' gia' sollecitato e meno regge.
-        $fattoreQuota = 1.0 + max(0.0, ($b['depth'] - (float) $type['test_depth_m']) / 120.0);
-        $b['stress'] = min(100.0, $b['stress'] + $danno * 0.28 * $fattoreQuota);
+        $b['stress'] = min(100.0, $b['stress'] + self::sollecitazione($b['depth'], $type, $danno));
 
         if ($danno > 18) {
             $eventi[] = 'Scoppi vicinissimi: le luci si spengono, il sughero piove dal soffitto, l\'acqua entra dai passascafi.';

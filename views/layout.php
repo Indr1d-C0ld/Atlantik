@@ -61,7 +61,7 @@ $illum = $illum ?? '';
 <footer>
   <div class="footer-wrap">
     <span>Atlantik — simulazione storica. Progetto personale, nessun fine commerciale.</span>
-    <span><a href="<?= e(url('/statistiche')) ?>">Statistiche</a> · <a href="<?= e(url('/albo')) ?>">Albo d'oro</a></span>
+    <span><a href="<?= e(url('/manuale')) ?>">Manuale</a> · <a href="<?= e(url('/statistiche')) ?>">Statistiche</a> · <a href="<?= e(url('/albo')) ?>">Albo d'oro</a></span>
     <span class="sep">Ora di Roma: <?= e(fmt_dt(time())) ?></span>
   </div>
 </footer>

@@ -133,8 +133,7 @@ if ($nave === null) {
     // L'ora che si simula e' quella appena passata, e in un'ora la nave fa
     // qualche miglio. Il battello sta a un miglio dal PUNTO MEDIO di quel
     // tratto, di traverso: la nave gli sfila davanti per tutta l'ora.
-    $pos = static fn (int $t): array => Traffic::posizione((string) $nave['rotta_key'], (float) $nave['speed_kn'],
-        (int) $nave['departed_gts'], $t, 0.0);
+    $pos = static fn (int $t): array => Traffic::pos($nave, $t);
     $p0 = $pos($gts - 3600);
     $p1 = $pos($gts);
     $rotta = Geo::bearing((float) $p0['lat'], (float) $p0['lon'], (float) $p1['lat'], (float) $p1['lon']);
@@ -169,7 +168,7 @@ if ($nave === null) {
     Database::run('DELETE FROM contacts WHERE boat_id = ?', [$id]);
 }
 if ($cv !== null) {
-    $p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+    $p = Traffic::pos($cv, $gts);
     [$la, $lo] = Geo::destination((float) $p['lat'], (float) $p['lon'], 90.0, 1.2);
 }
 

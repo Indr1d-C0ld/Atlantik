@@ -214,10 +214,7 @@ final class Bdu
             return null;   // arriva troppo presto: non c'e' niente da pedinare
         }
 
-        $pos = Traffic::posizione(
-            (string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts,
-            (float) ($cv['deviazione'] ?? 0)
-        );
+        $pos = Traffic::pos($cv, $gts);
         if ($pos === null) {
             return null;
         }
@@ -340,10 +337,7 @@ final class Bdu
             return [];
         }
 
-        $pos = Traffic::posizione(
-            (string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts,
-            (float) ($cv['deviazione'] ?? 0)
-        );
+        $pos = Traffic::pos($cv, $gts);
 
         // Il convoglio e' arrivato, o e' stato distrutto: il pedinamento
         // finisce comunque. Se si e' stati attaccati abbastanza a lungo, vale.
@@ -456,7 +450,12 @@ final class Bdu
             $out['comunicati']++;
         }
 
-        foreach (Database::all("SELECT * FROM boats WHERE state = 'mare'") as $b) {
+        // Chi e' all'addestramento nel Baltico non riceve aree operative: e'
+        // della scuola, non del fronte.
+        foreach (Database::all(
+            "SELECT * FROM boats b WHERE b.state = 'mare' AND NOT EXISTS (
+                SELECT 1 FROM patrols p WHERE p.boat_id = b.id AND p.state = 'in_corso' AND p.tipo = 'addestramento')"
+        ) as $b) {
             if (self::assegnaArea($b, $gts) !== null) {
                 $out['aree']++;
             }

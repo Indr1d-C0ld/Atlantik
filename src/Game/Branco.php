@@ -204,6 +204,29 @@ final class Branco
                 'classe_est' => 'segnalazione di ' . (string) $boat['uboat_number'],
                 'snr'        => 20.0,
             ], $gts, $rng);
+
+            // E lo scrive nel giornale: e' il messaggio che fa convergere il
+            // branco, e chi non e' alla console lo riceve per posta.
+            $giro = Database::first(
+                "SELECT id FROM patrols WHERE boat_id = ? AND state = 'in_corso' ORDER BY id DESC LIMIT 1",
+                [(int) $altro['id']]
+            );
+            if ($giro !== null) {
+                \App\Sim\BoatSim::save([
+                    'gts' => $gts, 'kind' => 'branco', 'severity' => 'nota',
+                    'lat' => (float) $altro['lat'], 'lon' => (float) $altro['lon'],
+                    'quadrat' => Grid::toQuadrat($lat, $lon),
+                    'text' => sprintf(
+                        '%s segnala %s in %s: per noi %03.0f gradi, %.0f miglia.',
+                        (string) $boat['uboat_number'],
+                        $contatto !== null && $contatto['convoy_id'] !== null ? 'un convoglio' : 'una nave',
+                        Grid::toQuadrat($lat, $lon),
+                        Geo::bearing((float) $altro['lat'], (float) $altro['lon'], $lat, $lon),
+                        Geo::distanceNm((float) $altro['lat'], (float) $altro['lon'], $lat, $lon)
+                    ),
+                    'avviso' => 'contatti',
+                ], (int) $giro['id'], (int) $altro['id']);
+            }
             $avvisati++;
         }
 

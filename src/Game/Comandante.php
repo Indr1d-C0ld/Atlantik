@@ -157,6 +157,7 @@ final class Comandante
      */
     public static function perdita(array $boat, string $causa, int $gts, ?array $meteo = null): array
     {
+        MissioniSpeciali::allaFine((int) $boat['id'], $gts);
         $rng = Rng::for(World::seed(), 'perdita', (int) $boat['id'], $gts);
         $quota = (float) $boat['depth_m'];
         $lat = (float) $boat['lat'];
@@ -270,7 +271,7 @@ final class Comandante
     public static function albo(int $limite = 50): array
     {
         return Database::all(
-            "SELECT c.*, u.username FROM commanders c JOIN users u ON u.id = c.user_id
+            "SELECT c.*, u.username, u.role FROM commanders c JOIN users u ON u.id = c.user_id
              WHERE c.stato <> 'attivo' ORDER BY c.grt_affondato DESC, c.uscito_gts ASC LIMIT " . max(1, min(200, $limite))
         );
     }
@@ -279,7 +280,7 @@ final class Comandante
     public static function classifica(int $limite = 25): array
     {
         return Database::all(
-            "SELECT c.*, u.username FROM commanders c JOIN users u ON u.id = c.user_id
+            "SELECT c.*, u.username, u.role FROM commanders c JOIN users u ON u.id = c.user_id
              WHERE c.stato = 'attivo' ORDER BY c.grt_affondato DESC LIMIT " . max(1, min(200, $limite))
         );
     }

@@ -292,6 +292,38 @@ try {
             }
             break;
 
+        case 'world:reset':
+            // Azzeramento della campagna (App\Game\Azzeramento). Senza
+            // --esegui e' una prova a vuoto: conta, cancella in una transazione
+            // e annulla.
+            if (!in_array('--esegui', $args, true)) {
+                $r = \App\Game\Azzeramento::prova();
+                out('Prova a vuoto: niente e\' stato toccato.');
+                foreach ($r['prima'] as $t => $n) {
+                    out(sprintf('  %-24s %8d -> %d', $t, $n, $r['dopo'][$t]));
+                }
+                out('Per farlo davvero: world:reset --esegui <cartella per le foto caricate, fuori dal sito>');
+                break;
+            }
+            $cartella = '';
+            foreach ($args as $a) {
+                if ($a !== '--esegui') {
+                    $cartella = $a;
+                }
+            }
+            if ($cartella === '' || str_starts_with(realpath(dirname($cartella)) ?: $cartella, $projectRoot)) {
+                err('Serve una cartella fuori dal sito per le foto caricate.');
+                exit(1);
+            }
+            $r = \App\Game\Azzeramento::esegui($cartella);
+            out('Campagna azzerata. Seme nuovo: ' . $r['seme'] . '. Foto caricate messe da parte: ' . $r['foto'] . '.');
+            foreach ($r['cancellate'] as $t => $n) {
+                if ($n > 0) {
+                    out(sprintf('  %-24s %8d righe', $t, $n));
+                }
+            }
+            break;
+
         case 'world:stats':
             $w = World::row();
             $clock = World::clock();
@@ -435,7 +467,7 @@ try {
             out('');
             out('  Convogli:');
             foreach (Database::all("SELECT * FROM convoys WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ? ORDER BY serie, numero", [$gts, $gts]) as $cv) {
-                $p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+                $p = Traffic::pos($cv, $gts);
                 $navi = (int) (Database::first("SELECT COUNT(*) n FROM ships WHERE convoy_id = ? AND state = 'in_mare'", [$cv['id']])['n'] ?? 0);
                 out(sprintf('    %-7s %-36s %4.1f kn  %-10s %2d navi',
                     $cv['serie'] . $cv['numero'], Traffic::nomeRotta((string) $cv['rotta_key']), (float) $cv['speed_kn'],

@@ -149,6 +149,14 @@ final class Radio
                     'text' => 'Dal BdU: ' . (string) $ordine['testo'],
                 ], (int) $patrol['id'], (int) $boat['id']);
             }
+
+            // Il battello meteorologico conta i suoi rapporti.
+            if ($kurz === 'meteo' && ($nota = MissioniSpeciali::rapportoMeteo($boat, $gts)) !== null) {
+                BoatSim::save([
+                    'gts' => $gts, 'kind' => 'missione', 'severity' => 'nota',
+                    'lat' => $lat, 'lon' => $lon, 'quadrat' => $quadrat, 'text' => $nota,
+                ], (int) $patrol['id'], (int) $boat['id']);
+            }
         }
 
         return ['ok' => true, 'message_id' => $msgId, 'durata' => $durata, 'fix' => $fix,

@@ -108,6 +108,21 @@ sull'istante, mai sull'orologio di chi si collega — il che significa che
 Non è un'aspirazione: è una prova automatica che gira a ogni esecuzione della
 suite, e ci sono volute tre tornate di audit per renderla vera.
 
+### Quando non ci sei
+
+Il mondo non aspetta, quindi il battello qualcuno lo deve condurre. Lo fa il
+**Primo Ufficiale**, secondo la **dottrina d'ingaggio** che gli hai lasciato:
+*prudente* (tiene la guardia, si immerge davanti agli aerei, non attacca), *navi
+isolate*, o *convogli*. Attacca come un ufficiale giovane: si avvicina in
+superficie di notte e a quota periscopica di giorno, lancia un ventaglio con la
+sua stima — che sbaglia più della tua — e poi scende in silenzio. Se in sei ore
+non arriva a tiro, rompe il contatto. Quando torni e apri la stazione
+d'attacco, il comando è di nuovo tuo.
+
+E se vuoi saperlo mentre succede, il BdU **ti scrive per posta**: un contatto, un
+pericolo, un ordine. Mai quando sei già alla console, mai più di una volta ogni
+mezz'ora per la stessa cosa.
+
 ---
 
 ## Il battello
@@ -329,6 +344,22 @@ aria il meno possibile.
 **Il rifornimento in mare** dal Tipo XIV — la "mucca" — con appuntamento in un
 quadrato e in una finestra, e il rischio che l'appuntamento sia compromesso.
 
+**I colleghi.** Un mondo persistente con pochi giocatori è un oceano vuoto, e un
+branco con un battello solo non si raduna. La flottiglia ha i suoi **U-Boot mossi
+dal motore**: partono quando il cantiere ha finito, pattugliano l'area del BdU,
+entrano nei branchi, segnalano i convogli — e la segnalazione arriva a te —,
+attaccano col loro Primo Ufficiale, rientrano, e a volte non tornano. Il gioco
+li dichiara dovunque compaiano: fascicolo, albo, classifiche, statistiche.
+
+**La guerra delle informazioni.** A Londra l'Ammiragliato mette insieme i punti
+radiogoniometrici, gli avvistamenti e gli affondamenti, e fa girare i convogli
+al largo — fino a centoquaranta miglia, del meno possibile, mai sopra la
+terraferma, e a pericolo passato li riporta sulla rotta. Il convoglio non
+salta: accosta, perché la sua posizione resta una funzione pura del tempo. Nel
+1942 i britannici non leggevano i cifrari degli U-Boot: sanno solo quello che
+trasmetti e quello che vedono. Dall'altra parte il **B-Dienst** leggeva i loro,
+e ogni tanto il BdU sa dove sta passando un convoglio deviato, e lo dice a tutti.
+
 E una regola che è costata un audit per scoprirla: **una nave, un
 affondamento**. Due battelli sullo stesso convoglio aprono due incontri
 distinti — è la tattica del branco — ma lo stesso piroscafo va a fondo una
@@ -364,6 +395,36 @@ lascia il comando in banchina, da vivi, e si chiude la carriera con onore — ch
 
 ---
 
+## Oltre la caccia
+
+**L'Agru-Front.** Nessun comandante andava al fronte senza passare dal Baltico.
+Dalla base si parte per l'addestramento tattico: un convoglio d'esercitazione
+nella baia di Danzica, vecchi piroscafi e due cacciasommergibili della scuola,
+la testa d'esercitazione nei siluri e le cariche di segnalazione che contano
+come se fossero vere. Alla fine l'istruttore giudica avvicinamento, tiro e
+disimpegno.
+
+**Le missioni speciali.** Il BdU non manda solo a caccia: **posa di mine**
+davanti a Halifax, Reykjavík, Freetown o New York — il campo resta settimane e
+quello che ci salta sopra è tuo —, il **battello meteorologico**, che paga ogni
+rapporto in rischio radiogoniometrico, e lo **sbarco di agenti** dell'Abwehr su
+una costa, di notte, a macchine ferme.
+
+**I naufraghi.** Dopo un affondamento restano le scialuppe. Dare la rotta per
+terra con acqua e gallette, prendere a bordo il comandante della nave, o
+andarsene: costa viveri e tempo in superficie sul punto più pericoloso
+dell'oceano. Dopo il Laconia, nel settembre 1942, Dönitz proibì i soccorsi; qui
+la scelta resta tua, e giorni dopo si sa quanti si sono salvati.
+
+**Il giornale di guerra pubblico.** Una missione conclusa si pubblica come un
+Kriegstagebuch vero — quattro colonne, la carta della rotta, gli affondamenti,
+il giudizio del BdU — su un collegamento da dare a chi vuoi.
+
+C'è anche un **manuale del comandante**, pubblico, per cominciare col piede
+giusto.
+
+---
+
 ## Che cosa lo rende diverso
 
 - **Il mondo non dipende da quanto spesso ricarichi la pagina.** È la proprietà
@@ -394,17 +455,19 @@ lascia il comando in banchina, da vivi, e si chiude la carriera con onore — ch
 ed equipaggio, contatti, combattimento, carriera, multigiocatore, rifinitura.
 Quello che resta è bilanciamento sul campo e beta.
 
-Sotto c'è un mondo in esercizio dal 17 settembre 2026: in un istante qualunque
-fra le cinquecento e le settecento navi in mare, in una quindicina di convogli,
-per tre o quattro milioni di tonnellate di stazza — il numero respira, perché
-i convogli salpano e arrivano. Il battito del minuto ha girato più di
-settemila volte e ha fallito otto volte, tutte fra il 17 e il 19 settembre:
-ogni fallimento con la sua riga nel diario e la sua causa nota, che è il motivo
-per cui si contano.
+Sotto c'è un mondo in esercizio dal 17 settembre 2026, e ripartito da capo il
+13 ottobre con la diciassettesima revisione: albo, classifiche e fascicoli
+azzerati, orologio della campagna da quel momento, seme nuovo, e tutti alla pari.
+In un istante qualunque fra le cinquecento e le settecento navi in mare, in una
+quindicina di convogli, per tre o quattro milioni di tonnellate di stazza — il
+numero respira, perché i convogli salpano e arrivano. Il battito del minuto ha
+girato più di trentasettemila volte e ha fallito nove volte — otto fra il 17 e
+il 19 settembre, una il 29 —: ogni fallimento con la sua riga nel diario e la sua
+causa nota, che è il motivo per cui si contano.
 
-### Le undici revisioni tecniche
+### Le diciassette revisioni tecniche
 
-Il gioco è stato sottoposto a undici audit successivi, ognuno con un metodo
+Il gioco è stato sottoposto a diciassette audit successivi, ognuno con un metodo
 diverso dal precedente, perché un metodo ripetuto smette di trovare. Il
 registro completo — con le misure, i numeri e le prove che lo dimostrano — sta
 in `docs/AUDIT.md` nel deployment; qui il sunto.
@@ -422,6 +485,12 @@ in `docs/AUDIT.md` nel deployment; qui il sunto.
 | 9 | La matematica e i suoi confini | Una nave a quattro chilometri, di notte, **risultava riconosciuta al 97%**: oltre la portata la formula faceva `NAN`, e PHP lo trasformava nel massimo |
 | 10 | Una sessione di gioco del proprietario | **Il calcolatore di lancio restava sul primo bersaglio dell'elenco**: scegliendone un altro, si lanciava con la soluzione di un'altra nave |
 | 11 | *Dove sta la terra?* | La simulazione non sapeva dove fosse: **il battello attraversava la Bretagna**, e tutte e undici le rotte dei convogli passavano per la terraferma, fino a duecentoquaranta miglia |
+| 12 | Una segnalazione, e le verifiche a tappeto sulle rotte | Il cantiere **tagliava in silenzio i viveri** alla dotazione: il campo sembrava non lasciarsi cambiare |
+| 13 | *Perché non affonda niente?* | In tutta la storia del mondo in esercizio, **zero affondamenti**: un attacco cominciava solo se il comandante c'era, e la pagina d'ingresso prometteva un Primo Ufficiale che attaccava da solo e non esisteva |
+| 14 | Una decisione fondante rimasta a metà | La **dottrina d'ingaggio**: la regola della finestra scaduta avrebbe fatto immergere il Primo Ufficiale prima di lanciare |
+| 15 | La posizione è una funzione pura | Cambiare la deviazione di un convoglio **lo teletrasportava**: ora accosta. E le prove, scaldando i settori sul server vero, **deviavano convogli veri** |
+| 16 | Prove che toccano il mondo vero | Il campo minato di una prova, posato sulla rotta vera di Halifax, **ha affondato una Liberty del mondo vero**: rimessa a galla, e le prove spostate nel Baltico |
+| 17 | Quattro giorni in esercizio, e una revisione da occhi nuovi | Un collega ha **inseguito per novantun ore** una nave che non raggiungeva mai, fermando nel tempo il suo battello; e undici difetti di concorrenza e di stato, fra cui la partenza per l'addestramento che un doppio clic apriva due volte |
 
 Il filo è uno solo, ed è il motivo per cui vale la pena raccontarlo: quasi
 nessuno di questi difetti si vede leggendo il codice. Quel codice era giusto.
@@ -443,10 +512,10 @@ e ha cominciato a interrogare quello che il codice dice di sé.
 
 | | |
 |---|---|
-| Righe di codice | ~50.500 in 314 file (PHP, JavaScript, CSS, SQL, script di shell e i disegni SVG, prove comprese) |
-| Rotte HTTP | 95 |
-| Tabelle / migrazioni | 45 / 43 |
-| Prove automatiche | **39 file, 1.124 controlli, tutti verdi** |
+| Righe di codice | ~56.800 in 344 file (PHP, JavaScript, CSS, SQL, script di shell e i disegni SVG, prove comprese) |
+| Rotte HTTP | 106 |
+| Tabelle / migrazioni | 51 / 52 |
+| Prove automatiche | **46 file, 1.304 controlli, tutti verdi** |
 | Costo del battito | 40 ms per battello in mare; a cinquanta battelli, il 3,5% del minuto |
 | Crescita del database | ~146 MB l'anno con cinquanta giocatori attivi, in equilibrio |
 
@@ -499,6 +568,7 @@ php bin/console.php migrate                      # applica le migrazioni
 php bin/console.php world:seed                   # tipi di U-Boot, porti, rotte, classi
 php bin/console.php world:init [seme]            # crea il mondo
 php bin/console.php world:stats                  # stato del mondo
+php bin/console.php world:reset                  # azzera la campagna: prova a vuoto, poi --esegui <cartella>
 php bin/console.php sim:tick                     # avanza tutti i battelli
 php bin/console.php user:admin <nome>            # promuove ad amministratore
 php bin/console.php mail:smista                  # smista la coda di posta
@@ -506,8 +576,8 @@ php bin/console.php mail:smista                  # smista la coda di posta
 
 ### Le prove
 
-Trentanove file — ventotto che girano in PHP e undici che interrogano il
-server attraverso Apache — per **1.124 controlli**. Si aspettano un'installazione
+Quarantasei file — trentacinque che girano in PHP e undici che interrogano il
+server attraverso Apache — per **1.304 controlli**. Si aspettano un'installazione
 funzionante e un database raggiungibile. Le end-to-end creano e cancellano da
 sé i propri account di prova (`prova *`), e la suite intera lascia gli account
 veri esattamente com'erano: è verificato confrontando l'impronta del battello e
@@ -543,6 +613,13 @@ php tests/test_invarianti.php        # ordini a caso e tempo a salti: le regole 
 php tests/test_viveri.php            # viveri scelti in cantiere, fresco, digiuno, rientro ordinato dal BdU
 php tests/test_periscopio.php        # periscopio d'osservazione in crociera: su, giù, avaria, passaggio all'attacco
 php tests/test_terra.php             # la terraferma: canali delle basi, rotte che doppiano la costa, rotte del traffico
+php tests/test_avvisi.php            # avvisi per posta: quali righe, a chi, i freni, un contatto vero
+php tests/test_addestramento.php     # Agru-Front: teste d'esercitazione, cariche simulate, giudizio, ritorno
+php tests/test_dottrina.php          # la dottrina del Primo Ufficiale e i colleghi mossi dal motore
+php tests/test_ammiragliato.php      # convogli deviati senza salti e mai in terra, il B-Dienst
+php tests/test_missioni.php          # mine, battello meteorologico, sbarco di agenti
+php tests/test_naufraghi.php         # le scialuppe, il soccorso, la sorte
+php tests/test_giornale.php          # il giornale di guerra pubblico, letto dal server
 
 bash tests/e2e_auth.sh               # registrazione, conferma, accesso
 bash tests/e2e_recupero.sh           # password dimenticata: collegamento, cambio, sessioni chiuse

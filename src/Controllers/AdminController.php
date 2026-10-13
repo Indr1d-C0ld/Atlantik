@@ -57,7 +57,7 @@ final class AdminController
                 'SELECT u.*,
                         (SELECT COUNT(*) FROM commanders c WHERE c.user_id = u.id) AS comandanti,
                         (SELECT COUNT(*) FROM boats b WHERE b.user_id = u.id) AS battelli,
-                        (SELECT COUNT(*) FROM patrols p WHERE p.user_id = u.id) AS missioni,
+                        (SELECT COUNT(*) FROM patrols p WHERE p.user_id = u.id AND p.tipo = "guerra") AS missioni,
                         (SELECT COALESCE(SUM(s.grt), 0) FROM sinkings s
                           JOIN boats b2 ON b2.id = s.boat_id WHERE b2.user_id = u.id) AS grt
                    FROM users u' . $filtro . ' ORDER BY u.id DESC LIMIT 200',
@@ -275,9 +275,9 @@ final class AdminController
             'title'   => 'Classifica',
             'tonnellaggio' => Database::all(
                 'SELECT c.*, u.username, b.uboat_number, b.state AS stato_battello,
-                        (SELECT COUNT(*) FROM patrols p WHERE p.commander_id = c.id AND p.state <> \'in_corso\') AS missioni,
-                        (SELECT COALESCE(SUM(p.siluri_lanciati),0) FROM patrols p WHERE p.commander_id = c.id) AS siluri,
-                        (SELECT COALESCE(SUM(p.distance_nm),0) FROM patrols p WHERE p.commander_id = c.id) AS miglia
+                        (SELECT COUNT(*) FROM patrols p WHERE p.commander_id = c.id AND p.state <> \'in_corso\' AND p.tipo = \'guerra\') AS missioni,
+                        (SELECT COALESCE(SUM(p.siluri_lanciati),0) FROM patrols p WHERE p.commander_id = c.id AND p.tipo = \'guerra\') AS siluri,
+                        (SELECT COALESCE(SUM(p.distance_nm),0) FROM patrols p WHERE p.commander_id = c.id AND p.tipo = \'guerra\') AS miglia
                  ' . $base . '
                  ORDER BY c.grt_affondato DESC, c.affondate DESC LIMIT 50'
             ),

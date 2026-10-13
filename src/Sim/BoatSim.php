@@ -879,10 +879,7 @@ final class BoatSim
             if ($t < (int) $u['departed_gts'] || $t > (int) $u['eta_gts']) {
                 continue;
             }
-            $pos = Traffic::posizione(
-                (string) $u['rotta_key'], (float) $u['speed_kn'], (int) $u['departed_gts'], $t,
-                (float) ($u['deviazione'] ?? 0)
-            );
+            $pos = Traffic::pos($u, $t);
             if ($pos === null) {
                 continue;
             }
@@ -976,7 +973,7 @@ final class BoatSim
                         $fumoOk                => Narrator::contattoFumo($rilevamento),
                         $vistaOk               => Narrator::contattoVista((string) $cls['name'], $rilevamento, $d),
                         default                => Narrator::contattoIdrofono($classeEst, $rilevamento, $idro['snr'] > 18.0 ? $d : null),
-                    });
+                    }) + ['avviso' => 'contatti'];
                 } elseif ($classificabile && isset($gia[$chiaveEv]) && !isset($gia[$chiaveEv . '_f'])) {
                     $gia[$chiaveEv . '_f'] = $t;
                     $eventi[] = self::ev($t, 'contatto', 'nota', $s, $vistaOk
@@ -1350,5 +1347,6 @@ final class BoatSim
                 $meta === [] ? null : json_encode($meta, JSON_UNESCAPED_UNICODE),
             ]
         );
+        \App\Game\Avvisi::nota($e, $boatId, Database::lastInsertId());
     }
 }

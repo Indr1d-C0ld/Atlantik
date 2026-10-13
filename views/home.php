@@ -5,7 +5,8 @@
     Atlantik è una simulazione storica multigiocatore a mondo persistente. Vesti i panni di un
     comandante di U-Boot: pianifichi la patrol, scegli il carico entro i vincoli reali di spazio e peso,
     esci dal bunker e navighi per giorni. L'oceano non ti aspetta — il tempo scorre anche mentre sei a terra,
-    e il tuo Primo Ufficiale comanda in tua assenza secondo la dottrina che gli hai lasciato.
+    il tuo Primo Ufficiale tiene la guardia e attacca secondo la dottrina che gli hai lasciato, e se lo chiedi
+    il BdU ti scrive quando c'è un convoglio in vista.
   </p>
   <p class="sommario">
     Il convoglio lo trovi con l'idrofono prima che con gli occhi. Attacchi di notte, in superficie, con la luna
@@ -50,6 +51,7 @@
   <div class="azioni">
     <a class="bottone" href="<?= e(url('/arruolamento')) ?>">Arruolati</a>
     <a class="bottone bottone--fantasma" href="<?= e(url('/accesso')) ?>">Ho già un account</a>
+    <a class="bottone bottone--fantasma" href="<?= e(url('/manuale')) ?>">Manuale del comandante</a>
     <a class="bottone bottone--fantasma" href="<?= e(url('/albo')) ?>">Albo d'oro</a>
     <a class="bottone bottone--fantasma" href="<?= e(url('/statistiche')) ?>">Statistiche</a>
   </div>
@@ -118,6 +120,38 @@
     <li class="fatto"><b>La carta a ogni scala.</b> Le sigle Marinequadrat seguono lo zoom fino ai
       quadratini di sei miglia, e la destinazione ordinata dal BdU ha il suo riquadro, con rotta e
       distanza.</li>
+    <li class="fatto"><b>La terraferma.</b> Le rotte doppiano le coste da sole, si esce e si entra
+      per i canali delle basi, e il battello non attraversa più la Bretagna.</li>
+  </ul>
+</div>
+
+<div class="pannello" style="border-left:3px solid var(--ambra)">
+  <h2>La nuova revisione, e una campagna nuova</h2>
+  <p class="sommario">
+    Con questa revisione la campagna è ripartita da capo: albo, classifiche e fascicoli sono vuoti, e
+    tutti cominciano adesso, alla pari. Che cosa c'è di nuovo:
+  </p>
+  <ul class="elenco-lavori">
+    <li class="fatto"><b>La dottrina d'ingaggio.</b> Quando non sei in plancia il battello lo conduce il
+      Primo Ufficiale, e attacca solo quello che gli hai lasciato scritto: niente, le navi isolate, o
+      anche i convogli.</li>
+    <li class="fatto"><b>I colleghi.</b> In mare non sei solo: la flottiglia ha i suoi U-Boot mossi
+      dal motore, che pattugliano, entrano nei branchi, segnalano i convogli e a volte non tornano. Il
+      gioco li dichiara dovunque compaiano.</li>
+    <li class="fatto"><b>La guerra delle informazioni.</b> L'Ammiragliato fa girare i convogli al largo
+      di dove ti sei fatto sentire; il B-Dienst a volte se ne accorge, e il BdU te lo dice.</li>
+    <li class="fatto"><b>Gli avvisi per posta.</b> Se lo chiedi, il BdU ti scrive quando c'è un
+      contatto, un pericolo o un ordine — mai quando sei già alla console.</li>
+    <li class="fatto"><b>L'Agru-Front.</b> Prima della guerra, l'addestramento nel Baltico: un convoglio
+      d'esercitazione, teste d'esercitazione nei siluri, e il giudizio dell'istruttore.</li>
+    <li class="fatto"><b>Missioni speciali.</b> Mine davanti ai porti nemici, il battello
+      meteorologico, lo sbarco di agenti.</li>
+    <li class="fatto"><b>I naufraghi.</b> Dopo un affondamento restano le scialuppe: dare la rotta,
+      prendere il comandante, o andarsene. La scelta è tua.</li>
+    <li class="fatto"><b>Il giornale di guerra pubblico.</b> Una missione conclusa si pubblica come un
+      Kriegstagebuch, con la carta della rotta, da dare a chi vuoi.</li>
+    <li class="fatto"><b>Il <a href="<?= e(url('/manuale')) ?>">manuale del comandante</a></b>, per
+      cominciare col piede giusto.</li>
   </ul>
   <p class="aiuto" style="margin-top:1rem">
     <?php // Non si scrive il numero esatto: cresce a ogni tornata di lavoro e

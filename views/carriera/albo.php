@@ -32,7 +32,7 @@ use App\Game\Carriera;
       <?php foreach ($caduti as $c): ?>
         <tr>
           <td><a href="<?= e(url('/profilo/' . (int) $c['id'])) ?>"><?= e($c['nome']) ?></a>
-              <span style="color:var(--testo-3)">(<?= e($c['username']) ?>)</span></td>
+              <span style="color:var(--testo-3)">(<?= ($c['role'] ?? '') === 'motore' ? 'collega del motore' : e($c['username']) ?>)</span></td>
           <td><?= e(Carriera::gradoNome((int) $c['grado'])) ?></td>
           <td><?= e($c['patrols']) ?></td>
           <td><?= e($c['affondate']) ?></td>
@@ -54,7 +54,8 @@ use App\Game\Carriera;
       <tr><th>Comandante</th><th>Grado</th><th>Missioni</th><th>Navi</th><th>GRT</th></tr>
       <?php foreach ($in_servizio as $c): ?>
         <tr>
-          <td><a href="<?= e(url('/profilo/' . (int) $c['id'])) ?>"><?= e($c['nome']) ?></a></td>
+          <td><a href="<?= e(url('/profilo/' . (int) $c['id'])) ?>"><?= e($c['nome']) ?></a><?= ($c['role'] ?? '') === 'motore'
+              ? ' <span style="color:var(--testo-3)">(collega del motore)</span>' : '' ?></td>
           <td><?= e(Carriera::gradoNome((int) $c['grado'])) ?></td>
           <td><?= e($c['patrols']) ?></td>
           <td><?= e($c['affondate']) ?></td>

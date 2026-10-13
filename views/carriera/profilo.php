@@ -30,6 +30,10 @@ $num = static fn (float|int $v, int $d = 0): string => number_format((float) $v,
       <h1 style="margin:0 0 .2rem"><?= e($cmd['nome']) ?></h1>
       <p class="sommario" style="margin:.1rem 0 .9rem">
         <?= e($p['grado']) ?> · <?= e($cmd['flottiglia']) ?>
+        <?php if (($cmd['role'] ?? '') === 'motore'): ?>
+          <br><span style="color:var(--testo-3);font-size:.8rem">Collega mosso dal motore: un U-Boot della flottiglia
+          che pattuglia, segnala e attacca con le stesse regole di tutti, senza un giocatore dietro.</span>
+        <?php endif; ?>
         <?php if ((bool) $cmd['nome_storico']): ?>
           <br><span style="color:var(--testo-3);font-size:.8rem">Porta il nome del comandante ritratto, in omaggio.
           È un altro uomo: questo è il suo fascicolo, non il suo.</span>
@@ -114,6 +118,10 @@ $num = static fn (float|int $v, int $d = 0): string => number_format((float) $v,
     <div class="riga"><span class="etichetta">Colpi a segno</span><span class="valore piccolo">
       <?= $n['colpi_a_segno'] !== null ? e($num($n['colpi_a_segno'], 1)) . '%' : '—' ?></span></div>
     <div class="riga"><span class="etichetta">Quota massima</span><span class="valore piccolo"><?= e($num($n['quota_max'])) ?> m</span></div>
+    <?php if ((int) ($n['naufraghi']['volte'] ?? 0) > 0): ?>
+      <div class="riga"><span class="etichetta">Naufraghi soccorsi</span><span class="valore piccolo"><?= e(plurale((int) $n['naufraghi']['volte'], 'una volta', '%d volte')) ?><?=
+        (int) $n['naufraghi']['salvati'] > 0 ? ', ' . e((string) $n['naufraghi']['salvati']) . ' uomini raccolti' : '' ?></span></div>
+    <?php endif; ?>
     <div class="riga"><span class="etichetta">Nafta consumata</span><span class="valore piccolo"><?= e($num($n['nafta'], 1)) ?> t</span></div>
   </div>
 

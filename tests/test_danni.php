@@ -106,7 +106,7 @@ if ($boat === null || $cv === null) {
     $boatId = (int) $boat['id'];
     \App\Game\Patrol::depart(Database::first('SELECT * FROM boats WHERE id = ?', [$boatId]));
 
-    $p = Traffic::posizione((string) $cv['rotta_key'], (float) $cv['speed_kn'], (int) $cv['departed_gts'], $gts, (float) $cv['deviazione']);
+    $p = Traffic::pos($cv, $gts);
     Database::run('UPDATE boats SET state = "mare", lat = ?, lon = ?, est_lat = ?, est_lon = ? WHERE id = ?',
         [$p['lat'], $p['lon'], $p['lat'], $p['lon'], $boatId]);
     $boat = Database::first('SELECT * FROM boats WHERE id = ?', [$boatId]);
@@ -126,8 +126,8 @@ if ($boat === null || $cv === null) {
     $lieve = $lista[1] ?? null;
 
     $primaGrave = Database::first('SELECT * FROM ships WHERE id = ?', [(int) $grave['ship_id']]);
-    $posPrima = Traffic::posizione((string) $primaGrave['rotta_key'], (float) $primaGrave['speed_kn'],
-        (int) $primaGrave['departed_gts'], $t0);
+    // In convoglio la nave sta dove sta il convoglio: con la sua deviazione.
+    $posPrima = Traffic::pos(['deviazione' => Traffic::deviazioneAl($cv, $t0)] + $primaGrave, $t0);
 
     Database::run("UPDATE encounter_entities SET stato = 'danneggiata', integrita = 31, allagamento = 68, incendio = 6 WHERE id = ?",
         [(int) $grave['id']]);
@@ -155,8 +155,7 @@ if ($boat === null || $cv === null) {
     // partenza. Cambiare la velocita' senza spostare l'ora di partenza farebbe
     // saltare la nave indietro di miglia, come se non avesse mai percorso
     // quello che ha percorso.
-    $posDopo = Traffic::posizione((string) $dopoGrave['rotta_key'], (float) $dopoGrave['speed_kn'],
-        (int) $dopoGrave['departed_gts'], $t0);
+    $posDopo = Traffic::pos($dopoGrave, $t0);
     $salto = ($posPrima !== null && $posDopo !== null)
         ? Geo::distanceNm($posPrima['lat'], $posPrima['lon'], $posDopo['lat'], $posDopo['lon'])
         : 99.0;
@@ -224,7 +223,7 @@ if ($boat === null || $cv === null) {
         Database::run("UPDATE boats SET encounter_id = NULL WHERE id = ?", [$boatId]);
         Database::run("UPDATE encounters SET stato = 'concluso' WHERE boat_id = ?", [$boatId]);
         $naveL = Database::first('SELECT * FROM ships WHERE id = ?', [(int) $lieve['ship_id']]);
-        $pos2 = Traffic::posizione((string) $naveL['rotta_key'], (float) $naveL['speed_kn'], (int) $naveL['departed_gts'], World::now());
+        $pos2 = Traffic::pos($naveL, World::now());
         if ($pos2 !== null) {
             Database::run('UPDATE boats SET lat = ?, lon = ? WHERE id = ?', [$pos2['lat'], $pos2['lon'], $boatId]);
             $b2 = Database::first('SELECT * FROM boats WHERE id = ?', [$boatId]);

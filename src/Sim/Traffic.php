@@ -118,9 +118,14 @@ final class Traffic
                 [$lat, $lon] = Geo::destination($tratta['lat'], $tratta['lon'], $tratta['rotta'], $percorse - $acc);
 
                 // Deviazione dalla rotta base: l'Ammiragliato spostava i
-                // convogli quando sospettava la presenza di sommergibili.
+                // convogli quando sospettava la presenza di sommergibili
+                // (App\Sim\Ammiragliato). Vicino ai porti lo scostamento si
+                // stringe: si parte e si arriva per i canali, non a cento
+                // miglia di lato.
                 if (abs($deviazioneDeg) > 0.01) {
-                    $scarto = min(90.0, abs($deviazioneDeg)) * 1.6;   // miglia di scostamento laterale
+                    $restano = self::lunghezzaNm($rottaKey) - $percorse;
+                    $stringe = max(0.0, min(1.0, $percorse / self::RACCORDO_NM, $restano / self::RACCORDO_NM));
+                    $scarto = min(90.0, abs($deviazioneDeg)) * 1.6 * $stringe;   // miglia di scostamento laterale
                     [$lat, $lon] = Geo::destination($lat, $lon, Geo::normBearing($tratta['rotta'] + ($deviazioneDeg > 0 ? 90 : -90)), $scarto);
                 }
 
@@ -132,6 +137,39 @@ final class Traffic
             $acc += $tratta['tratto'];
         }
         return null;   // arrivato
+    }
+
+    /** Entro quante miglia dai porti la deviazione si stringe fino a zero. */
+    public const RACCORDO_NM = 250.0;
+
+    /**
+     * La deviazione di un convoglio a un istante.
+     *
+     * Quando l'Ammiragliato ordina una deviazione nuova (dev_inizio_gts), il
+     * convoglio non salta sulla rotta nuova: accosta di trenta gradi e ci va,
+     * mezzo nodo di scostamento laterale per ogni nodo di velocita'. Per una
+     * nave, o un convoglio mai deviato, e' la deviazione scritta.
+     */
+    public static function deviazioneAl(array $u, int $gts): float
+    {
+        $a = (float) ($u['deviazione'] ?? 0.0);
+        if (!isset($u['dev_inizio_gts']) || $u['dev_inizio_gts'] === null) {
+            return $a;
+        }
+        $da = (float) ($u['dev_da'] ?? 0.0);
+        $t0 = (int) $u['dev_inizio_gts'];
+        if ($gts <= $t0) {
+            return $da;
+        }
+        $passo = (float) $u['speed_kn'] * 0.5 / 1.6 * ($gts - $t0) / 3600.0;
+        return abs($a - $da) <= $passo ? $a : $da + ($a > $da ? $passo : -$passo);
+    }
+
+    /** La posizione di un convoglio o di una nave isolata, con la sua deviazione. */
+    public static function pos(array $u, int $gts): ?array
+    {
+        return self::posizione((string) $u['rotta_key'], (float) $u['speed_kn'], (int) $u['departed_gts'], $gts,
+            self::deviazioneAl($u, $gts));
     }
 
     /** Durata di una traversata, in secondi di gioco. */
@@ -176,7 +214,7 @@ final class Traffic
         // "in mare": una che salpera' domani non popola l'oceano di oggi.
         $convogli = 0;
         $inMare = (int) (Database::first(
-            "SELECT COUNT(*) n FROM convoys WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ?",
+            "SELECT COUNT(*) n FROM convoys WHERE state = 'in_mare' AND esercitazione = 0 AND departed_gts <= ? AND eta_gts >= ?",
             [$gts, $gts]
         )['n'] ?? 0);
         while ($inMare + $convogli < $convogliVoluti) {
@@ -227,11 +265,11 @@ final class Traffic
         $minimo = max(3, GameConfig::int('traffic.convoglio_minimo', 6));
 
         $candidati = Database::all(
-            "SELECT c.id, c.serie, c.numero, c.navi_iniziali,
+            "SELECT c.id, c.serie, c.numero, c.navi_iniziali, c.speed_kn, c.deviazione, c.dev_da, c.dev_inizio_gts,
                     (SELECT COUNT(*) FROM ships s
                       WHERE s.convoy_id = c.id AND s.state = 'in_mare' AND s.ruolo <> 'scorta') AS merc
                FROM convoys c
-              WHERE c.state = 'in_mare' AND c.departed_gts <= ?
+              WHERE c.state = 'in_mare' AND c.esercitazione = 0 AND c.departed_gts <= ?
              HAVING merc < ?",
             [$gts, $minimo]
         );
@@ -252,9 +290,11 @@ final class Traffic
             // I mercantili proseguono da soli: stessa rotta, stessa ora di
             // arrivo, nessuna formazione da tenere.
             Database::run(
-                "UPDATE ships SET convoy_id = NULL, colonna = NULL, fila = NULL, convoglio_perduto = ?
+                // Ognuna si porta dietro la deviazione del convoglio in quel
+            // momento: senza, saltava sulla rotta base, fino a cento miglia.
+            "UPDATE ships SET convoy_id = NULL, colonna = NULL, fila = NULL, convoglio_perduto = ?, deviazione = ?
                   WHERE convoy_id = ? AND state = 'in_mare' AND ruolo <> 'scorta'",
-                [$c['serie'] . $c['numero'], (int) $c['id']]
+                [$c['serie'] . $c['numero'], round(self::deviazioneAl($c, $gts), 2), (int) $c['id']]
             );
             // La scorta ha finito il suo lavoro e torna indietro.
             Database::run(
@@ -710,7 +750,7 @@ final class Traffic
             [$gts, $gts]
         );
         foreach ($convogli as $c) {
-            $p = self::posizione((string) $c['rotta_key'], (float) $c['speed_kn'], (int) $c['departed_gts'], $gts, (float) $c['deviazione']);
+            $p = self::pos($c, $gts);
             if ($p === null) {
                 continue;
             }
@@ -739,7 +779,7 @@ final class Traffic
             [$gts, $gts]
         );
         foreach ($navi as $s) {
-            $p = self::posizione((string) $s['rotta_key'], (float) $s['speed_kn'], (int) $s['departed_gts'], $gts);
+            $p = self::pos($s, $gts);
             if ($p === null) {
                 continue;
             }
@@ -790,6 +830,7 @@ final class Traffic
 
         foreach (Database::all(
             "SELECT c.id, c.serie, c.numero, c.rotta_key, c.speed_kn, c.departed_gts, c.eta_gts, c.deviazione,
+                    c.dev_da, c.dev_inizio_gts,
                     (SELECT COUNT(*) FROM ships s WHERE s.convoy_id = c.id AND s.state = 'in_mare' AND s.ruolo <> 'scorta') AS mercantili,
                     (SELECT COUNT(*) FROM ships s WHERE s.convoy_id = c.id AND s.state = 'in_mare' AND s.ruolo = 'scorta') AS scorte
              FROM convoys c
@@ -803,14 +844,13 @@ final class Traffic
         }
 
         foreach (Database::all(
-            "SELECT id, name, flag, class_key, rotta_key, speed_kn, departed_gts, eta_gts, grt, carico
+            "SELECT id, name, flag, class_key, rotta_key, speed_kn, departed_gts, eta_gts, grt, carico, deviazione
              FROM ships
              WHERE convoy_id IS NULL AND state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ?",
             [$aGts, $daGts]
         ) as $n) {
             $n['tipo_unita'] = 'nave';
             $n['nome'] = $n['name'];
-            $n['deviazione'] = 0.0;
             $n['mercantili'] = 1;
             $n['scorte'] = 0;
             $out[] = $n;
@@ -819,11 +859,14 @@ final class Traffic
         return $out;
     }
 
-    /** Statistiche del traffico in mare. */
+    /**
+     * Statistiche del traffico in mare. Il convoglio d'esercitazione
+     * dell'Agru-Front (rotta 'agru') non e' traffico nemico, e non si conta.
+     */
     public static function stato(int $gts): array
     {
         $c = Database::first(
-            "SELECT COUNT(*) n FROM convoys WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ?",
+            "SELECT COUNT(*) n FROM convoys WHERE state = 'in_mare' AND esercitazione = 0 AND departed_gts <= ? AND eta_gts >= ?",
             [$gts, $gts]
         );
         $s = Database::first(
@@ -833,7 +876,7 @@ final class Traffic
         );
         $t = Database::first(
             "SELECT COUNT(*) n, COALESCE(SUM(grt),0) grt FROM ships
-             WHERE state = 'in_mare' AND departed_gts <= ? AND eta_gts >= ?",
+             WHERE state = 'in_mare' AND rotta_key <> 'agru' AND departed_gts <= ? AND eta_gts >= ?",
             [$gts, $gts]
         );
         $a = Database::first("SELECT COUNT(*) n, COALESCE(SUM(grt),0) grt FROM ships WHERE state = 'affondata'");

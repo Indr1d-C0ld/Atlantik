@@ -9,7 +9,9 @@ use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Game\Avvisi;
 use App\Game\Comandante;
+use App\Game\Preferenze;
 use App\Game\Profilo;
 use App\Game\Ritratto;
 use App\Sim\World;
@@ -60,7 +62,35 @@ final class ProfiloController
             'catalogo' => Ritratto::elenco((int) $cmd['id']),
             'azione'   => '/comandante',
             'admin'    => false,
+            'avvisi'   => [
+                'pref'   => Preferenze::tutte((int) Auth::id()),
+                'email'  => (string) Auth::user()['email'],
+                'ultimi' => Database::all(
+                    'SELECT a.categoria, a.testo, a.created_at, a.saltato, m.inviato_at
+                       FROM avvisi a LEFT JOIN mail_queue m ON m.id = a.mail_id
+                      WHERE a.user_id = ? ORDER BY a.id DESC LIMIT 6',
+                    [(int) Auth::id()]
+                ),
+            ],
         ]));
+    }
+
+    /** Le categorie di avvisi per posta: una casella ciascuna. */
+    public function avvisi(Request $request): Response
+    {
+        $userId = (int) Auth::id();
+        $accese = [];
+        foreach (array_keys(Avvisi::CATEGORIE) as $cat) {
+            $si = $request->str('avviso_' . $cat) === '1';
+            Preferenze::set($userId, Avvisi::chiave($cat), $si ? 'si' : 'no');
+            if ($si) {
+                $accese[] = mb_strtolower(Avvisi::CATEGORIE[$cat]['nome']);
+            }
+        }
+        Session::flash('success', $accese === []
+            ? 'Avvisi per posta spenti.'
+            : 'Avvisi per posta accesi: ' . implode(', ', $accese) . '.');
+        return Response::redirect(url('/comandante/profilo') . '#avvisi');
     }
 
     // --- le azioni -------------------------------------------------------------
